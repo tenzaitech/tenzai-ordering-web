@@ -27,6 +27,7 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'id'>) => void
+  updateItem: (id: string, updates: Partial<CartItem>) => void
   updateQuantity: (id: string, quantity: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
@@ -66,6 +67,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(prev => [...prev, { ...newItem, id }])
   }
 
+  const updateItem = (id: string, updates: Partial<CartItem>) => {
+    setItems(prev => prev.map(item =>
+      item.id === id ? { ...item, ...updates } : item
+    ))
+  }
+
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(id)
@@ -98,6 +105,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider value={{
       items,
       addItem,
+      updateItem,
       updateQuantity,
       removeItem,
       clearCart,

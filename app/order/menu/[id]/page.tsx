@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import menuData from '@/data/menu.json'
 import optionGroupsData from '@/data/option_groups.json'
-import { useCart } from '@/contexts/CartContext'
+import { useCart, CartItemOption } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { triggerHaptic } from '@/utils/haptic'
+import Toast from '@/components/Toast'
 
 type OptionChoice = {
   id: string
@@ -42,11 +43,26 @@ type MenuItem = {
 export default function MenuDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { addItem } = useCart()
+  const searchParams = useSearchParams()
+  const { addItem, updateItem, items } = useCart()
   const { language } = useLanguage()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
   const [note, setNote] = useState('')
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showToast, setShowToast] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [navDirection, setNavDirection] = useState<'forward' | 'backward'>('forward')
+
+  const editId = searchParams.get('edit')
+  const isEditMode = !!editId
+  const cartItem = isEditMode ? items.find(item => item.id === editId) : null
+
+  useEffect(() => {
+    const direction = sessionStorage.getItem('navigationDirection') as 'forward' | 'backward' || 'forward'
+    sessionStorage.removeItem('navigationDirection')
+    setNavDirection(direction)
+    setMounted(true)
+  }, [])
 
   const menuItem = (menuData as MenuItem[]).find(item => item.id === params.id as string)
 
@@ -54,23 +70,46 @@ export default function MenuDetailPage() {
     return <div>Item not found</div>
   }
 
+  if (isEditMode && !cartItem) {
+    router.push('/order/cart')
+    return <div>Loading...</div>
+  }
+
   const optionGroups: OptionGroup[] = (menuItem.option_group_ids || [])
     .map(groupId => (optionGroupsData as OptionGroup[]).find(g => g.id === groupId))
     .filter((g): g is OptionGroup => g !== undefined)
 
   useEffect(() => {
-    const initialSelections: Record<string, string[]> = {}
-    optionGroups.forEach(group => {
-      if (group.default_choice_ids && group.default_choice_ids.length > 0) {
-        initialSelections[group.id] = [...group.default_choice_ids]
-      } else if (group.type === 'single' && group.required) {
-        initialSelections[group.id] = []
-      } else {
-        initialSelections[group.id] = []
+    if (isEditMode && cartItem) {
+      const editSelections: Record<string, string[]> = {}
+
+      optionGroups.forEach(group => {
+        editSelections[group.id] = []
+      })
+
+      if (cartItem.options) {
+        cartItem.options.forEach((option: CartItemOption) => {
+          editSelections[option.group_id] = [...option.choice_ids]
+        })
       }
-    })
-    setSelectedOptions(initialSelections)
-  }, [menuItem.id])
+
+      setSelectedOptions(editSelections)
+      setNote(cartItem.note || '')
+    } else {
+      const initialSelections: Record<string, string[]> = {}
+      optionGroups.forEach(group => {
+        if (group.default_choice_ids && group.default_choice_ids.length > 0) {
+          initialSelections[group.id] = [...group.default_choice_ids]
+        } else if (group.type === 'single' && group.required) {
+          initialSelections[group.id] = []
+        } else {
+          initialSelections[group.id] = []
+        }
+      })
+      setSelectedOptions(initialSelections)
+      setNote('')
+    }
+  }, [menuItem.id, isEditMode, editId])
 
   const handleOptionChange = (groupId: string, choiceId: string, group: OptionGroup) => {
     if (group.type === 'single') {
@@ -123,6 +162,7 @@ export default function MenuDetailPage() {
   }
 
   const handleAddToCart = () => {
+    // Validate before proceeding
     if (!isFormValid()) {
       const errors: Record<string, string> = {}
       optionGroups.forEach(group => {
@@ -173,18 +213,47 @@ export default function MenuDetailPage() {
 
     const finalPrice = calculateTotalPrice()
 
-    addItem({
-      menuId: menuItem.id,
-      name_th: menuItem.name_th,
-      name_en: menuItem.name_en,
-      price_thb: menuItem.price_thb,
-      final_price_thb: finalPrice,
-      quantity: 1,
-      options: cartOptions.length > 0 ? cartOptions : undefined,
-      note: note.trim() || undefined
-    })
+    // Trigger haptic feedback
+    triggerHaptic()
 
-    router.push('/order/menu')
+    if (isEditMode && cartItem) {
+      // Update existing cart item
+      updateItem(cartItem.id, {
+        options: cartOptions.length > 0 ? cartOptions : undefined,
+        note: note.trim() || undefined,
+        final_price_thb: finalPrice
+      })
+      // Show toast for edit
+      setShowToast(true)
+      // Navigate back to cart after delay (150ms for toast visibility)
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('navigationDirection', 'backward')
+        }
+        router.push('/order/cart')
+      }, 150)
+    } else {
+      // Add new item to cart
+      addItem({
+        menuId: menuItem.id,
+        name_th: menuItem.name_th,
+        name_en: menuItem.name_en,
+        price_thb: menuItem.price_thb,
+        final_price_thb: finalPrice,
+        quantity: 1,
+        options: cartOptions.length > 0 ? cartOptions : undefined,
+        note: note.trim() || undefined
+      })
+      // Show toast for add
+      setShowToast(true)
+      // Navigate back to menu to continue ordering
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('navigationDirection', 'backward')
+        }
+        router.push('/order/menu')
+      }, 150)
+    }
   }
 
   const isFormValid = () => {
@@ -204,15 +273,37 @@ export default function MenuDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className={`min-h-screen bg-bg ${navDirection === 'forward' ? 'page-transition-forward' : 'page-transition-backward'} ${mounted ? 'page-mounted' : ''}`}>
+      {showToast && (
+        <Toast
+          message={isEditMode
+            ? (language === 'th' ? 'แก้ไขรายการแล้ว' : 'Item updated')
+            : (language === 'th' ? 'เพิ่มลงตะกร้าแล้ว' : 'Added to cart')
+          }
+          onClose={() => setShowToast(false)}
+        />
+      )}
       <div className="max-w-mobile mx-auto">
         <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
-          <Link href="/order/menu" className="text-muted hover:text-text">
+          <button
+            onClick={() => {
+              triggerHaptic()
+              setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('navigationDirection', 'backward')
+                }
+                router.push(isEditMode ? "/order/cart" : "/order/menu")
+              }, 120)
+            }}
+            className="text-muted hover:text-text active:text-text transition-colors"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-          </Link>
-          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">Item Details</h1>
+          </button>
+          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">
+            {isEditMode ? 'Edit Item' : 'Item Details'}
+          </h1>
         </header>
 
         <div className="pb-24">
@@ -296,9 +387,9 @@ export default function MenuDetailPage() {
             <button
               onClick={handleAddToCart}
               disabled={!isFormValid()}
-              className="w-full py-4 bg-primary text-white font-medium rounded-lg disabled:bg-border disabled:text-muted disabled:cursor-not-allowed transition-colors"
+              className="w-full py-4 bg-primary text-white font-medium rounded-lg disabled:bg-border disabled:text-muted disabled:cursor-not-allowed transition-all active:scale-[0.98] active:bg-primary/90"
             >
-              Add to Cart
+              {isEditMode ? 'Save Changes' : 'Add to Cart'}
             </button>
           </div>
         </div>

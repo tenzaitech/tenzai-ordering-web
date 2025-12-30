@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import menuData from '@/data/menu.json'
 import BrandHeader from '@/components/BrandHeader'
 import MenuItemRow from '@/components/MenuItemRow'
 import MenuCardLarge from '@/components/MenuCardLarge'
+import { triggerHaptic } from '@/utils/haptic'
 
 const categories = ['Nigiri', 'Roll', 'Sashimi', 'Set', 'Appetizer', 'Soup', 'Salad', 'Tempura', 'Drink', 'Dessert'] as const
 type Category = typeof categories[number]
@@ -23,10 +24,12 @@ type MenuItem = {
 }
 
 export default function MenuPage() {
+  const router = useRouter()
   const [activeCategory, setActiveCategory] = useState<Category>('Nigiri')
   const [searchQuery, setSearchQuery] = useState('')
   const [isRestoringScroll, setIsRestoringScroll] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   const observerRef = useRef<IntersectionObserver | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -38,10 +41,10 @@ export default function MenuPage() {
     return acc
   }, {} as Record<Category, MenuItem[]>)
 
-  // Get recommended items (4 non-sold-out items from all categories)
+  // Get recommended items (6 non-sold-out items from all categories)
   const recommendedItems = (menuData as MenuItem[])
     .filter(item => !item.is_sold_out)
-    .slice(0, 4)
+    .slice(0, 6)
 
   // Filter items based on search query
   const filteredItems = searchQuery.trim()
@@ -53,6 +56,11 @@ export default function MenuPage() {
         )
       })
     : []
+
+  // Mount animation trigger
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Auto-scroll active tab into view when activeCategory changes
   useEffect(() => {
@@ -142,6 +150,18 @@ export default function MenuPage() {
     handleCategoryClick(category)
   }
 
+  // Handle recommended card tap
+  const handleRecommendedTap = (itemId: string) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
+      sessionStorage.setItem('navigationDirection', 'forward')
+    }
+    triggerHaptic()
+    setTimeout(() => {
+      router.push(`/order/menu/${itemId}`)
+    }, 100)
+  }
+
   return (
     <div className="min-h-screen bg-bg pb-20">
       <div className="max-w-mobile mx-auto">
@@ -209,16 +229,17 @@ export default function MenuPage() {
             <div className="px-5 py-6">
               <h2 className="text-text text-xl font-semibold mb-4">Recommended</h2>
               <div className="grid grid-cols-2 gap-3">
-                {recommendedItems.map(item => (
-                  <Link
+                {recommendedItems.map((item, index) => (
+                  <div
                     key={item.id}
-                    href={`/order/menu/${item.id}`}
-                    scroll={false}
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
-                      }
+                    className={`transition-all duration-[170ms] cursor-pointer active:scale-[0.98] active:bg-border rounded-lg ${
+                      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1.5'
+                    }`}
+                    style={{
+                      transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+                      transitionDelay: mounted ? `${index * 50}ms` : '0ms'
                     }}
+                    onClick={() => handleRecommendedTap(item.id)}
                   >
                     <MenuCardLarge
                       name_th={item.name_th}
@@ -227,7 +248,7 @@ export default function MenuPage() {
                       image={item.image}
                       is_sold_out={item.is_sold_out}
                     />
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>

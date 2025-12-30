@@ -1,9 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useCart } from '@/contexts/CartContext'
 
 export default function FloatingCartButton() {
+  const pathname = usePathname()
+  const isCartPage = pathname === '/order/cart'
+
+  // Don't render at all on cart page
+  if (isCartPage) return null
+
   const { getTotalItems } = useCart()
   const totalItems = getTotalItems()
 

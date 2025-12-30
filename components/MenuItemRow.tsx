@@ -1,7 +1,8 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
+import { triggerHaptic } from '@/utils/haptic'
 
 interface MenuItemRowProps {
   id: string
@@ -22,17 +23,25 @@ export default function MenuItemRow({
   is_sold_out = false,
   subtitle,
 }: MenuItemRowProps) {
+  const router = useRouter()
+
   const handleClick = () => {
-    if (!is_sold_out && typeof window !== 'undefined') {
+    if (is_sold_out) return
+
+    if (typeof window !== 'undefined') {
       sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
+      sessionStorage.setItem('navigationDirection', 'forward')
     }
+
+    triggerHaptic()
+    setTimeout(() => {
+      router.push(`/order/menu/${id}`)
+    }, 100)
   }
 
   return (
-    <Link
-      href={is_sold_out ? '#' : `/order/menu/${id}`}
-      className={`block ${is_sold_out ? 'pointer-events-none' : ''}`}
-      scroll={false}
+    <div
+      className={`block ${is_sold_out ? 'pointer-events-none' : 'cursor-pointer'}`}
       onClick={handleClick}
     >
       <div
@@ -94,6 +103,6 @@ export default function MenuItemRow({
           </div>
         )}
       </div>
-    </Link>
+    </div>
   )
 }
