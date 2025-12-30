@@ -1,0 +1,308 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import menuData from '@/data/menu.json'
+import optionGroupsData from '@/data/option_groups.json'
+import { useCart } from '@/contexts/CartContext'
+import { useLanguage } from '@/contexts/LanguageContext'
+
+type OptionChoice = {
+  id: string
+  name_th: string
+  name_en: string
+  price_delta_thb: number
+}
+
+type OptionGroup = {
+  id: string
+  name_th: string
+  name_en: string
+  type: 'single' | 'multi'
+  required: boolean
+  min?: number
+  max?: number
+  choices: OptionChoice[]
+  default_choice_ids?: string[]
+}
+
+type MenuItem = {
+  id: string
+  name_th: string
+  name_en: string
+  category: string
+  price_thb: number
+  image: string
+  is_sold_out: boolean
+  subtitle?: string
+  option_group_ids?: string[]
+}
+
+export default function MenuDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { addItem } = useCart()
+  const { language } = useLanguage()
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
+  const [note, setNote] = useState('')
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  const menuItem = (menuData as MenuItem[]).find(item => item.id === params.id as string)
+
+  if (!menuItem) {
+    return <div>Item not found</div>
+  }
+
+  const optionGroups: OptionGroup[] = (menuItem.option_group_ids || [])
+    .map(groupId => (optionGroupsData as OptionGroup[]).find(g => g.id === groupId))
+    .filter((g): g is OptionGroup => g !== undefined)
+
+  useEffect(() => {
+    const initialSelections: Record<string, string[]> = {}
+    optionGroups.forEach(group => {
+      if (group.default_choice_ids && group.default_choice_ids.length > 0) {
+        initialSelections[group.id] = [...group.default_choice_ids]
+      } else if (group.type === 'single' && group.required) {
+        initialSelections[group.id] = []
+      } else {
+        initialSelections[group.id] = []
+      }
+    })
+    setSelectedOptions(initialSelections)
+  }, [menuItem.id])
+
+  const handleOptionChange = (groupId: string, choiceId: string, group: OptionGroup) => {
+    if (group.type === 'single') {
+      setSelectedOptions(prev => ({
+        ...prev,
+        [groupId]: [choiceId]
+      }))
+    } else {
+      setSelectedOptions(prev => {
+        const current = prev[groupId] || []
+        const isSelected = current.includes(choiceId)
+
+        if (isSelected) {
+          return {
+            ...prev,
+            [groupId]: current.filter(id => id !== choiceId)
+          }
+        } else {
+          const max = group.max || 999
+          if (current.length >= max) {
+            return prev
+          }
+          return {
+            ...prev,
+            [groupId]: [...current, choiceId]
+          }
+        }
+      })
+    }
+    setValidationErrors(prev => {
+      const { [groupId]: _, ...rest } = prev
+      return rest
+    })
+  }
+
+  const calculateTotalPrice = () => {
+    let total = menuItem.price_thb
+
+    optionGroups.forEach(group => {
+      const selectedIds = selectedOptions[group.id] || []
+      selectedIds.forEach(choiceId => {
+        const choice = group.choices.find(c => c.id === choiceId)
+        if (choice) {
+          total += choice.price_delta_thb
+        }
+      })
+    })
+
+    return total
+  }
+
+  const handleAddToCart = () => {
+    if (!isFormValid()) {
+      const errors: Record<string, string> = {}
+      optionGroups.forEach(group => {
+        const selectedIds = selectedOptions[group.id] || []
+        if (group.required && group.type === 'single' && selectedIds.length === 0) {
+          errors[group.id] = language === 'th' ? 'กรุณาเลือก' : 'Please select'
+        } else if (group.required && group.type === 'multi') {
+          const min = group.min || 1
+          if (selectedIds.length < min) {
+            errors[group.id] = language === 'th' ? `กรุณาเลือกอย่างน้อย ${min}` : `Select at least ${min}`
+          }
+        }
+      })
+      setValidationErrors(errors)
+      return
+    }
+
+    const cartOptions = optionGroups
+      .filter(group => {
+        const selectedIds = selectedOptions[group.id] || []
+        return selectedIds.length > 0
+      })
+      .map(group => {
+        const selectedIds = selectedOptions[group.id] || []
+        const choiceNamesTh: string[] = []
+        const choiceNamesEn: string[] = []
+        let priceDelta = 0
+
+        selectedIds.forEach(choiceId => {
+          const choice = group.choices.find(c => c.id === choiceId)
+          if (choice) {
+            choiceNamesTh.push(choice.name_th)
+            choiceNamesEn.push(choice.name_en)
+            priceDelta += choice.price_delta_thb
+          }
+        })
+
+        return {
+          group_id: group.id,
+          group_name_th: group.name_th,
+          group_name_en: group.name_en,
+          choice_ids: selectedIds,
+          choice_names_th: choiceNamesTh,
+          choice_names_en: choiceNamesEn,
+          price_delta_thb: priceDelta
+        }
+      })
+
+    const finalPrice = calculateTotalPrice()
+
+    addItem({
+      menuId: menuItem.id,
+      name_th: menuItem.name_th,
+      name_en: menuItem.name_en,
+      price_thb: menuItem.price_thb,
+      final_price_thb: finalPrice,
+      quantity: 1,
+      options: cartOptions.length > 0 ? cartOptions : undefined,
+      note: note.trim() || undefined
+    })
+
+    router.push('/order/menu')
+  }
+
+  const isFormValid = () => {
+    return optionGroups.every(group => {
+      const selectedIds = selectedOptions[group.id] || []
+
+      if (group.required) {
+        if (group.type === 'single') {
+          return selectedIds.length > 0
+        } else if (group.type === 'multi') {
+          const min = group.min || 1
+          return selectedIds.length >= min
+        }
+      }
+      return true
+    })
+  }
+
+  return (
+    <div className="min-h-screen bg-bg">
+      <div className="max-w-mobile mx-auto">
+        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
+          <Link href="/order/menu" className="text-muted hover:text-text">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">Item Details</h1>
+        </header>
+
+        <div className="pb-24">
+          <div className="relative h-64 bg-border">
+            <div className="absolute inset-0 flex items-center justify-center text-muted">
+              <span>Image Placeholder</span>
+            </div>
+          </div>
+
+          <div className="px-5 py-6">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-medium text-text">{menuItem.name_en}</h2>
+                <p className="text-lg text-muted">{menuItem.name_th}</p>
+                {menuItem.subtitle && (
+                  <p className="text-sm text-muted mt-1">{menuItem.subtitle}</p>
+                )}
+              </div>
+              <p className="text-2xl font-semibold text-primary">฿{calculateTotalPrice()}</p>
+            </div>
+
+            {optionGroups.map(group => {
+              const selectedIds = selectedOptions[group.id] || []
+              const groupName = language === 'th' ? group.name_th : group.name_en
+
+              return (
+                <div key={group.id} className="mb-6">
+                  <h3 className="text-lg font-medium mb-3 text-text">
+                    {groupName}
+                    {group.required && <span className="text-primary ml-1">*</span>}
+                  </h3>
+                  {validationErrors[group.id] && (
+                    <p className="text-sm text-primary mb-2">{validationErrors[group.id]}</p>
+                  )}
+                  <div className="space-y-2">
+                    {group.choices.map(choice => {
+                      const choiceName = language === 'th' ? choice.name_th : choice.name_en
+                      const isChecked = selectedIds.includes(choice.id)
+
+                      return (
+                        <label
+                          key={choice.id}
+                          className="flex items-center justify-between p-3 bg-card border border-border rounded-lg cursor-pointer hover:border-primary/30 transition-colors"
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type={group.type === 'single' ? 'radio' : 'checkbox'}
+                              name={group.id}
+                              checked={isChecked}
+                              onChange={() => handleOptionChange(group.id, choice.id, group)}
+                              className="mr-3 w-4 h-4 accent-primary focus:ring-primary"
+                            />
+                            <span className="text-text">{choiceName}</span>
+                          </div>
+                          {choice.price_delta_thb > 0 && (
+                            <span className="text-primary font-medium">+฿{choice.price_delta_thb}</span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-3 text-text">Special Instructions</h3>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Add any special requests here (optional)"
+                className="w-full p-3 bg-card border border-border text-text placeholder:text-muted rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
+          <div className="max-w-mobile mx-auto p-5">
+            <button
+              onClick={handleAddToCart}
+              disabled={!isFormValid()}
+              className="w-full py-4 bg-primary text-white font-medium rounded-lg disabled:bg-border disabled:text-muted disabled:cursor-not-allowed transition-colors"
+            >
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

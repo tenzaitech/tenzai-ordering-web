@@ -1,0 +1,38 @@
+[
+  {
+    "id": "grp_torch",
+    "name_th": "เบิร์นไฟ",
+    "name_en": "Torch",
+    "type": "single",
+    "required": true,
+    "choices": [
+      { "id": "torch_yes", "name_th": "เบิร์นไฟ", "name_en": "Torch", "price_delta_thb": 0 },
+      { "id": "torch_no", "name_th": "ไม่เบิร์นไฟ", "name_en": "No torch", "price_delta_thb": 0 }
+    ],
+    "default_choice_ids": ["torch_no"]
+  },
+  {
+    "id": "grp_no_sauce",
+    "name_th": "ซอส",
+    "name_en": "Sauce",
+    "type": "multi",
+    "required": false,
+    "min": 0,
+    "max": 3,
+    "choices": [
+      { "id": "no_sauce", "name_th": "ไม่ใส่ซอส", "name_en": "No sauce", "price_delta_thb": 0 }
+    ]
+  },
+  {
+    "id": "grp_sesame",
+    "name_th": "งา",
+    "name_en": "Sesame",
+    "type": "multi",
+    "required": false,
+    "min": 0,
+    "max": 2,
+    "choices": [
+      { "id": "no_sesame", "name_th": "ไม่โรยงา", "name_en": "No sesame", "price_delta_thb": 0 }
+    ]
+  }
+]

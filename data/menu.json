@@ -1,0 +1,1026 @@
+[
+  {
+    "id": "nigiri-1",
+    "name_th": "แซลมอน",
+    "name_en": "Salmon Nigiri",
+    "category": "Nigiri",
+    "price_thb": 60,
+    "image": "https://picsum.photos/seed/nigiri-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh Norwegian salmon",
+    "option_group_ids": ["grp_torch", "grp_no_sauce", "grp_sesame"]
+  },
+  {
+    "id": "nigiri-2",
+    "name_th": "ทูน่า",
+    "name_en": "Tuna Nigiri",
+    "category": "Nigiri",
+    "price_thb": 80,
+    "image": "https://picsum.photos/seed/nigiri-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Premium bluefin tuna",
+    "option_group_ids": ["grp_torch", "grp_no_sauce", "grp_sesame"]
+  },
+  {
+    "id": "nigiri-3",
+    "name_th": "ซาบะ",
+    "name_en": "Saba Nigiri",
+    "category": "Nigiri",
+    "price_thb": 50,
+    "image": "https://picsum.photos/seed/nigiri-3/400/300",
+    "is_sold_out": true,
+    "subtitle": "Marinated mackerel",
+    "option_group_ids": ["grp_torch", "grp_no_sauce", "grp_sesame"]
+  },
+  {
+    "id": "nigiri-4",
+    "name_th": "ฮามาจิ",
+    "name_en": "Hamachi Nigiri",
+    "category": "Nigiri",
+    "price_thb": 90,
+    "image": "https://picsum.photos/seed/nigiri-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Yellowtail",
+    "option_group_ids": ["grp_torch", "grp_no_sauce", "grp_sesame"]
+  },
+  {
+    "id": "nigiri-5",
+    "name_th": "อูนางิ",
+    "name_en": "Unagi Nigiri",
+    "category": "Nigiri",
+    "price_thb": 100,
+    "image": "https://picsum.photos/seed/nigiri-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Grilled freshwater eel"
+  },
+  {
+    "id": "nigiri-6",
+    "name_th": "ทามาโกะ",
+    "name_en": "Tamago Nigiri",
+    "category": "Nigiri",
+    "price_thb": 40,
+    "image": "https://picsum.photos/seed/nigiri-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Sweet egg omelet"
+  },
+  {
+    "id": "nigiri-7",
+    "name_th": "เอบิ",
+    "name_en": "Ebi Nigiri",
+    "category": "Nigiri",
+    "price_thb": 55,
+    "image": "https://picsum.photos/seed/nigiri-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Boiled shrimp"
+  },
+  {
+    "id": "nigiri-8",
+    "name_th": "โฮตาเตะ",
+    "name_en": "Hotate Nigiri",
+    "category": "Nigiri",
+    "price_thb": 120,
+    "image": "https://picsum.photos/seed/nigiri-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh scallop"
+  },
+  {
+    "id": "nigiri-9",
+    "name_th": "อิกุระ",
+    "name_en": "Ikura Nigiri",
+    "category": "Nigiri",
+    "price_thb": 110,
+    "image": "https://picsum.photos/seed/nigiri-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Salmon roe"
+  },
+  {
+    "id": "nigiri-10",
+    "name_th": "โทบิโกะ",
+    "name_en": "Tobiko Nigiri",
+    "category": "Nigiri",
+    "price_thb": 95,
+    "image": "https://picsum.photos/seed/nigiri-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Flying fish roe"
+  },
+  {
+    "id": "roll-1",
+    "name_th": "สไปซี่แซลมอนโรล",
+    "name_en": "Spicy Salmon Roll",
+    "category": "Roll",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/roll-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "8 pieces with spicy mayo"
+  },
+  {
+    "id": "roll-2",
+    "name_th": "แคลิฟอร์เนียโรล",
+    "name_en": "California Roll",
+    "category": "Roll",
+    "price_thb": 160,
+    "image": "https://picsum.photos/seed/roll-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "8 pieces with crab stick"
+  },
+  {
+    "id": "roll-3",
+    "name_th": "ฟิลาเดลเฟียโรล",
+    "name_en": "Philadelphia Roll",
+    "category": "Roll",
+    "price_thb": 200,
+    "image": "https://picsum.photos/seed/roll-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Salmon, cream cheese, cucumber"
+  },
+  {
+    "id": "roll-4",
+    "name_th": "สไปซี่ทูน่าโรล",
+    "name_en": "Spicy Tuna Roll",
+    "category": "Roll",
+    "price_thb": 190,
+    "image": "https://picsum.photos/seed/roll-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "8 pieces with spicy sauce"
+  },
+  {
+    "id": "roll-5",
+    "name_th": "ดราก้อนโรล",
+    "name_en": "Dragon Roll",
+    "category": "Roll",
+    "price_thb": 280,
+    "image": "https://picsum.photos/seed/roll-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Eel and avocado outside"
+  },
+  {
+    "id": "roll-6",
+    "name_th": "เรนโบว์โรล",
+    "name_en": "Rainbow Roll",
+    "category": "Roll",
+    "price_thb": 290,
+    "image": "https://picsum.photos/seed/roll-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Assorted fish outside"
+  },
+  {
+    "id": "roll-7",
+    "name_th": "คัตสึโรล",
+    "name_en": "Katsu Roll",
+    "category": "Roll",
+    "price_thb": 220,
+    "image": "https://picsum.photos/seed/roll-7/400/300",
+    "is_sold_out": true,
+    "subtitle": "Crispy chicken katsu roll"
+  },
+  {
+    "id": "roll-8",
+    "name_th": "เทมปุระโรล",
+    "name_en": "Tempura Roll",
+    "category": "Roll",
+    "price_thb": 210,
+    "image": "https://picsum.photos/seed/roll-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Crispy shrimp tempura"
+  },
+  {
+    "id": "roll-9",
+    "name_th": "ซอฟต์เชลล์ครับโรล",
+    "name_en": "Soft Shell Crab Roll",
+    "category": "Roll",
+    "price_thb": 260,
+    "image": "https://picsum.photos/seed/roll-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Deep fried soft shell crab"
+  },
+  {
+    "id": "roll-10",
+    "name_th": "อะโวคาโดโรล",
+    "name_en": "Avocado Roll",
+    "category": "Roll",
+    "price_thb": 140,
+    "image": "https://picsum.photos/seed/roll-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Vegetarian option"
+  },
+  {
+    "id": "roll-11",
+    "name_th": "เกียวซ่าโรล",
+    "name_en": "Gyoza Roll",
+    "category": "Roll",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/roll-11/400/300",
+    "is_sold_out": false,
+    "subtitle": "Crispy gyoza inside"
+  },
+  {
+    "id": "roll-12",
+    "name_th": "สปริงโรล",
+    "name_en": "Spring Roll",
+    "category": "Roll",
+    "price_thb": 150,
+    "image": "https://picsum.photos/seed/roll-12/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh vegetables"
+  },
+  {
+    "id": "sashimi-1",
+    "name_th": "แซลมอนซาชิมิ",
+    "name_en": "Salmon Sashimi",
+    "category": "Sashimi",
+    "price_thb": 200,
+    "image": "https://picsum.photos/seed/sashimi-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces fresh salmon"
+  },
+  {
+    "id": "sashimi-2",
+    "name_th": "ทูน่าซาชิมิ",
+    "name_en": "Tuna Sashimi",
+    "category": "Sashimi",
+    "price_thb": 250,
+    "image": "https://picsum.photos/seed/sashimi-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces premium tuna"
+  },
+  {
+    "id": "sashimi-3",
+    "name_th": "ฮามาจิซาชิมิ",
+    "name_en": "Hamachi Sashimi",
+    "category": "Sashimi",
+    "price_thb": 280,
+    "image": "https://picsum.photos/seed/sashimi-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces yellowtail"
+  },
+  {
+    "id": "sashimi-4",
+    "name_th": "โฮตาเตะซาชิมิ",
+    "name_en": "Hotate Sashimi",
+    "category": "Sashimi",
+    "price_thb": 320,
+    "image": "https://picsum.photos/seed/sashimi-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces fresh scallop"
+  },
+  {
+    "id": "sashimi-5",
+    "name_th": "อูตาซาชิมิ",
+    "name_en": "Tako Sashimi",
+    "category": "Sashimi",
+    "price_thb": 220,
+    "image": "https://picsum.photos/seed/sashimi-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces octopus"
+  },
+  {
+    "id": "sashimi-6",
+    "name_th": "ซาบะซาชิมิ",
+    "name_en": "Saba Sashimi",
+    "category": "Sashimi",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/sashimi-6/400/300",
+    "is_sold_out": true,
+    "subtitle": "6 pieces mackerel"
+  },
+  {
+    "id": "sashimi-7",
+    "name_th": "โอโทโระซาชิมิ",
+    "name_en": "Otoro Sashimi",
+    "category": "Sashimi",
+    "price_thb": 450,
+    "image": "https://picsum.photos/seed/sashimi-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces fatty tuna belly"
+  },
+  {
+    "id": "sashimi-8",
+    "name_th": "ชูโทโระซาชิมิ",
+    "name_en": "Chutoro Sashimi",
+    "category": "Sashimi",
+    "price_thb": 350,
+    "image": "https://picsum.photos/seed/sashimi-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces medium fatty tuna"
+  },
+  {
+    "id": "sashimi-9",
+    "name_th": "อามาเอบิซาชิมิ",
+    "name_en": "Ama Ebi Sashimi",
+    "category": "Sashimi",
+    "price_thb": 240,
+    "image": "https://picsum.photos/seed/sashimi-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "6 pieces sweet shrimp"
+  },
+  {
+    "id": "sashimi-10",
+    "name_th": "ซาชิมิรวม",
+    "name_en": "Assorted Sashimi",
+    "category": "Sashimi",
+    "price_thb": 400,
+    "image": "https://picsum.photos/seed/sashimi-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "12 pieces chef's selection"
+  },
+  {
+    "id": "set-1",
+    "name_th": "ซาชิมิเซ็ต",
+    "name_en": "Sashimi Set",
+    "category": "Set",
+    "price_thb": 390,
+    "image": "https://picsum.photos/seed/set-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "12 pieces assorted sashimi"
+  },
+  {
+    "id": "set-2",
+    "name_th": "นิกิริเซ็ต",
+    "name_en": "Nigiri Set",
+    "category": "Set",
+    "price_thb": 320,
+    "image": "https://picsum.photos/seed/set-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "8 pieces assorted nigiri"
+  },
+  {
+    "id": "set-3",
+    "name_th": "โรลเซ็ต",
+    "name_en": "Roll Set",
+    "category": "Set",
+    "price_thb": 450,
+    "image": "https://picsum.photos/seed/set-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "3 rolls of your choice"
+  },
+  {
+    "id": "set-4",
+    "name_th": "เทนไซเซ็ต",
+    "name_en": "Tenzai Set",
+    "category": "Set",
+    "price_thb": 500,
+    "image": "https://picsum.photos/seed/set-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Chef's special selection"
+  },
+  {
+    "id": "set-5",
+    "name_th": "ซูชิ&ซาชิมิเซ็ต",
+    "name_en": "Sushi & Sashimi Set",
+    "category": "Set",
+    "price_thb": 480,
+    "image": "https://picsum.photos/seed/set-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Best of both worlds"
+  },
+  {
+    "id": "set-6",
+    "name_th": "แฟมิลี่เซ็ต",
+    "name_en": "Family Set",
+    "category": "Set",
+    "price_thb": 1200,
+    "image": "https://picsum.photos/seed/set-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "For 3-4 people"
+  },
+  {
+    "id": "set-7",
+    "name_th": "คู่เพอร์เฟ็กต์เซ็ต",
+    "name_en": "Perfect Pair Set",
+    "category": "Set",
+    "price_thb": 650,
+    "image": "https://picsum.photos/seed/set-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "For 2 people"
+  },
+  {
+    "id": "set-8",
+    "name_th": "เบจิตาเรียนเซ็ต",
+    "name_en": "Vegetarian Set",
+    "category": "Set",
+    "price_thb": 280,
+    "image": "https://picsum.photos/seed/set-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "All vegetarian items"
+  },
+  {
+    "id": "set-9",
+    "name_th": "โปรเทนเซ็ต",
+    "name_en": "Protein Set",
+    "category": "Set",
+    "price_thb": 550,
+    "image": "https://picsum.photos/seed/set-9/400/300",
+    "is_sold_out": true,
+    "subtitle": "High protein selection"
+  },
+  {
+    "id": "set-10",
+    "name_th": "ลักซ์ชัวรี่เซ็ต",
+    "name_en": "Luxury Set",
+    "category": "Set",
+    "price_thb": 800,
+    "image": "https://picsum.photos/seed/set-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Premium items only"
+  },
+  {
+    "id": "appetizer-1",
+    "name_th": "เอดามาเมะ",
+    "name_en": "Edamame",
+    "category": "Appetizer",
+    "price_thb": 80,
+    "image": "https://picsum.photos/seed/appetizer-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "Steamed soybeans"
+  },
+  {
+    "id": "appetizer-2",
+    "name_th": "เกียวซ่า",
+    "name_en": "Gyoza",
+    "category": "Appetizer",
+    "price_thb": 120,
+    "image": "https://picsum.photos/seed/appetizer-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Pan-fried dumplings"
+  },
+  {
+    "id": "appetizer-3",
+    "name_th": "ทาโกะยากิ",
+    "name_en": "Takoyaki",
+    "category": "Appetizer",
+    "price_thb": 140,
+    "image": "https://picsum.photos/seed/appetizer-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Octopus balls"
+  },
+  {
+    "id": "appetizer-4",
+    "name_th": "อากะโดชิ",
+    "name_en": "Agedashi Tofu",
+    "category": "Appetizer",
+    "price_thb": 100,
+    "image": "https://picsum.photos/seed/appetizer-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Deep fried tofu"
+  },
+  {
+    "id": "appetizer-5",
+    "name_th": "คาราอากะ",
+    "name_en": "Karaage",
+    "category": "Appetizer",
+    "price_thb": 150,
+    "image": "https://picsum.photos/seed/appetizer-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Japanese fried chicken"
+  },
+  {
+    "id": "appetizer-6",
+    "name_th": "ปูอัด",
+    "name_en": "Kani Salad",
+    "category": "Appetizer",
+    "price_thb": 130,
+    "image": "https://picsum.photos/seed/appetizer-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Crab stick salad"
+  },
+  {
+    "id": "appetizer-7",
+    "name_th": "ทาทากิ",
+    "name_en": "Tataki",
+    "category": "Appetizer",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/appetizer-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Seared fish"
+  },
+  {
+    "id": "appetizer-8",
+    "name_th": "ยากิโทริ",
+    "name_en": "Yakitori",
+    "category": "Appetizer",
+    "price_thb": 160,
+    "image": "https://picsum.photos/seed/appetizer-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Grilled chicken skewers"
+  },
+  {
+    "id": "appetizer-9",
+    "name_th": "ฮารุมากิ",
+    "name_en": "Harumaki",
+    "category": "Appetizer",
+    "price_thb": 110,
+    "image": "https://picsum.photos/seed/appetizer-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Spring rolls"
+  },
+  {
+    "id": "appetizer-10",
+    "name_th": "ซุนโนโมโนะ",
+    "name_en": "Sunomono",
+    "category": "Appetizer",
+    "price_thb": 90,
+    "image": "https://picsum.photos/seed/appetizer-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Cucumber salad"
+  },
+  {
+    "id": "soup-1",
+    "name_th": "มิโซะซุป",
+    "name_en": "Miso Soup",
+    "category": "Soup",
+    "price_thb": 60,
+    "image": "https://picsum.photos/seed/soup-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "Traditional soybean soup"
+  },
+  {
+    "id": "soup-2",
+    "name_th": "ซุปเต้าหู้",
+    "name_en": "Tofu Soup",
+    "category": "Soup",
+    "price_thb": 70,
+    "image": "https://picsum.photos/seed/soup-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Silken tofu soup"
+  },
+  {
+    "id": "soup-3",
+    "name_th": "ซุปสาหร่าย",
+    "name_en": "Seaweed Soup",
+    "category": "Soup",
+    "price_thb": 65,
+    "image": "https://picsum.photos/seed/soup-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Wakame soup"
+  },
+  {
+    "id": "soup-4",
+    "name_th": "ซุปเห็ด",
+    "name_en": "Mushroom Soup",
+    "category": "Soup",
+    "price_thb": 80,
+    "image": "https://picsum.photos/seed/soup-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Assorted mushroom"
+  },
+  {
+    "id": "soup-5",
+    "name_th": "ซุปกุ้ง",
+    "name_en": "Shrimp Soup",
+    "category": "Soup",
+    "price_thb": 90,
+    "image": "https://picsum.photos/seed/soup-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Tom yum style"
+  },
+  {
+    "id": "soup-6",
+    "name_th": "ราเมง",
+    "name_en": "Ramen",
+    "category": "Soup",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/soup-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Japanese noodle soup"
+  },
+  {
+    "id": "soup-7",
+    "name_th": "อุด้ง",
+    "name_en": "Udon",
+    "category": "Soup",
+    "price_thb": 160,
+    "image": "https://picsum.photos/seed/soup-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Thick noodle soup"
+  },
+  {
+    "id": "soup-8",
+    "name_th": "โซบะ",
+    "name_en": "Soba",
+    "category": "Soup",
+    "price_thb": 150,
+    "image": "https://picsum.photos/seed/soup-8/400/300",
+    "is_sold_out": true,
+    "subtitle": "Buckwheat noodle"
+  },
+  {
+    "id": "soup-9",
+    "name_th": "ซุปไข่",
+    "name_en": "Egg Drop Soup",
+    "category": "Soup",
+    "price_thb": 75,
+    "image": "https://picsum.photos/seed/soup-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Light egg soup"
+  },
+  {
+    "id": "soup-10",
+    "name_th": "ซุปผัก",
+    "name_en": "Vegetable Soup",
+    "category": "Soup",
+    "price_thb": 70,
+    "image": "https://picsum.photos/seed/soup-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Mixed vegetables"
+  },
+  {
+    "id": "salad-1",
+    "name_th": "สลัดญี่ปุ่น",
+    "name_en": "Japanese Salad",
+    "category": "Salad",
+    "price_thb": 120,
+    "image": "https://picsum.photos/seed/salad-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "Sesame dressing"
+  },
+  {
+    "id": "salad-2",
+    "name_th": "สลัดแซลมอน",
+    "name_en": "Salmon Salad",
+    "category": "Salad",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/salad-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh salmon and greens"
+  },
+  {
+    "id": "salad-3",
+    "name_th": "สลัดทูน่า",
+    "name_en": "Tuna Salad",
+    "category": "Salad",
+    "price_thb": 190,
+    "image": "https://picsum.photos/seed/salad-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Seared tuna and greens"
+  },
+  {
+    "id": "salad-4",
+    "name_th": "สลัดปูอัด",
+    "name_en": "Crab Stick Salad",
+    "category": "Salad",
+    "price_thb": 140,
+    "image": "https://picsum.photos/seed/salad-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Kani salad"
+  },
+  {
+    "id": "salad-5",
+    "name_th": "สลัดสาหร่าย",
+    "name_en": "Seaweed Salad",
+    "category": "Salad",
+    "price_thb": 100,
+    "image": "https://picsum.photos/seed/salad-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Wakame and sesame"
+  },
+  {
+    "id": "salad-6",
+    "name_th": "สลัดเต้าหู้",
+    "name_en": "Tofu Salad",
+    "category": "Salad",
+    "price_thb": 110,
+    "image": "https://picsum.photos/seed/salad-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Silken tofu"
+  },
+  {
+    "id": "salad-7",
+    "name_th": "สลัดอะโวคาโด",
+    "name_en": "Avocado Salad",
+    "category": "Salad",
+    "price_thb": 130,
+    "image": "https://picsum.photos/seed/salad-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh avocado"
+  },
+  {
+    "id": "salad-8",
+    "name_th": "สลัดซีฟู้ด",
+    "name_en": "Seafood Salad",
+    "category": "Salad",
+    "price_thb": 200,
+    "image": "https://picsum.photos/seed/salad-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Mixed seafood"
+  },
+  {
+    "id": "salad-9",
+    "name_th": "สลัดไก่",
+    "name_en": "Chicken Salad",
+    "category": "Salad",
+    "price_thb": 150,
+    "image": "https://picsum.photos/seed/salad-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Grilled chicken"
+  },
+  {
+    "id": "salad-10",
+    "name_th": "สลัดผสม",
+    "name_en": "Mixed Salad",
+    "category": "Salad",
+    "price_thb": 95,
+    "image": "https://picsum.photos/seed/salad-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh vegetables"
+  },
+  {
+    "id": "tempura-1",
+    "name_th": "เทมปุระกุ้ง",
+    "name_en": "Shrimp Tempura",
+    "category": "Tempura",
+    "price_thb": 180,
+    "image": "https://picsum.photos/seed/tempura-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "5 pieces crispy shrimp"
+  },
+  {
+    "id": "tempura-2",
+    "name_th": "เทมปุระผัก",
+    "name_en": "Vegetable Tempura",
+    "category": "Tempura",
+    "price_thb": 120,
+    "image": "https://picsum.photos/seed/tempura-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Assorted vegetables"
+  },
+  {
+    "id": "tempura-3",
+    "name_th": "เทมปุระผสม",
+    "name_en": "Mixed Tempura",
+    "category": "Tempura",
+    "price_thb": 200,
+    "image": "https://picsum.photos/seed/tempura-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Shrimp and vegetables"
+  },
+  {
+    "id": "tempura-4",
+    "name_th": "เทมปุระปลา",
+    "name_en": "Fish Tempura",
+    "category": "Tempura",
+    "price_thb": 160,
+    "image": "https://picsum.photos/seed/tempura-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "White fish tempura"
+  },
+  {
+    "id": "tempura-5",
+    "name_th": "เทมปุระปลาหมึก",
+    "name_en": "Squid Tempura",
+    "category": "Tempura",
+    "price_thb": 170,
+    "image": "https://picsum.photos/seed/tempura-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Crispy squid"
+  },
+  {
+    "id": "tempura-6",
+    "name_th": "เทมปุระซอฟต์เชลล์ครับ",
+    "name_en": "Soft Shell Crab Tempura",
+    "category": "Tempura",
+    "price_thb": 220,
+    "image": "https://picsum.photos/seed/tempura-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Whole crab tempura"
+  },
+  {
+    "id": "tempura-7",
+    "name_th": "เทมปุระเห็ด",
+    "name_en": "Mushroom Tempura",
+    "category": "Tempura",
+    "price_thb": 110,
+    "image": "https://picsum.photos/seed/tempura-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Assorted mushrooms"
+  },
+  {
+    "id": "tempura-8",
+    "name_th": "เทมปุระมันหวาน",
+    "name_en": "Sweet Potato Tempura",
+    "category": "Tempura",
+    "price_thb": 100,
+    "image": "https://picsum.photos/seed/tempura-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Japanese sweet potato"
+  },
+  {
+    "id": "tempura-9",
+    "name_th": "เทมปุระฟักทอง",
+    "name_en": "Pumpkin Tempura",
+    "category": "Tempura",
+    "price_thb": 95,
+    "image": "https://picsum.photos/seed/tempura-9/400/300",
+    "is_sold_out": true,
+    "subtitle": "Kabocha pumpkin"
+  },
+  {
+    "id": "tempura-10",
+    "name_th": "เทมปุระไข่ออนเซ็น",
+    "name_en": "Onsen Egg Tempura",
+    "category": "Tempura",
+    "price_thb": 130,
+    "image": "https://picsum.photos/seed/tempura-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Soft boiled egg"
+  },
+  {
+    "id": "drink-1",
+    "name_th": "ชาเขียว",
+    "name_en": "Green Tea",
+    "category": "Drink",
+    "price_thb": 40,
+    "image": "https://picsum.photos/seed/drink-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "Hot or iced"
+  },
+  {
+    "id": "drink-2",
+    "name_th": "น้ำส้ม",
+    "name_en": "Orange Juice",
+    "category": "Drink",
+    "price_thb": 50,
+    "image": "https://picsum.photos/seed/drink-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Freshly squeezed"
+  },
+  {
+    "id": "drink-3",
+    "name_th": "โคล่า",
+    "name_en": "Coca Cola",
+    "category": "Drink",
+    "price_thb": 35,
+    "image": "https://picsum.photos/seed/drink-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "330ml can"
+  },
+  {
+    "id": "drink-4",
+    "name_th": "น้ำแร่",
+    "name_en": "Mineral Water",
+    "category": "Drink",
+    "price_thb": 25,
+    "image": "https://picsum.photos/seed/drink-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "500ml bottle"
+  },
+  {
+    "id": "drink-5",
+    "name_th": "โซดา",
+    "name_en": "Soda",
+    "category": "Drink",
+    "price_thb": 30,
+    "image": "https://picsum.photos/seed/drink-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Various flavors"
+  },
+  {
+    "id": "drink-6",
+    "name_th": "ชาอูหลง",
+    "name_en": "Oolong Tea",
+    "category": "Drink",
+    "price_thb": 45,
+    "image": "https://picsum.photos/seed/drink-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Hot or iced"
+  },
+  {
+    "id": "drink-7",
+    "name_th": "น้ำมะนาว",
+    "name_en": "Lemonade",
+    "category": "Drink",
+    "price_thb": 55,
+    "image": "https://picsum.photos/seed/drink-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Fresh lemon"
+  },
+  {
+    "id": "drink-8",
+    "name_th": "น้ำแอปเปิ้ล",
+    "name_en": "Apple Juice",
+    "category": "Drink",
+    "price_thb": 50,
+    "image": "https://picsum.photos/seed/drink-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "100% juice"
+  },
+  {
+    "id": "drink-9",
+    "name_th": "ชาอัสสัม",
+    "name_en": "Assam Tea",
+    "category": "Drink",
+    "price_thb": 40,
+    "image": "https://picsum.photos/seed/drink-9/400/300",
+    "is_sold_out": false,
+    "subtitle": "Hot or iced"
+  },
+  {
+    "id": "drink-10",
+    "name_th": "กาแฟ",
+    "name_en": "Coffee",
+    "category": "Drink",
+    "price_thb": 60,
+    "image": "https://picsum.photos/seed/drink-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Hot or iced"
+  },
+  {
+    "id": "dessert-1",
+    "name_th": "โมจิไอศกรีม",
+    "name_en": "Mochi Ice Cream",
+    "category": "Dessert",
+    "price_thb": 80,
+    "image": "https://picsum.photos/seed/dessert-1/400/300",
+    "is_sold_out": false,
+    "subtitle": "3 pieces assorted flavors"
+  },
+  {
+    "id": "dessert-2",
+    "name_th": "โดรายากิ",
+    "name_en": "Dorayaki",
+    "category": "Dessert",
+    "price_thb": 70,
+    "image": "https://picsum.photos/seed/dessert-2/400/300",
+    "is_sold_out": false,
+    "subtitle": "Red bean pancake"
+  },
+  {
+    "id": "dessert-3",
+    "name_th": "ทาร์ตชาเขียว",
+    "name_en": "Green Tea Tart",
+    "category": "Dessert",
+    "price_thb": 90,
+    "image": "https://picsum.photos/seed/dessert-3/400/300",
+    "is_sold_out": false,
+    "subtitle": "Matcha tart"
+  },
+  {
+    "id": "dessert-4",
+    "name_th": "เค้กชาเขียว",
+    "name_en": "Green Tea Cake",
+    "category": "Dessert",
+    "price_thb": 100,
+    "image": "https://picsum.photos/seed/dessert-4/400/300",
+    "is_sold_out": false,
+    "subtitle": "Matcha cake slice"
+  },
+  {
+    "id": "dessert-5",
+    "name_th": "ทิรามิสุ",
+    "name_en": "Tiramisu",
+    "category": "Dessert",
+    "price_thb": 120,
+    "image": "https://picsum.photos/seed/dessert-5/400/300",
+    "is_sold_out": false,
+    "subtitle": "Classic Italian dessert"
+  },
+  {
+    "id": "dessert-6",
+    "name_th": "ไอศกรีมชาเขียว",
+    "name_en": "Green Tea Ice Cream",
+    "category": "Dessert",
+    "price_thb": 60,
+    "image": "https://picsum.photos/seed/dessert-6/400/300",
+    "is_sold_out": false,
+    "subtitle": "Matcha flavor"
+  },
+  {
+    "id": "dessert-7",
+    "name_th": "ไอศกรีมวานิลลา",
+    "name_en": "Vanilla Ice Cream",
+    "category": "Dessert",
+    "price_thb": 55,
+    "image": "https://picsum.photos/seed/dessert-7/400/300",
+    "is_sold_out": false,
+    "subtitle": "Classic vanilla"
+  },
+  {
+    "id": "dessert-8",
+    "name_th": "มันจู",
+    "name_en": "Manju",
+    "category": "Dessert",
+    "price_thb": 65,
+    "image": "https://picsum.photos/seed/dessert-8/400/300",
+    "is_sold_out": false,
+    "subtitle": "Steamed bun with filling"
+  },
+  {
+    "id": "dessert-9",
+    "name_th": "ข้าวเหนียวมะม่วง",
+    "name_en": "Mango Sticky Rice",
+    "category": "Dessert",
+    "price_thb": 110,
+    "image": "https://picsum.photos/seed/dessert-9/400/300",
+    "is_sold_out": true,
+    "subtitle": "Thai-Japanese fusion"
+  },
+  {
+    "id": "dessert-10",
+    "name_th": "คาสเทล่า",
+    "name_en": "Castella Cake",
+    "category": "Dessert",
+    "price_thb": 85,
+    "image": "https://picsum.photos/seed/dessert-10/400/300",
+    "is_sold_out": false,
+    "subtitle": "Japanese sponge cake"
+  }
+]
