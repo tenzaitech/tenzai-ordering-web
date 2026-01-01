@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { triggerHaptic } from '@/utils/haptic'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface MenuItemRowProps {
   id: string
@@ -24,6 +25,7 @@ export default function MenuItemRow({
   subtitle,
 }: MenuItemRowProps) {
   const router = useRouter()
+  const { t } = useLanguage()
 
   const handleClick = () => {
     if (is_sold_out) return
@@ -62,7 +64,7 @@ export default function MenuItemRow({
           {is_sold_out && (
             <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
               <span className="text-white text-xs font-medium px-2 py-1 bg-black/80 rounded">
-                Sold out
+                {t('soldOut')}
               </span>
             </div>
           )}

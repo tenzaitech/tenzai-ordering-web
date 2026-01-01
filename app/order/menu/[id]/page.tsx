@@ -238,7 +238,7 @@ export default function MenuDetailPage() {
         menuId: menuItem.id,
         name_th: menuItem.name_th,
         name_en: menuItem.name_en,
-        price_thb: menuItem.price_thb,
+        base_price_thb: menuItem.price_thb,
         final_price_thb: finalPrice,
         quantity: 1,
         options: cartOptions.length > 0 ? cartOptions : undefined,

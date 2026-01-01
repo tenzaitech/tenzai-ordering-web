@@ -9,7 +9,7 @@ import { triggerHaptic } from '@/utils/haptic'
 export default function CartPage() {
   const router = useRouter()
   const { items, updateQuantity, removeItem, getTotalPrice } = useCart()
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
   const [mounted, setMounted] = useState(false)
   const [navDirection, setNavDirection] = useState<'forward' | 'backward'>('forward')
 
@@ -47,7 +47,7 @@ export default function CartPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">Cart</h1>
+            <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">{t('cart')}</h1>
           </header>
 
           <div className="min-h-screen flex items-center justify-center px-5">
@@ -59,11 +59,11 @@ export default function CartPage() {
               </div>
 
               <h2 className="text-xl font-medium text-text mb-3">
-                ตะกร้าของคุณยังว่างอยู่
+                {t('cartEmpty')}
               </h2>
 
               <p className="text-sm text-muted mb-8 leading-relaxed">
-                เลือกเมนูที่คุณชอบเพื่อเริ่มสั่งอาหาร
+                {t('cartEmptyDesc')}
               </p>
 
               <button
@@ -76,7 +76,7 @@ export default function CartPage() {
                 }}
                 className="w-full py-4 bg-primary text-white font-medium rounded-lg active:scale-[0.98] active:bg-primary/90 transition-all"
               >
-                ดูเมนู
+                {t('viewMenu')}
               </button>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function CartPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">Cart</h1>
+          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">{t('cart')}</h1>
         </header>
 
         <div className="pb-32">
@@ -150,7 +150,7 @@ export default function CartPage() {
                         )}
                         {item.note && (
                           <p className="text-sm text-muted mt-2 italic">
-                            {language === 'th' ? 'หมายเหตุ' : 'Note'}: {item.note}
+                            {t('note')}: {item.note}
                           </p>
                         )}
                       </div>
@@ -211,7 +211,7 @@ export default function CartPage() {
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg shadow-black/30">
           <div className="max-w-mobile mx-auto p-5">
             <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-medium text-text">Total</span>
+              <span className="text-lg font-medium text-text">{t('total')}</span>
               <span className="text-2xl font-semibold text-primary">฿{getTotalPrice()}</span>
             </div>
             <button
@@ -223,7 +223,7 @@ export default function CartPage() {
               }}
               className="block w-full py-4 bg-primary text-white font-medium text-center rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors cursor-pointer"
             >
-              Continue to Checkout
+              {t('continueToCheckout')}
             </button>
           </div>
         </div>

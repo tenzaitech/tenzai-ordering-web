@@ -17,7 +17,7 @@ export interface CartItem {
   menuId: string
   name_th: string
   name_en: string
-  price_thb: number
+  base_price_thb: number
   final_price_thb: number
   quantity: number
   options?: CartItemOption[]

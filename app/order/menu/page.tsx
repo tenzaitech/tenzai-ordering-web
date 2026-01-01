@@ -7,6 +7,7 @@ import BrandHeader from '@/components/BrandHeader'
 import MenuItemRow from '@/components/MenuItemRow'
 import MenuCardLarge from '@/components/MenuCardLarge'
 import { triggerHaptic } from '@/utils/haptic'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const categories = ['Nigiri', 'Roll', 'Sashimi', 'Set', 'Appetizer', 'Soup', 'Salad', 'Tempura', 'Drink', 'Dessert'] as const
 type Category = typeof categories[number]
@@ -16,6 +17,8 @@ type MenuItem = {
   name_th: string
   name_en: string
   category: string
+  category_th: string
+  category_en: string
   price_thb: number
   image: string
   is_sold_out: boolean
@@ -25,6 +28,7 @@ type MenuItem = {
 
 export default function MenuPage() {
   const router = useRouter()
+  const { language, t } = useLanguage()
   const [activeCategory, setActiveCategory] = useState<Category>('Nigiri')
   const [searchQuery, setSearchQuery] = useState('')
   const [isRestoringScroll, setIsRestoringScroll] = useState(false)
@@ -179,7 +183,7 @@ export default function MenuPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search menu..."
+              placeholder={t('searchPlaceholder')}
               className="w-full bg-card border border-border rounded-lg pl-10 pr-10 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors"
             />
             {searchQuery && (
@@ -199,7 +203,7 @@ export default function MenuPage() {
         {searchQuery.trim() && (
           <div className="px-5 py-4">
             <h2 className="text-text text-sm font-semibold mb-3">
-              Search Results {filteredItems.length > 0 && `(${filteredItems.length} items)`}
+              {t('searchResults')} {filteredItems.length > 0 && `(${filteredItems.length} ${filteredItems.length === 1 ? t('item') : t('items')})`}
             </h2>
             {filteredItems.length > 0 ? (
               <div className="bg-card rounded-lg overflow-hidden">
@@ -217,7 +221,7 @@ export default function MenuPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted text-sm text-center py-8">No items found</p>
+              <p className="text-muted text-sm text-center py-8">{t('noItemsFound')}</p>
             )}
           </div>
         )}
@@ -227,7 +231,7 @@ export default function MenuPage() {
           <>
             {/* Recommended Section */}
             <div className="px-5 py-6">
-              <h2 className="text-text text-xl font-semibold mb-4">Recommended</h2>
+              <h2 className="text-text text-xl font-semibold mb-4">{t('recommended')}</h2>
               <div className="grid grid-cols-2 gap-3">
                 {recommendedItems.map((item, index) => (
                   <div
@@ -269,23 +273,27 @@ export default function MenuPage() {
 
                 {/* Scrollable Tabs */}
                 <div ref={tabsRef} className="flex-1 flex flex-nowrap overflow-x-auto scrollbar-hide py-3 pr-5 gap-2.5" style={{ WebkitOverflowScrolling: 'touch' }}>
-                  {categories.map(category => (
-                    <button
-                      key={category}
-                      ref={(el) => {
-                        tabButtonRefs.current[category] = el
-                      }}
-                      data-category={category}
-                      onClick={() => handleCategoryClick(category)}
-                      className={`flex-none px-4 py-2.5 min-h-[44px] rounded-lg whitespace-nowrap transition-all font-medium text-sm ${
-                        activeCategory === category
-                          ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                          : 'bg-card text-muted hover:bg-border border border-border'
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
+                  {categories.map(category => {
+                    const sampleItem = (menuData as MenuItem[]).find(item => item.category === category)
+                    const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
+                    return (
+                      <button
+                        key={category}
+                        ref={(el) => {
+                          tabButtonRefs.current[category] = el
+                        }}
+                        data-category={category}
+                        onClick={() => handleCategoryClick(category)}
+                        className={`flex-none px-4 py-2.5 min-h-[44px] rounded-lg whitespace-nowrap transition-all font-medium text-sm ${
+                          activeCategory === category
+                            ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                            : 'bg-card text-muted hover:bg-border border border-border'
+                        }`}
+                      >
+                        {categoryName || category}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -296,6 +304,8 @@ export default function MenuPage() {
         {!searchQuery.trim() && categories.map((category, index) => {
           const items = itemsByCategory[category]
           if (items.length === 0) return null
+          const sampleItem = items[0]
+          const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
 
           return (
             <div
@@ -311,7 +321,7 @@ export default function MenuPage() {
                 className="sticky top-[141px] bg-card px-5 py-2.5 border-b border-border/50"
                 style={{ zIndex: 30 + index }}
               >
-                <h2 className="text-text text-sm font-semibold leading-tight">{category}</h2>
+                <h2 className="text-text text-sm font-semibold leading-tight">{categoryName || category}</h2>
               </div>
 
               {/* Vertical List of Items */}
@@ -349,7 +359,7 @@ export default function MenuPage() {
             >
               {/* Header */}
               <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between">
-                <h3 className="text-text text-lg font-semibold">Categories</h3>
+                <h3 className="text-text text-lg font-semibold">{t('categories')}</h3>
                 <button
                   onClick={() => setIsPickerOpen(false)}
                   className="text-muted hover:text-text transition-colors"
@@ -365,6 +375,8 @@ export default function MenuPage() {
               <div className="py-2">
                 {categories.map(category => {
                   const itemCount = itemsByCategory[category]?.length || 0
+                  const sampleItem = (menuData as MenuItem[]).find(item => item.category === category)
+                  const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
                   return (
                     <button
                       key={category}
@@ -375,9 +387,9 @@ export default function MenuPage() {
                           : 'text-text hover:bg-border active:bg-border'
                       }`}
                     >
-                      <span className="text-lg font-medium">{category}</span>
+                      <span className="text-lg font-medium">{categoryName || category}</span>
                       <span className="text-sm text-muted">
-                        {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                        {itemCount} {itemCount === 1 ? t('item') : t('items')}
                       </span>
                     </button>
                   )
