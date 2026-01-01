@@ -15,6 +15,8 @@ export default function AdminOrderDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [adjustmentNote, setAdjustmentNote] = useState('')
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
 
   useEffect(() => {
     fetchOrderDetails()
@@ -97,6 +99,36 @@ export default function AdminOrderDetailPage() {
       fetchOrderDetails()
     } catch (error) {
       console.error('[ADMIN:REJECT] Error:', error)
+      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleAdjustment = async () => {
+    if (!adjustmentNote.trim()) {
+      alert('กรุณากรอกหมายเหตุ')
+      return
+    }
+
+    setProcessing(true)
+    try {
+      const response = await fetch('/api/admin/adjust-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, note: adjustmentNote.trim() })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add adjustment')
+      }
+
+      alert('บันทึกการปรับรายการสำเร็จ')
+      setShowAdjustmentModal(false)
+      setAdjustmentNote('')
+      fetchOrderDetails()
+    } catch (error) {
+      console.error('[ADMIN:ADJUST] Error:', error)
       alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
       setProcessing(false)
@@ -254,6 +286,15 @@ export default function AdminOrderDetailPage() {
               Reject Order
             </button>
           )}
+          {order.approved_at && !order.rejected_at && (
+            <button
+              onClick={() => setShowAdjustmentModal(true)}
+              disabled={processing}
+              className="flex-1 py-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Adjustment
+            </button>
+          )}
         </div>
 
         {order.approved_at && (
@@ -274,6 +315,16 @@ export default function AdminOrderDetailPage() {
             {order.rejected_reason && (
               <p className="text-sm text-text mt-2">Reason: {order.rejected_reason}</p>
             )}
+          </div>
+        )}
+
+        {order.adjustment_note && (
+          <div className="mt-6 p-4 bg-primary/10 border border-primary/30 rounded-lg">
+            <p className="text-primary font-medium">⚠ Adjustment</p>
+            <p className="text-sm text-muted mb-2">
+              Adjusted at: {new Date(order.adjusted_at).toLocaleString('th-TH')}
+            </p>
+            <p className="text-sm text-text">{order.adjustment_note}</p>
           </div>
         )}
       </div>
@@ -310,6 +361,44 @@ export default function AdminOrderDetailPage() {
                 className="flex-1 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
               >
                 {processing ? 'Processing...' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjustment Modal */}
+      {showAdjustmentModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-5">
+          <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold text-text mb-4">Add Adjustment</h2>
+            <p className="text-muted text-sm mb-4">
+              Record any changes or special instructions for this order
+            </p>
+            <textarea
+              value={adjustmentNote}
+              onChange={(e) => setAdjustmentNote(e.target.value)}
+              placeholder="e.g., Changed pickup time, Added extra items, etc."
+              className="w-full p-3 bg-bg border border-border text-text rounded-lg resize-none mb-4"
+              rows={3}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAdjustmentModal(false)
+                  setAdjustmentNote('')
+                }}
+                disabled={processing}
+                className="flex-1 py-3 bg-card border border-border text-text rounded-lg hover:bg-border transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdjustment}
+                disabled={processing}
+                className="flex-1 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {processing ? 'Processing...' : 'Save Adjustment'}
               </button>
             </div>
           </div>

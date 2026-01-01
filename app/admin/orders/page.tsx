@@ -8,9 +8,12 @@ export default function AdminOrdersPage() {
   const router = useRouter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [orderAccepting, setOrderAccepting] = useState<{ enabled: boolean; message: string }>({ enabled: true, message: '' })
+  const [toggling, setToggling] = useState(false)
 
   useEffect(() => {
     fetchOrders()
+    fetchOrderAccepting()
   }, [])
 
   const fetchOrders = async () => {
@@ -31,6 +34,49 @@ export default function AdminOrdersPage() {
     } catch (error) {
       console.error('[ADMIN:ORDERS] Unexpected error:', error)
       setLoading(false)
+    }
+  }
+
+  const fetchOrderAccepting = async () => {
+    try {
+      const response = await fetch('/api/admin/toggle-accepting')
+      if (response.ok) {
+        const data = await response.json()
+        setOrderAccepting({ enabled: data.enabled, message: data.message || '' })
+      }
+    } catch (error) {
+      console.error('[ADMIN:TOGGLE] Failed to fetch setting:', error)
+    }
+  }
+
+  const handleToggle = async () => {
+    const newState = !orderAccepting.enabled
+    const confirmMsg = newState
+      ? 'เปิดรับออเดอร์อีกครั้ง?'
+      : 'ปิดรับออเดอร์ชั่วคราว?'
+
+    if (!confirm(confirmMsg)) return
+
+    setToggling(true)
+    try {
+      const response = await fetch('/api/admin/toggle-accepting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newState, message: orderAccepting.message })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle')
+      }
+
+      const data = await response.json()
+      setOrderAccepting({ enabled: data.enabled, message: data.message })
+      alert(newState ? 'เปิดรับออเดอร์แล้ว' : 'ปิดรับออเดอร์แล้ว')
+    } catch (error) {
+      console.error('[ADMIN:TOGGLE] Error:', error)
+      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally {
+      setToggling(false)
     }
   }
 
@@ -74,6 +120,40 @@ export default function AdminOrdersPage() {
     <div className="min-h-screen bg-bg">
       <div className="max-w-7xl mx-auto px-5 py-8">
         <h1 className="text-3xl font-bold text-text mb-8">Admin - Orders</h1>
+
+        {/* Order Accepting Control */}
+        <div className="mb-8 bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-lg font-semibold text-text">Order Accepting</h2>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  orderAccepting.enabled
+                    ? 'bg-green-500/20 text-green-500'
+                    : 'bg-red-500/20 text-red-500'
+                }`}>
+                  {orderAccepting.enabled ? 'OPEN' : 'CLOSED'}
+                </span>
+              </div>
+              <p className="text-sm text-muted">
+                {orderAccepting.enabled
+                  ? 'Customers can place orders'
+                  : 'Customers are blocked from ordering'}
+              </p>
+            </div>
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                orderAccepting.enabled
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              }`}
+            >
+              {toggling ? 'Processing...' : (orderAccepting.enabled ? 'Close Shop' : 'Open Shop')}
+            </button>
+          </div>
+        </div>
 
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="w-full">

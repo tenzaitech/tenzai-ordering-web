@@ -48,6 +48,7 @@ export default function MenuDetailPage() {
   const { language } = useLanguage()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
   const [note, setNote] = useState('')
+  const [quantity, setQuantity] = useState(1)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showToast, setShowToast] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -95,6 +96,7 @@ export default function MenuDetailPage() {
 
       setSelectedOptions(editSelections)
       setNote(cartItem.note || '')
+      setQuantity(cartItem.quantity || 1)
     } else {
       const initialSelections: Record<string, string[]> = {}
       optionGroups.forEach(group => {
@@ -108,6 +110,7 @@ export default function MenuDetailPage() {
       })
       setSelectedOptions(initialSelections)
       setNote('')
+      setQuantity(1)
     }
   }, [menuItem.id, isEditMode, editId])
 
@@ -219,6 +222,7 @@ export default function MenuDetailPage() {
     if (isEditMode && cartItem) {
       // Update existing cart item
       updateItem(cartItem.id, {
+        quantity: quantity,
         options: cartOptions.length > 0 ? cartOptions : undefined,
         note: note.trim() || undefined,
         final_price_thb: finalPrice
@@ -240,7 +244,7 @@ export default function MenuDetailPage() {
         name_en: menuItem.name_en,
         base_price_thb: menuItem.price_thb,
         final_price_thb: finalPrice,
-        quantity: 1,
+        quantity: quantity,
         options: cartOptions.length > 0 ? cartOptions : undefined,
         note: note.trim() || undefined
       })
@@ -270,6 +274,14 @@ export default function MenuDetailPage() {
       }
       return true
     })
+  }
+
+  const handleQuantityChange = (delta: number) => {
+    setQuantity(prev => {
+      const newQty = prev + delta
+      return newQty < 1 ? 1 : newQty
+    })
+    triggerHaptic()
   }
 
   return (
@@ -384,6 +396,26 @@ export default function MenuDetailPage() {
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
           <div className="max-w-mobile mx-auto p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-text font-medium">Quantity</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleQuantityChange(-1)}
+                  disabled={!isFormValid() || quantity <= 1}
+                  className="w-10 h-10 flex items-center justify-center bg-card border border-border rounded-lg text-text font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:border-primary/50 transition-colors active:bg-border"
+                >
+                  −
+                </button>
+                <span className="text-text font-medium text-lg w-8 text-center">{quantity}</span>
+                <button
+                  onClick={() => handleQuantityChange(1)}
+                  disabled={!isFormValid()}
+                  className="w-10 h-10 flex items-center justify-center bg-card border border-border rounded-lg text-text font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:border-primary/50 transition-colors active:bg-border"
+                >
+                  +
+                </button>
+              </div>
+            </div>
             <button
               onClick={handleAddToCart}
               disabled={!isFormValid()}
