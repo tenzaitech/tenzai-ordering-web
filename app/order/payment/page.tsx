@@ -231,6 +231,13 @@ export default function PaymentPage() {
 
       console.log('[SUCCESS:SLIP] Slip uploaded and order updated')
 
+      // Fire-and-forget LINE notification
+      fetch('/api/line/notify-slip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      }).catch(err => console.error('[LINE:NOTIFY] Failed to trigger:', err))
+
       // Navigate to confirmation page
       router.replace(`/order/confirmed?id=${orderId}`)
 
