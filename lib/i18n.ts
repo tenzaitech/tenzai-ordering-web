@@ -56,6 +56,32 @@ const translations = {
     customerDetails: 'ข้อมูลลูกค้า',
     items: 'รายการ',
     required: '(จำเป็น)',
+
+    // Processing states
+    processingUploadingSlip: 'กำลังอัปโหลดสลิปการชำระเงิน… กรุณาอย่าปิดหน้านี้',
+    processingCreatingOrder: 'กำลังสร้างคำสั่งซื้อ… กรุณารอสักครู่',
+    processingSavingItems: 'กำลังบันทึกรายการอาหาร… ระบบกำลังตรวจสอบข้อมูลคำสั่งซื้อ',
+
+    // Error messages - Step A (ORDER)
+    errorOrderTitle: 'ทำรายการไม่สำเร็จ',
+    errorOrderMessage: 'ไม่สามารถสร้างคำสั่งซื้อได้ในขณะนี้',
+    errorOrderHelper: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองอีกครั้ง',
+    retryOrder: 'ลองอีกครั้ง',
+    backToCart: 'กลับไปตะกร้า',
+
+    // Error messages - Step B (ITEMS)
+    errorItemsTitle: 'บันทึกรายการอาหารไม่สำเร็จ',
+    errorItemsMessage: 'คำสั่งซื้อถูกสร้างแล้ว แต่บันทึกรายการอาหารไม่ครบ',
+    errorItemsHelper: 'กรุณาลองอีกครั้ง หากยังพบปัญหาให้ติดต่อร้านพร้อมหมายเลขคำสั่งซื้อ',
+    retrySaveItems: 'ลองบันทึกอีกครั้ง',
+    showOrderNumber: 'ดูหมายเลขคำสั่งซื้อ',
+
+    // Error messages - Step C (SLIP)
+    errorSlipTitle: 'อัปโหลดสลิปไม่สำเร็จ',
+    errorSlipMessage: 'ระบบยังไม่ได้รับสลิปการชำระเงิน',
+    errorSlipHelper: 'กรุณาลองอัปโหลดอีกครั้ง หรือเปลี่ยนไฟล์รูป',
+    retryUploadSlip: 'ลองอัปโหลดอีกครั้ง',
+    backToEdit: 'กลับไปแก้ไข',
   },
   en: {
     // Menu page
@@ -110,6 +136,32 @@ const translations = {
     customerDetails: 'Customer Details',
     items: 'items',
     required: '(required)',
+
+    // Processing states
+    processingUploadingSlip: 'Uploading payment slip… Please do not close this page',
+    processingCreatingOrder: 'Creating order… Please wait',
+    processingSavingItems: 'Saving items… Validating order data',
+
+    // Error messages - Step A (ORDER)
+    errorOrderTitle: 'Order Failed',
+    errorOrderMessage: 'Unable to create order at this time',
+    errorOrderHelper: 'Please check your internet connection and try again',
+    retryOrder: 'Try Again',
+    backToCart: 'Back to Cart',
+
+    // Error messages - Step B (ITEMS)
+    errorItemsTitle: 'Failed to Save Items',
+    errorItemsMessage: 'Order was created but items were not saved completely',
+    errorItemsHelper: 'Please try again. If the problem persists, contact us with your order number',
+    retrySaveItems: 'Try Saving Again',
+    showOrderNumber: 'Show Order Number',
+
+    // Error messages - Step C (SLIP)
+    errorSlipTitle: 'Slip Upload Failed',
+    errorSlipMessage: 'Payment slip was not received',
+    errorSlipHelper: 'Please try uploading again or change the image file',
+    retryUploadSlip: 'Try Uploading Again',
+    backToEdit: 'Back to Edit',
   },
 }
 

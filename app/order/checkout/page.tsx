@@ -7,31 +7,42 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
-import { generateOrderNumber, generatePickupTimes } from '@/lib/orderUtils'
+import { generateOrderNumber, generatePickupTimes, getCartFingerprint } from '@/lib/orderUtils'
+import ErrorModal from '@/components/ErrorModal'
+
+type ProcessingState = 'IDLE' | 'CREATING_ORDER' | 'SAVING_ITEMS'
+
+type ErrorState = {
+  step: 'ORDER' | 'ITEMS'
+  orderNumber?: string
+  orderId?: string
+} | null
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, getTotalPrice, clearCart } = useCart()
   const { language, t } = useLanguage()
-  const { draft, updateDraft, clearDraft } = useCheckout()
+  const { draft, updateDraft, clearDraft, activeOrderId, setActiveOrderId, setLastSyncedCartFingerprint } = useCheckout()
 
   const [pickupType, setPickupType] = useState<'ASAP' | 'SCHEDULED'>(() => draft.pickupType)
   const [pickupTime, setPickupTime] = useState(() => draft.pickupTime)
   const [customerName, setCustomerName] = useState(() => draft.customerName)
   const [customerPhone, setCustomerPhone] = useState(() => draft.customerPhone)
-  const [slipFile, setSlipFile] = useState<File | null>(null)
-  const [slipPreview, setSlipPreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [customerNote, setCustomerNote] = useState(() => draft.customerNote)
+  const [processingState, setProcessingState] = useState<ProcessingState>('IDLE')
+  const [errorState, setErrorState] = useState<ErrorState>(null)
+  const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   const pickupTimes = generatePickupTimes()
 
   useEffect(() => {
     setMounted(true)
-    if (items.length === 0) {
+    // Only redirect to cart if empty AND not currently processing AND not navigating to payment
+    if (items.length === 0 && processingState === 'IDLE' && !isNavigatingToPayment) {
       router.push('/order/cart')
     }
-  }, [items, router])
+  }, [items, router, processingState, isNavigatingToPayment])
 
   // Wrapper functions to update both local state and draft context
   const handlePickupTypeChange = (type: 'ASAP' | 'SCHEDULED') => {
@@ -58,24 +69,16 @@ export default function CheckoutPage() {
     updateDraft({ customerPhone: phone })
   }
 
-  const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setSlipFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setSlipPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
+  const handleCustomerNoteChange = (note: string) => {
+    setCustomerNote(note)
+    updateDraft({ customerNote: note })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    console.log('[DEBUG] Cart items at checkout:', items)
-
-    if (!customerName.trim() || !customerPhone.trim() || !slipFile) {
+    // Validation
+    if (!customerName.trim() || !customerPhone.trim()) {
       alert(language === 'th' ? 'กรุณากรอกข้อมูลให้ครบถ้วน' : 'Please fill in all required fields')
       return
     }
@@ -85,47 +88,59 @@ export default function CheckoutPage() {
       return
     }
 
-    setIsSubmitting(true)
+    // If activeOrderId exists, navigate to payment instead of creating duplicate order
+    if (activeOrderId) {
+      triggerHaptic()
+      setIsNavigatingToPayment(true)
+      router.replace(`/order/payment?id=${activeOrderId}`)
+      return
+    }
+
+    // Check offline before starting
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setErrorState({ step: 'ORDER' })
+      return
+    }
+
     triggerHaptic()
 
     try {
-      // Upload slip to Supabase Storage
-      const fileExt = slipFile.name.split('.').pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('slips')
-        .upload(fileName, slipFile)
+      // === STEP A: Create order ===
+      setProcessingState('CREATING_ORDER')
+      console.log('[PROCESSING] State: CREATING_ORDER')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Allow users to read status
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        alert(language === 'th' ? 'ไม่สามารถอัปโหลดสลิปได้' : 'Failed to upload slip')
-        setIsSubmitting(false)
-        return
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('slips')
-        .getPublicUrl(fileName)
-
-      // Generate order number
       const orderNumber = generateOrderNumber()
 
-      // Convert pickup time string (HH:MM) to ISO timestamp for today
+      // Convert pickup time string (HH:MM) to timestamptz for Asia/Bangkok (+07:00)
       let pickupTimeISO: string | null = null
       if (pickupType === 'SCHEDULED' && pickupTime) {
-        const today = new Date()
-        const [hours, minutes] = pickupTime.split(':').map(Number)
-        today.setHours(hours, minutes, 0, 0)
-        pickupTimeISO = today.toISOString()
+        const [selectedHours, selectedMinutes] = pickupTime.split(':').map(Number)
+
+        const nowUTC = new Date()
+        const bangkokOffsetMs = 7 * 60 * 60 * 1000
+        const nowBangkok = new Date(nowUTC.getTime() + bangkokOffsetMs)
+
+        const currentBangkokHours = nowBangkok.getUTCHours()
+        const currentBangkokMinutes = nowBangkok.getUTCMinutes()
+
+        let pickupDate = new Date(nowBangkok)
+        const selectedTimeInMinutes = selectedHours * 60 + selectedMinutes
+        const currentTimeInMinutes = currentBangkokHours * 60 + currentBangkokMinutes
+
+        if (selectedTimeInMinutes <= currentTimeInMinutes) {
+          pickupDate = new Date(pickupDate.getTime() + 24 * 60 * 60 * 1000)
+        }
+
+        const year = pickupDate.getUTCFullYear()
+        const month = String(pickupDate.getUTCMonth() + 1).padStart(2, '0')
+        const day = String(pickupDate.getUTCDate()).padStart(2, '0')
+        const hours = String(selectedHours).padStart(2, '0')
+        const minutes = String(selectedMinutes).padStart(2, '0')
+
+        pickupTimeISO = `${year}-${month}-${day}T${hours}:${minutes}:00+07:00`
       }
 
-      console.log('[DEBUG] Pickup details:', {
-        pickup_type: pickupType,
-        pickup_time_raw: pickupTime,
-        pickup_time_iso: pickupTimeISO
-      })
-
-      // Create order
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -135,36 +150,30 @@ export default function CheckoutPage() {
           pickup_type: pickupType,
           pickup_time: pickupTimeISO,
           total_amount: getTotalPrice(),
-          slip_url: publicUrl,
+          customer_note: customerNote.trim() || null,
+          slip_url: null,
         })
         .select()
         .single()
 
-      console.log('[DEBUG] Orders insert result:', { orderData, orderError })
-
-      if (orderError) {
-        console.error('[ERROR] Order insert failed:', orderError)
-        alert(language === 'th' ? 'ไม่สามารถสร้างคำสั่งซื้อได้' : 'Failed to create order')
-        setIsSubmitting(false)
+      if (orderError || !orderData) {
+        console.error('[ERROR:ORDER]', orderError)
+        setErrorState({ step: 'ORDER' })
+        setProcessingState('IDLE')
         return
       }
 
-      if (!orderData) {
-        console.error('[ERROR] Order insert succeeded but no data returned')
-        alert(language === 'th' ? 'ไม่สามารถสร้างคำสั่งซื้อได้' : 'Failed to create order')
-        setIsSubmitting(false)
-        return
-      }
+      console.log('[SUCCESS:ORDER] Order created:', orderData.id, orderData.order_number)
 
-      console.log('[DEBUG] Order created successfully. Order ID:', orderData.id)
+      // === STEP B: Insert order items ===
+      setProcessingState('SAVING_ITEMS')
+      console.log('[PROCESSING] State: SAVING_ITEMS')
+      await new Promise(resolve => setTimeout(resolve, 300)) // Allow users to read status
 
-      // Create order items with validation
       const orderItems = items.map((item) => {
-        // @ts-ignore - handle both old (price_thb) and new (base_price_thb) cart item structures
-        const basePrice = item.base_price_thb ?? item.price_thb
+        const basePrice = item.base_price_thb
         const finalPrice = item.final_price_thb
 
-        // Strict validation
         if (basePrice == null || typeof basePrice !== 'number' || isNaN(basePrice)) {
           throw new Error(`[VALIDATION] Invalid base_price for menu item ${item.menuId} (${item.name_en}): ${basePrice}`)
         }
@@ -185,37 +194,47 @@ export default function CheckoutPage() {
         }
       })
 
-      console.log('[DEBUG] Order items to insert (count:', orderItems.length, '):', orderItems)
-
       const { data: itemsData, error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems)
         .select()
 
-      console.log('[DEBUG] Order items insert result:', { itemsData, itemsError })
-
       if (itemsError) {
-        console.error('[ERROR] Order items insert failed:', itemsError)
-        console.error('[ERROR] Failed payload was:', orderItems)
-        alert(language === 'th' ? 'ไม่สามารถสร้างรายการสั่งซื้อได้' : 'Failed to create order items')
-        setIsSubmitting(false)
-        throw new Error(`Order items insert failed: ${itemsError.message}`)
+        console.error('[ERROR:ITEMS]', itemsError)
+        console.error('[ERROR:ITEMS] Failed payload:', orderItems)
+        setErrorState({
+          step: 'ITEMS',
+          orderNumber: orderData.order_number,
+          orderId: orderData.id
+        })
+        setProcessingState('IDLE')
+        return
       }
 
-      console.log('[SUCCESS] Order items inserted:', itemsData?.length || 0, 'items')
+      console.log('[SUCCESS:ITEMS] Order items inserted:', itemsData?.length || 0, 'items')
 
-      // Clear cart and checkout draft
-      clearCart()
-      clearDraft()
+      // Set navigating flag to prevent cart-empty redirect
+      setIsNavigatingToPayment(true)
 
-      // Redirect to confirmation
-      router.push(`/order/confirmed?id=${orderData.id}`)
+      // Store active order ID and cart fingerprint (cart will be cleared after payment)
+      setActiveOrderId(orderData.id)
+      setLastSyncedCartFingerprint(getCartFingerprint(items))
+
+      // Navigate to payment page
+      router.replace(`/order/payment?id=${orderData.id}`)
+
+      // Reset processing state after navigation starts
+      setTimeout(() => {
+        setProcessingState('IDLE')
+      }, 100)
     } catch (error) {
-      console.error('Unexpected error:', error)
-      alert(language === 'th' ? 'เกิดข้อผิดพลาด' : 'An error occurred')
-      setIsSubmitting(false)
+      console.error('[ERROR:UNEXPECTED]', error)
+      setErrorState({ step: 'ORDER' })
+      setProcessingState('IDLE')
     }
   }
+
+  const isProcessing = processingState !== 'IDLE'
 
   if (!mounted || items.length === 0) {
     return null
@@ -223,6 +242,31 @@ export default function CheckoutPage() {
 
   return (
     <div className={`min-h-screen bg-bg ${mounted ? 'page-mounted' : ''}`}>
+      {/* Error Modal */}
+      {errorState && (
+        <ErrorModal
+          title={errorState.step === 'ORDER' ? t('errorOrderTitle') : t('errorItemsTitle')}
+          message={errorState.step === 'ORDER' ? t('errorOrderMessage') : t('errorItemsMessage')}
+          helper={errorState.step === 'ORDER' ? t('errorOrderHelper') : t('errorItemsHelper')}
+          primaryLabel={errorState.step === 'ORDER' ? t('retryOrder') : t('retrySaveItems')}
+          secondaryLabel={errorState.step === 'ORDER' ? t('backToCart') : t('showOrderNumber')}
+          onPrimary={() => {
+            setErrorState(null)
+            if (errorState.step === 'ORDER') {
+              handleSubmit(new Event('submit') as any)
+            }
+          }}
+          onSecondary={() => {
+            setErrorState(null)
+            if (errorState.step === 'ORDER') {
+              router.push('/order/cart')
+            } else if (errorState.orderId) {
+              router.replace(`/order/payment?id=${errorState.orderId}`)
+            }
+          }}
+        />
+      )}
+
       <div className="max-w-mobile mx-auto">
         {/* Header */}
         <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
@@ -232,6 +276,7 @@ export default function CheckoutPage() {
               router.back()
             }}
             className="text-muted hover:text-text active:text-text transition-colors"
+            disabled={isProcessing}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -241,6 +286,41 @@ export default function CheckoutPage() {
         </header>
 
         <form onSubmit={handleSubmit} className="pb-32">
+          {/* Customer Info Section */}
+          <div className="px-5 py-6 border-b border-border">
+            <h2 className="text-text text-lg font-semibold mb-4">
+              {t('customerInfo')} <span className="text-primary text-sm">{t('required')}</span>
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-muted mb-2">{t('name')}</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
+                  placeholder={t('namePlaceholder')}
+                  disabled={isProcessing}
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-muted mb-2">{t('phone')}</label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => handleCustomerPhoneChange(e.target.value)}
+                  placeholder={t('phonePlaceholder')}
+                  disabled={isProcessing}
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Pickup Time Section */}
           <div className="px-5 py-6 border-b border-border">
             <h2 className="text-text text-lg font-semibold mb-4">{t('pickupTime')}</h2>
@@ -252,14 +332,15 @@ export default function CheckoutPage() {
                   handlePickupTypeChange('ASAP')
                   triggerHaptic()
                 }}
+                disabled={isProcessing}
                 className={`w-full px-4 py-4 rounded-lg border transition-all ${
                   pickupType === 'ASAP'
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-card border-border text-text hover:bg-border'
-                }`}
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{t('asap')}</span>
+                  <span className="font-medium">{language === 'th' ? 'ให้ร้านทำทันที' : 'Prepare immediately'}</span>
                   {pickupType === 'ASAP' && (
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -274,11 +355,12 @@ export default function CheckoutPage() {
                   handlePickupTypeChange('SCHEDULED')
                   triggerHaptic()
                 }}
+                disabled={isProcessing}
                 className={`w-full px-4 py-4 rounded-lg border transition-all ${
                   pickupType === 'SCHEDULED'
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-card border-border text-text hover:bg-border'
-                }`}
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{t('scheduledPickup')}</span>
@@ -294,7 +376,8 @@ export default function CheckoutPage() {
                 <select
                   value={pickupTime}
                   onChange={(e) => handlePickupTimeChange(e.target.value)}
-                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary/50 transition-colors"
+                  disabled={isProcessing}
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   required
                 >
                   <option value="">{t('selectTime')}</option>
@@ -308,96 +391,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Customer Info Section */}
-          <div className="px-5 py-6 border-b border-border">
-            <h2 className="text-text text-lg font-semibold mb-4">
-              {t('customerInfo')} <span className="text-primary text-sm">{t('required')}</span>
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-muted mb-2">{t('name')}</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => handleCustomerNameChange(e.target.value)}
-                  placeholder={t('namePlaceholder')}
-                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-muted mb-2">{t('phone')}</label>
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => handleCustomerPhoneChange(e.target.value)}
-                  placeholder={t('phonePlaceholder')}
-                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Section */}
-          <div className="px-5 py-6 border-b border-border">
-            <h2 className="text-text text-lg font-semibold mb-4">
-              {t('payment')} <span className="text-primary text-sm">{t('required')}</span>
-            </h2>
-
-            <div className="bg-card border border-border rounded-lg p-4 mb-4">
-              <p className="text-sm text-muted mb-2">{t('promptPayInstructions')}</p>
-              <p className="text-text font-medium mb-1">{t('promptPayNumber')}</p>
-              <p className="text-2xl font-semibold text-primary">0812345678</p>
-            </div>
-
-            <div>
-              <label className="block text-sm text-muted mb-2">
-                {t('uploadSlip')} <span className="text-primary">*</span>
-              </label>
-              <p className="text-xs text-muted mb-3">{t('uploadSlipDesc')}</p>
-
-              {!slipPreview ? (
-                <label className="block w-full border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSlipChange}
-                    className="hidden"
-                    required
-                  />
-                  <svg className="w-12 h-12 mx-auto mb-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-sm text-text">{t('uploadSlip')}</p>
-                </label>
-              ) : (
-                <div className="relative">
-                  <img
-                    src={slipPreview}
-                    alt="Payment slip"
-                    className="w-full rounded-lg border border-border"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSlipFile(null)
-                      setSlipPreview(null)
-                      triggerHaptic()
-                    }}
-                    className="mt-3 w-full py-3 bg-card border border-border text-text rounded-lg hover:bg-border transition-colors"
-                  >
-                    {t('changeSlip')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Order Summary Section */}
-          <div className="px-5 py-6">
+          <div className="px-5 py-6 border-b border-border">
             <h2 className="text-text text-lg font-semibold mb-4">{t('orderSummary')}</h2>
 
             <div className="space-y-3 mb-6">
@@ -440,18 +435,44 @@ export default function CheckoutPage() {
               </div>
             </div>
           </div>
+
+          {/* Customer Note Section */}
+          <div className="px-5 py-6 border-b border-border">
+            <h2 className="text-text text-lg font-semibold mb-2">
+              {language === 'th' ? 'หมายเหตุถึงร้าน' : 'Note to Restaurant'}
+              <span className="text-muted text-sm font-normal ml-2">
+                ({language === 'th' ? 'ไม่บังคับ' : 'Optional'})
+              </span>
+            </h2>
+            <textarea
+              value={customerNote}
+              onChange={(e) => handleCustomerNoteChange(e.target.value)}
+              placeholder={language === 'th' ? 'เช่น ไม่ใส่วาซาบิ / แพ้อาหาร / ฝากบอกพนักงาน…' : 'e.g. No wasabi / Allergies / Special instructions…'}
+              disabled={isProcessing}
+              className="w-full p-3 bg-card border border-border text-text placeholder:text-muted rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              rows={3}
+            />
+          </div>
         </form>
 
         {/* Fixed Bottom CTA */}
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg shadow-black/30">
           <div className="max-w-mobile mx-auto p-5">
+            {isProcessing && (
+              <div className="mb-3 text-center">
+                <p className="text-sm text-muted">
+                  {processingState === 'CREATING_ORDER' && t('processingCreatingOrder')}
+                  {processingState === 'SAVING_ITEMS' && t('processingSavingItems')}
+                </p>
+              </div>
+            )}
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isProcessing}
               className="w-full py-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? t('pleaseWait') : t('confirmOrder')}
+              {isProcessing ? t('pleaseWait') : (language === 'th' ? 'ไปหน้าชำระเงิน' : 'Go to Payment')}
             </button>
           </div>
         </div>

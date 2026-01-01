@@ -24,3 +24,19 @@ export function generatePickupTimes(): string[] {
 
   return times
 }
+
+export function getCartFingerprint(items: any[]): string {
+  // Create stable fingerprint from cart items
+  const normalized = items.map((item) => ({
+    menuId: item.menuId,
+    qty: item.quantity,
+    final_price: item.final_price_thb,
+    note: item.note || '',
+    options: item.options ? JSON.stringify(item.options) : '',
+  }))
+
+  // Sort by menuId for stability
+  normalized.sort((a, b) => a.menuId.localeCompare(b.menuId))
+
+  return JSON.stringify(normalized)
+}

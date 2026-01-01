@@ -8,12 +8,17 @@ interface CheckoutDraft {
   pickupType: 'ASAP' | 'SCHEDULED'
   pickupTime: string
   note: string
+  customerNote: string
 }
 
 interface CheckoutContextType {
   draft: CheckoutDraft
   updateDraft: (updates: Partial<CheckoutDraft>) => void
   clearDraft: () => void
+  activeOrderId: string | null
+  setActiveOrderId: (id: string | null) => void
+  lastSyncedCartFingerprint: string | null
+  setLastSyncedCartFingerprint: (fingerprint: string | null) => void
 }
 
 const defaultDraft: CheckoutDraft = {
@@ -22,12 +27,15 @@ const defaultDraft: CheckoutDraft = {
   pickupType: 'ASAP',
   pickupTime: '',
   note: '',
+  customerNote: '',
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined)
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<CheckoutDraft>(defaultDraft)
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
+  const [lastSyncedCartFingerprint, setLastSyncedCartFingerprint] = useState<string | null>(null)
 
   const updateDraft = useCallback((updates: Partial<CheckoutDraft>) => {
     setDraft((prev) => {
@@ -46,10 +54,20 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
   const clearDraft = useCallback(() => {
     setDraft(defaultDraft)
+    setActiveOrderId(null)
+    setLastSyncedCartFingerprint(null)
   }, [])
 
   return (
-    <CheckoutContext.Provider value={{ draft, updateDraft, clearDraft }}>
+    <CheckoutContext.Provider value={{
+      draft,
+      updateDraft,
+      clearDraft,
+      activeOrderId,
+      setActiveOrderId,
+      lastSyncedCartFingerprint,
+      setLastSyncedCartFingerprint
+    }}>
       {children}
     </CheckoutContext.Provider>
   )
