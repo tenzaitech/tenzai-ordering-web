@@ -105,6 +105,21 @@ export default function CheckoutPage() {
     triggerHaptic()
 
     try {
+      // === STEP 0: Get LINE userId ===
+      const userResponse = await fetch('/api/liff/user')
+      if (!userResponse.ok) {
+        console.error('[ERROR] No LIFF session, redirecting to /liff')
+        router.push('/liff')
+        return
+      }
+      const { userId } = await userResponse.json()
+
+      if (!userId) {
+        console.error('[ERROR] userId missing, redirecting to /liff')
+        router.push('/liff')
+        return
+      }
+
       // === STEP A: Create order ===
       setProcessingState('CREATING_ORDER')
       console.log('[PROCESSING] State: CREATING_ORDER')
@@ -147,6 +162,7 @@ export default function CheckoutPage() {
           order_number: orderNumber,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
+          customer_line_user_id: userId,
           pickup_type: pickupType,
           pickup_time: pickupTimeISO,
           total_amount: getTotalPrice(),
