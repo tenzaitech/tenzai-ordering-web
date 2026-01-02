@@ -25,12 +25,19 @@ type Category = {
   name: string
 }
 
+type OptionGroup = {
+  group_code: string
+  group_name: string
+}
+
 interface MenuEditClientProps {
   menuItem: MenuItem | null
   categories: Category[]
+  optionGroups: OptionGroup[]
+  selectedOptionGroups: string[]
 }
 
-export default function MenuEditClient({ menuItem, categories }: MenuEditClientProps) {
+export default function MenuEditClient({ menuItem, categories, optionGroups, selectedOptionGroups }: MenuEditClientProps) {
   const router = useRouter()
   const isCreateMode = !menuItem
 
@@ -46,6 +53,7 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
     is_active: menuItem?.is_active ?? true
   })
 
+  const [optionGroupIds, setOptionGroupIds] = useState<string[]>(selectedOptionGroups)
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -168,6 +176,17 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
           return
         }
 
+        const createData = await res.json()
+        const createdMenuCode = createData.menu_code
+
+        if (optionGroupIds.length > 0) {
+          await adminFetch(`/api/admin/menu/${createdMenuCode}/option-groups`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ group_codes: optionGroupIds })
+          })
+        }
+
         showToast('Menu item created successfully', 'success')
         setTimeout(() => {
           router.push('/admin/menu')
@@ -198,6 +217,12 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
           showToast(errorData.error || 'Failed to update menu item', 'error')
           return
         }
+
+        await adminFetch(`/api/admin/menu/${menuItem.menu_code}/option-groups`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ group_codes: optionGroupIds })
+        })
 
         showToast('Menu item updated successfully', 'success')
         setTimeout(() => {
@@ -374,6 +399,47 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
               currentImageUrl={formData.image_url || null}
               onImageChange={handleImageChange}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Option Groups
+            </label>
+            {optionGroups.length === 0 ? (
+              <div className="p-4 bg-bg border border-border rounded-lg text-muted text-sm">
+                No option groups available. <a href="/admin/option-groups" className="text-primary hover:underline">Create one first</a>.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[...optionGroups].sort((a, b) => {
+                  const aSelected = optionGroupIds.includes(a.group_code)
+                  const bSelected = optionGroupIds.includes(b.group_code)
+                  if (aSelected === bSelected) {
+                    return a.group_name.localeCompare(b.group_name)
+                  }
+                  return aSelected ? -1 : 1
+                }).map(group => (
+                  <label
+                    key={group.group_code}
+                    className="flex items-center p-3 bg-bg border border-border rounded-lg cursor-pointer hover:border-primary/30 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={optionGroupIds.includes(group.group_code)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setOptionGroupIds(prev => [...prev, group.group_code])
+                        } else {
+                          setOptionGroupIds(prev => prev.filter(id => id !== group.group_code))
+                        }
+                      }}
+                      className="w-4 h-4 accent-primary focus:ring-primary mr-3"
+                    />
+                    <span className="text-text">{group.group_name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center">

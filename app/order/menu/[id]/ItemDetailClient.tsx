@@ -41,9 +41,10 @@ type MenuItem = {
 
 interface ItemDetailClientProps {
   menuItem: MenuItem
+  optionGroups?: OptionGroup[]
 }
 
-export default function ItemDetailClient({ menuItem }: ItemDetailClientProps) {
+export default function ItemDetailClient({ menuItem, optionGroups: propOptionGroups }: ItemDetailClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { addItem, updateItem, items } = useCart()
@@ -72,7 +73,7 @@ export default function ItemDetailClient({ menuItem }: ItemDetailClientProps) {
     return <div>Loading...</div>
   }
 
-  const optionGroups: OptionGroup[] = (menuItem.option_group_ids || [])
+  const optionGroups: OptionGroup[] = propOptionGroups || (menuItem.option_group_ids || [])
     .map(groupId => (optionGroupsData as OptionGroup[]).find(g => g.id === groupId))
     .filter((g): g is OptionGroup => g !== undefined)
 
@@ -366,8 +367,10 @@ export default function ItemDetailClient({ menuItem }: ItemDetailClientProps) {
                             />
                             <span className="text-text">{choiceName}</span>
                           </div>
-                          {choice.price_delta_thb > 0 && (
-                            <span className="text-primary font-medium">+฿{choice.price_delta_thb}</span>
+                          {choice.price_delta_thb !== 0 && (
+                            <span className="text-primary font-medium">
+                              {choice.price_delta_thb > 0 ? '+' : ''}฿{choice.price_delta_thb}
+                            </span>
                           )}
                         </label>
                       )

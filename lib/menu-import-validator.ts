@@ -73,6 +73,30 @@ export function parseIntegerPrice(value: unknown): number {
   throw new Error(`Invalid price value: ${value}`)
 }
 
+export function isValidIntegerDelta(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return Number.isInteger(value)
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return /^-?[0-9]+$/.test(trimmed)
+  }
+  return false
+}
+
+export function parseIntegerDelta(value: unknown): number {
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (/^-?[0-9]+$/.test(trimmed)) {
+      return parseInt(trimmed, 10)
+    }
+  }
+  throw new Error(`Invalid delta value: ${value}`)
+}
+
 function isValidUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString)

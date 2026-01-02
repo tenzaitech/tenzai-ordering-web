@@ -20,16 +20,28 @@ type Category = {
   name: string
 }
 
+type OptionGroup = {
+  group_code: string
+  group_name: string
+}
+
 async function getMenuEditData(menuCode: string) {
   const { data: categories } = await supabase
     .from('categories')
     .select('category_code, name')
     .order('name')
 
+  const { data: optionGroups } = await supabase
+    .from('option_groups')
+    .select('group_code, group_name')
+    .order('group_name')
+
   if (menuCode === 'new') {
     return {
       menuItem: null,
-      categories: categories as Category[] || []
+      categories: categories as Category[] || [],
+      optionGroups: optionGroups as OptionGroup[] || [],
+      selectedOptionGroups: []
     }
   }
 
@@ -39,15 +51,22 @@ async function getMenuEditData(menuCode: string) {
     .eq('menu_code', menuCode)
     .single()
 
+  const { data: menuOptionGroups } = await supabase
+    .from('menu_option_groups')
+    .select('group_code')
+    .eq('menu_code', menuCode)
+
   return {
     menuItem: menuItem as MenuItem | null,
-    categories: categories as Category[] || []
+    categories: categories as Category[] || [],
+    optionGroups: optionGroups as OptionGroup[] || [],
+    selectedOptionGroups: (menuOptionGroups || []).map(m => m.group_code)
   }
 }
 
 export default async function AdminMenuEditPage({ params }: { params: Promise<{ menu_code: string }> }) {
   const { menu_code } = await params
-  const { menuItem, categories } = await getMenuEditData(menu_code)
+  const { menuItem, categories, optionGroups, selectedOptionGroups } = await getMenuEditData(menu_code)
 
   if (menu_code !== 'new' && !menuItem) {
     return (
@@ -62,5 +81,12 @@ export default async function AdminMenuEditPage({ params }: { params: Promise<{ 
     )
   }
 
-  return <MenuEditClient menuItem={menuItem} categories={categories} />
+  return (
+    <MenuEditClient
+      menuItem={menuItem}
+      categories={categories}
+      optionGroups={optionGroups}
+      selectedOptionGroups={selectedOptionGroups}
+    />
+  )
 }
