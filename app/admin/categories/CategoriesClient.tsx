@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { generateCode } from '@/lib/menu-import-validator'
 import { adminFetch } from '@/lib/admin-fetch'
+import Toast from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 type Category = {
   category_code: string
@@ -21,17 +22,26 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type })
+  }
 
   const handleCreate = async () => {
     if (!newCategoryName.trim()) {
-      setError('Category name is required')
+      showToast('Category name is required', 'error')
       return
     }
 
-    setIsSubmitting(true)
-    setError('')
+    setLoadingAction('create')
 
     try {
       const res = await adminFetch('/api/admin/categories', {
@@ -41,38 +51,44 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
       })
 
       if (res.status === 401) {
-        throw new Error('Unauthorized (admin key missing/invalid)')
+        showToast('Unauthorized (admin key missing/invalid)', 'error')
+        return
+      }
+
+      if (res.status === 409) {
+        showToast('Category already exists', 'error')
+        return
       }
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to create category')
+        showToast(errorData.error || 'Failed to create category', 'error')
+        return
       }
 
+      showToast('Category created successfully', 'success')
       setNewCategoryName('')
       setIsCreating(false)
       router.refresh()
     } catch (err: any) {
-      setError(err.message)
+      showToast(err.message || 'Failed to create category', 'error')
     } finally {
-      setIsSubmitting(false)
+      setLoadingAction(null)
     }
   }
 
   const handleEdit = (category: Category) => {
     setEditingCode(category.category_code)
     setEditingName(category.name)
-    setError('')
   }
 
   const handleSaveEdit = async (categoryCode: string) => {
     if (!editingName.trim()) {
-      setError('Category name is required')
+      showToast('Category name is required', 'error')
       return
     }
 
-    setIsSubmitting(true)
-    setError('')
+    setLoadingAction(`edit-${categoryCode}`)
 
     try {
       const res = await adminFetch(`/api/admin/categories/${categoryCode}`, {
@@ -82,77 +98,107 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
       })
 
       if (res.status === 401) {
-        throw new Error('Unauthorized (admin key missing/invalid)')
+        showToast('Unauthorized (admin key missing/invalid)', 'error')
+        return
       }
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to update category')
+        showToast(errorData.error || 'Failed to update category', 'error')
+        return
       }
 
+      showToast('Category updated successfully', 'success')
       setEditingCode(null)
       setEditingName('')
       router.refresh()
     } catch (err: any) {
-      setError(err.message)
+      showToast(err.message || 'Failed to update category', 'error')
     } finally {
-      setIsSubmitting(false)
+      setLoadingAction(null)
     }
   }
 
-  const handleDelete = async (categoryCode: string, menuItemsCount: number) => {
+  const handleDelete = async (categoryCode: string, categoryName: string, menuItemsCount: number) => {
     if (menuItemsCount > 0) {
-      alert(`Cannot delete category: ${menuItemsCount} menu item(s) are using this category. Please reassign or delete the menu items first.`)
+      showToast(`Cannot delete category: ${menuItemsCount} menu item(s) are using this category. Please reassign or delete the menu items first.`, 'error')
       return
     }
 
-    if (!confirm('Are you sure you want to delete this category?')) {
-      return
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Category',
+      message: `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        setLoadingAction(`delete-${categoryCode}`)
 
-    setIsSubmitting(true)
-    setError('')
+        try {
+          const res = await adminFetch(`/api/admin/categories/${categoryCode}`, {
+            method: 'DELETE'
+          })
 
-    try {
-      const res = await adminFetch(`/api/admin/categories/${categoryCode}`, {
-        method: 'DELETE'
-      })
+          if (res.status === 401) {
+            showToast('Unauthorized (admin key missing/invalid)', 'error')
+            return
+          }
 
-      if (res.status === 401) {
-        throw new Error('Unauthorized (admin key missing/invalid)')
+          if (res.status === 409) {
+            const errorData = await res.json()
+            showToast(errorData.error || 'Cannot delete category with menu items', 'error')
+            return
+          }
+
+          if (!res.ok) {
+            const errorData = await res.json()
+            showToast(errorData.error || 'Failed to delete category', 'error')
+            return
+          }
+
+          showToast('Category deleted successfully', 'success')
+          router.refresh()
+        } catch (err: any) {
+          showToast(err.message || 'Failed to delete category', 'error')
+        } finally {
+          setLoadingAction(null)
+        }
       }
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to delete category')
-      }
-
-      router.refresh()
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
+    })
   }
 
   return (
     <div className="min-h-screen bg-bg pb-20">
+      {toast && (
+        <Toast
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel="Delete"
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          isDestructive
+        />
+      )}
+
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-text">Category Management</h1>
-          <button
-            onClick={() => setIsCreating(true)}
-            className="px-5 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            + Create Category
-          </button>
+          {!isCreating && (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="px-5 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Create Category
+            </button>
+          )}
         </div>
-
-        {error && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
 
         {isCreating && (
           <div className="bg-card border border-border rounded-lg p-5 mb-6">
@@ -163,20 +209,27 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 placeholder="Enter category name..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreate()
+                  if (e.key === 'Escape') {
+                    setIsCreating(false)
+                    setNewCategoryName('')
+                  }
+                }}
                 className="flex-1 px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
               />
               <button
                 onClick={handleCreate}
-                disabled={isSubmitting}
+                disabled={loadingAction === 'create'}
                 className="px-5 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Creating...' : 'Create'}
+                {loadingAction === 'create' ? 'Creating...' : 'Create'}
               </button>
               <button
                 onClick={() => {
                   setIsCreating(false)
                   setNewCategoryName('')
-                  setError('')
                 }}
                 className="px-5 py-2 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors"
               >
@@ -186,25 +239,35 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
           </div>
         )}
 
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-border/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text">Code</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text">Menu Items</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-text">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {categories.length === 0 ? (
+        {categories.length === 0 && !isCreating ? (
+          <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <div className="text-muted mb-4">
+              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              <p className="text-lg font-medium">No categories found</p>
+              <p className="text-sm mt-2">Get started by creating your first category</p>
+            </div>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="inline-block px-5 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Create First Category
+            </button>
+          </div>
+        ) : categories.length > 0 ? (
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-border/50">
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted">
-                    No categories found
-                  </td>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Code</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Menu Items</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Actions</th>
                 </tr>
-              ) : (
-                categories.map(category => (
+              </thead>
+              <tbody className="divide-y divide-border">
+                {categories.map(category => (
                   <tr key={category.category_code} className="hover:bg-border/20 transition-colors">
                     <td className="px-4 py-3 text-sm text-muted">{category.category_code}</td>
                     <td className="px-4 py-3">
@@ -213,28 +276,39 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                           type="text"
                           value={editingName}
                           onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit(category.category_code)
+                            if (e.key === 'Escape') {
+                              setEditingCode(null)
+                              setEditingName('')
+                            }
+                          }}
                           className="px-3 py-1 bg-bg border border-border rounded text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                          autoFocus
                         />
                       ) : (
                         <span className="text-text font-medium">{category.name}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted">{category.menu_items_count}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-sm ${category.menu_items_count > 0 ? 'text-text font-medium' : 'text-muted'}`}>
+                        {category.menu_items_count}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       {editingCode === category.category_code ? (
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleSaveEdit(category.category_code)}
-                            disabled={isSubmitting}
+                            disabled={loadingAction === `edit-${category.category_code}`}
                             className="text-green-400 hover:text-green-300 text-sm font-medium disabled:opacity-50"
                           >
-                            Save
+                            {loadingAction === `edit-${category.category_code}` ? 'Saving...' : 'Save'}
                           </button>
                           <button
                             onClick={() => {
                               setEditingCode(null)
                               setEditingName('')
-                              setError('')
                             }}
                             className="text-muted hover:text-text text-sm font-medium"
                           >
@@ -245,26 +319,27 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                         <div className="flex gap-3">
                           <button
                             onClick={() => handleEdit(category)}
-                            className="text-primary hover:text-primary/80 text-sm font-medium"
+                            disabled={loadingAction !== null}
+                            className="text-primary hover:text-primary/80 text-sm font-medium disabled:opacity-50"
                           >
                             Rename
                           </button>
                           <button
-                            onClick={() => handleDelete(category.category_code, category.menu_items_count)}
-                            disabled={isSubmitting}
+                            onClick={() => handleDelete(category.category_code, category.name, category.menu_items_count)}
+                            disabled={loadingAction === `delete-${category.category_code}`}
                             className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50"
                           >
-                            Delete
+                            {loadingAction === `delete-${category.category_code}` ? 'Deleting...' : 'Delete'}
                           </button>
                         </div>
                       )}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
     </div>
   )

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ImageUploader from '@/components/ImageUploader'
+import Toast from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { generateCode } from '@/lib/menu-import-validator'
 import { adminFetch } from '@/lib/admin-fetch'
 
@@ -45,8 +47,17 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
   })
 
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type })
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -60,24 +71,62 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
     setFormData(prev => ({ ...prev, image_url: url || '' }))
   }
 
+  const handleDelete = () => {
+    if (!menuItem) return
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Menu Item',
+      message: `Are you sure you want to delete "${menuItem.name_th}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        setIsSaving(true)
+
+        try {
+          const res = await adminFetch(`/api/admin/menu/${menuItem.menu_code}`, {
+            method: 'DELETE'
+          })
+
+          if (res.status === 401) {
+            showToast('Unauthorized (admin key missing/invalid)', 'error')
+            return
+          }
+
+          if (!res.ok) {
+            const errorData = await res.json()
+            showToast(errorData.error || 'Failed to delete menu item', 'error')
+            return
+          }
+
+          showToast('Menu item deleted successfully', 'success')
+          setTimeout(() => {
+            router.push('/admin/menu')
+          }, 1000)
+        } catch (err: any) {
+          showToast(err.message || 'Failed to delete menu item', 'error')
+        } finally {
+          setIsSaving(false)
+        }
+      }
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
 
     if (!formData.name_th.trim()) {
-      setError('Name (Thai) is required')
+      showToast('Name (Thai) is required', 'error')
       return
     }
 
     if (!formData.category_code) {
-      setError('Category is required')
+      showToast('Category is required', 'error')
       return
     }
 
     const priceNum = parseInt(formData.price, 10)
     if (isNaN(priceNum) || priceNum < 0 || !/^[0-9]+$/.test(formData.price.trim())) {
-      setError('Price must be a valid integer (no decimals)')
+      showToast('Price must be a valid integer (no decimals)', 'error')
       return
     }
 
@@ -104,15 +153,22 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
         })
 
         if (res.status === 401) {
-          throw new Error('Unauthorized (admin key missing/invalid)')
+          showToast('Unauthorized (admin key missing/invalid)', 'error')
+          return
+        }
+
+        if (res.status === 409) {
+          showToast('Menu code already exists', 'error')
+          return
         }
 
         if (!res.ok) {
           const errorData = await res.json()
-          throw new Error(errorData.error || 'Failed to create menu item')
+          showToast(errorData.error || 'Failed to create menu item', 'error')
+          return
         }
 
-        setSuccess('Menu item created successfully')
+        showToast('Menu item created successfully', 'success')
         setTimeout(() => {
           router.push('/admin/menu')
         }, 1000)
@@ -133,21 +189,23 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
         })
 
         if (res.status === 401) {
-          throw new Error('Unauthorized (admin key missing/invalid)')
+          showToast('Unauthorized (admin key missing/invalid)', 'error')
+          return
         }
 
         if (!res.ok) {
           const errorData = await res.json()
-          throw new Error(errorData.error || 'Failed to update menu item')
+          showToast(errorData.error || 'Failed to update menu item', 'error')
+          return
         }
 
-        setSuccess('Menu item updated successfully')
+        showToast('Menu item updated successfully', 'success')
         setTimeout(() => {
           router.push('/admin/menu')
         }, 1000)
       }
     } catch (err: any) {
-      setError(err.message)
+      showToast(err.message || 'An unexpected error occurred', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -155,6 +213,25 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
 
   return (
     <div className="min-h-screen bg-bg pb-20">
+      {toast && (
+        <Toast
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel="Delete"
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+          isDestructive
+        />
+      )}
+
       <div className="max-w-3xl mx-auto p-6">
         <div className="mb-6">
           <a href="/admin/menu" className="text-primary hover:underline text-sm">
@@ -162,27 +239,26 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
           </a>
         </div>
 
-        <h1 className="text-3xl font-bold text-text mb-6">
-          {isCreateMode ? 'Create New Menu Item' : 'Edit Menu Item'}
-        </h1>
-
-        {error && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-4 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400">
-            {success}
-          </div>
-        )}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-text">
+            {isCreateMode ? 'Create New Menu Item' : 'Edit Menu Item'}
+          </h1>
+          {!isCreateMode && (
+            <button
+              onClick={handleDelete}
+              disabled={isSaving}
+              className="px-4 py-2 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg p-6 space-y-6">
           {isCreateMode && (
             <div>
               <label className="block text-sm font-medium text-text mb-2">
-                Menu Code (optional - auto-generated if empty)
+                Menu Code <span className="text-muted text-xs">(optional - auto-generated if empty)</span>
               </label>
               <input
                 type="text"
@@ -195,69 +271,73 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Name (Thai) <span className="text-primary">*</span>
-            </label>
-            <input
-              type="text"
-              name="name_th"
-              value={formData.name_th}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Name (Thai) <span className="text-primary">*</span>
+              </label>
+              <input
+                type="text"
+                name="name_th"
+                value={formData.name_th}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Name (English)
+              </label>
+              <input
+                type="text"
+                name="name_en"
+                value={formData.name_en}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Name (English)
-            </label>
-            <input
-              type="text"
-              name="name_en"
-              value={formData.name_en}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Category <span className="text-primary">*</span>
+              </label>
+              <select
+                name="category_code"
+                value={formData.category_code}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {categories.length === 0 ? (
+                  <option value="">No categories available</option>
+                ) : (
+                  categories.map(cat => (
+                    <option key={cat.category_code} value={cat.category_code}>
+                      {cat.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Category <span className="text-primary">*</span>
-            </label>
-            <select
-              name="category_code"
-              value={formData.category_code}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {categories.length === 0 ? (
-                <option value="">No categories available</option>
-              ) : (
-                categories.map(cat => (
-                  <option key={cat.category_code} value={cat.category_code}>
-                    {cat.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Price (THB, integer only) <span className="text-primary">*</span>
-            </label>
-            <input
-              type="text"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              required
-              placeholder="e.g., 120"
-              className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Price (THB) <span className="text-primary">*</span>
+              </label>
+              <input
+                type="text"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                required
+                placeholder="e.g., 120"
+                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
           </div>
 
           <div>
@@ -310,17 +390,17 @@ export default function MenuEditClient({ menuItem, categories }: MenuEditClientP
             </label>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-border">
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? 'Saving...' : (isCreateMode ? 'Create Menu Item' : 'Save Changes')}
             </button>
             <a
               href="/admin/menu"
-              className="px-6 py-3 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors text-center"
+              className="px-8 py-3 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors text-center"
             >
               Cancel
             </a>
