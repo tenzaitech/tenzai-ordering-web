@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { adminFetch } from '@/lib/admin-fetch'
 import Toast from '@/components/Toast'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 type Category = {
   category_code: string
@@ -18,6 +19,7 @@ interface CategoriesClientProps {
 
 export default function CategoriesClient({ categories }: CategoriesClientProps) {
   const router = useRouter()
+  const { t } = useLanguage()
   const [isCreating, setIsCreating] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingCode, setEditingCode] = useState<string | null>(null)
@@ -37,7 +39,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
 
   const handleCreate = async () => {
     if (!newCategoryName.trim()) {
-      showToast('Category name is required', 'error')
+      showToast(t('categoryNameRequired'), 'error')
       return
     }
 
@@ -66,7 +68,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
         return
       }
 
-      showToast('Category created successfully', 'success')
+      showToast(t('categoryCreated'), 'success')
       setNewCategoryName('')
       setIsCreating(false)
       router.refresh()
@@ -84,7 +86,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
 
   const handleSaveEdit = async (categoryCode: string) => {
     if (!editingName.trim()) {
-      showToast('Category name is required', 'error')
+      showToast(t('categoryNameRequired'), 'error')
       return
     }
 
@@ -108,7 +110,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
         return
       }
 
-      showToast('Category updated successfully', 'success')
+      showToast(t('categoryUpdated'), 'success')
       setEditingCode(null)
       setEditingName('')
       router.refresh()
@@ -121,14 +123,14 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
 
   const handleDelete = async (categoryCode: string, categoryName: string, menuItemsCount: number) => {
     if (menuItemsCount > 0) {
-      showToast(`Cannot delete category: ${menuItemsCount} menu item(s) are using this category. Please reassign or delete the menu items first.`, 'error')
+      showToast(`${t('cannotDeleteCategory')} ${menuItemsCount} menu item(s) are using this category. Please reassign or delete the menu items first.`, 'error')
       return
     }
 
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Category',
-      message: `Are you sure you want to delete "${categoryName}"? This action cannot be undone.`,
+      title: t('deleteCategory'),
+      message: `${t('confirmDeleteMenu')} "${categoryName}"? ${t('actionCannotBeUndone')}.`,
       onConfirm: async () => {
         setConfirmDialog(null)
         setLoadingAction(`delete-${categoryCode}`)
@@ -155,7 +157,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
             return
           }
 
-          showToast('Category deleted successfully', 'success')
+          showToast(t('categoryDeleted'), 'success')
           router.refresh()
         } catch (err: any) {
           showToast(err.message || 'Failed to delete category', 'error')
@@ -189,26 +191,26 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
 
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-text">Category Management</h1>
+          <h1 className="text-3xl font-bold text-text">{t('categoryManagement')}</h1>
           {!isCreating && (
             <button
               onClick={() => setIsCreating(true)}
               className="px-5 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
-              + Create Category
+              {t('createCategory')}
             </button>
           )}
         </div>
 
         {isCreating && (
           <div className="bg-card border border-border rounded-lg p-5 mb-6">
-            <h2 className="text-lg font-semibold text-text mb-4">Create New Category</h2>
+            <h2 className="text-lg font-semibold text-text mb-4">{t('createNewCategory')}</h2>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Enter category name..."
+                placeholder={t('enterCategoryName')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreate()
                   if (e.key === 'Escape') {
@@ -224,7 +226,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                 disabled={loadingAction === 'create'}
                 className="px-5 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loadingAction === 'create' ? 'Creating...' : 'Create'}
+                {loadingAction === 'create' ? t('creating') : t('create')}
               </button>
               <button
                 onClick={() => {
@@ -233,7 +235,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                 }}
                 className="px-5 py-2 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -245,14 +247,14 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
               <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
-              <p className="text-lg font-medium">No categories found</p>
-              <p className="text-sm mt-2">Get started by creating your first category</p>
+              <p className="text-lg font-medium">{t('noCategoriesFound')}</p>
+              <p className="text-sm mt-2">{t('getStartedByCreatingCategory')}</p>
             </div>
             <button
               onClick={() => setIsCreating(true)}
               className="inline-block px-5 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
-              + Create First Category
+              {t('createFirstCategory')}
             </button>
           </div>
         ) : categories.length > 0 ? (
@@ -260,10 +262,10 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
             <table className="w-full">
               <thead className="bg-border/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Code</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Menu Items</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('code')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('name')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('menuItems')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -303,7 +305,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                             disabled={loadingAction === `edit-${category.category_code}`}
                             className="text-green-400 hover:text-green-300 text-sm font-medium disabled:opacity-50"
                           >
-                            {loadingAction === `edit-${category.category_code}` ? 'Saving...' : 'Save'}
+                            {loadingAction === `edit-${category.category_code}` ? t('saving') : t('save')}
                           </button>
                           <button
                             onClick={() => {
@@ -312,7 +314,7 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                             }}
                             className="text-muted hover:text-text text-sm font-medium"
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </div>
                       ) : (
@@ -322,14 +324,14 @@ export default function CategoriesClient({ categories }: CategoriesClientProps) 
                             disabled={loadingAction !== null}
                             className="text-primary hover:text-primary/80 text-sm font-medium disabled:opacity-50"
                           >
-                            Rename
+                            {t('rename')}
                           </button>
                           <button
                             onClick={() => handleDelete(category.category_code, category.name, category.menu_items_count)}
                             disabled={loadingAction === `delete-${category.category_code}`}
                             className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50"
                           >
-                            {loadingAction === `delete-${category.category_code}` ? 'Deleting...' : 'Delete'}
+                            {loadingAction === `delete-${category.category_code}` ? t('deleting') : t('delete')}
                           </button>
                         </div>
                       )}

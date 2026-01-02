@@ -22,12 +22,8 @@ export default function MenuCardLarge({
   const displayName = language === 'th' ? name_th : name_en
 
   return (
-    <div
-      className={`bg-card border border-border rounded-lg overflow-hidden ${
-        is_sold_out ? 'opacity-50' : ''
-      }`}
-    >
-      <div className="relative aspect-[4/3] bg-border">
+    <div className={`overflow-hidden ${is_sold_out ? 'opacity-40' : ''}`}>
+      <div className="relative aspect-square bg-bg-elevated rounded-lg overflow-hidden mb-3">
         {image && (
           <Image
             src={image}
@@ -38,20 +34,19 @@ export default function MenuCardLarge({
           />
         )}
         {is_sold_out && (
-          <>
-            <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-            <span className="absolute top-2 right-2 text-text text-xs font-medium px-2 py-1 bg-card/80 rounded">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="text-white text-sm font-medium px-3 py-1.5 bg-black/60 rounded">
               Sold out
             </span>
-          </>
+          </div>
         )}
       </div>
 
-      <div className="p-4">
-        <h3 className="text-text font-medium text-lg mb-2 truncate">
+      <div className="px-1">
+        <h3 className="text-text-primary font-medium text-base mb-1.5 line-clamp-2 leading-snug">
           {displayName}
         </h3>
-        <p className="text-primary font-semibold text-xl">
+        <p className="text-accent font-bold text-lg">
           ฿{price_thb}
         </p>
       </div>

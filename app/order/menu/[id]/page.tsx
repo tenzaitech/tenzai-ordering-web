@@ -12,6 +12,7 @@ type MenuItem = {
   price_thb: number
   image: string
   is_sold_out: boolean
+  description?: string
   subtitle?: string
   option_group_ids?: string[]
 }
@@ -37,7 +38,7 @@ async function getMenuItem(menuCode: string) {
   try {
     const { data: dbItem } = await supabase
       .from('menu_items')
-      .select('menu_code, name_th, name_en, price, image_url, is_active')
+      .select('menu_code, name_th, name_en, price, image_url, is_active, description')
       .eq('menu_code', menuCode)
       .eq('is_active', true)
       .single()
@@ -58,6 +59,7 @@ async function getMenuItem(menuCode: string) {
         price_thb: dbItem.price,
         image: dbItem.image_url || '/images/placeholder.jpg',
         is_sold_out: false,
+        description: dbItem.description || undefined,
         option_group_ids: optionGroupIds
       }
     }

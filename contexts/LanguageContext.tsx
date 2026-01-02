@@ -1,9 +1,10 @@
 'use client'
 
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { translate } from '@/lib/i18n'
 
 type Language = 'th' | 'en'
+type LocaleScope = 'customer' | 'admin'
 
 interface LanguageContextType {
   language: Language
@@ -13,8 +14,27 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('th')
+interface LanguageProviderProps {
+  children: ReactNode
+  scope?: LocaleScope
+}
+
+export function LanguageProvider({ children, scope = 'customer' }: LanguageProviderProps) {
+  const storageKey = scope === 'customer' ? 'tenzai:customer-locale' : 'tenzai:admin-locale'
+  const [language, setLanguageState] = useState<Language>('th')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(storageKey) as Language | null
+    const initialLanguage = stored || 'th'
+    setLanguageState(initialLanguage)
+    setMounted(true)
+  }, [storageKey])
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang)
+    localStorage.setItem(storageKey, lang)
+  }
 
   const t = (key: string) => translate(key as any, language)
 

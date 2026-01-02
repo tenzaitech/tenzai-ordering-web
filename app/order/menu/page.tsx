@@ -14,6 +14,7 @@ type MenuItem = {
   price_thb: number
   image: string
   is_sold_out: boolean
+  description?: string
   subtitle?: string
   options?: any[]
 }
@@ -27,7 +28,7 @@ async function getMenuData() {
 
     const { data: dbMenuItems } = await supabase
       .from('menu_items')
-      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active')
+      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description')
       .eq('is_active', true)
       .order('menu_code')
 
@@ -44,6 +45,7 @@ async function getMenuData() {
         price_thb: item.price,
         image: item.image_url || '/images/placeholder.jpg',
         is_sold_out: false,
+        description: item.description || undefined,
       }))
 
       const uniqueCategories = Array.from(new Set(transformedItems.map(item => item.category)))

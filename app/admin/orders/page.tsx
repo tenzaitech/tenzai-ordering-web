@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminOrdersPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [orderAccepting, setOrderAccepting] = useState<{ enabled: boolean; message: string }>({ enabled: true, message: '' })
@@ -91,7 +93,7 @@ export default function AdminOrdersPage() {
 
   const formatPickupTime = (pickupType: string, pickupTime: string | null) => {
     if (pickupType === 'ASAP') {
-      return 'ทันที'
+      return t('immediate')
     }
     if (!pickupTime) return '-'
 
@@ -110,7 +112,7 @@ export default function AdminOrdersPage() {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted">Loading orders...</p>
+          <p className="text-muted">{t('loadingOrders')}</p>
         </div>
       </div>
     )
@@ -119,26 +121,26 @@ export default function AdminOrdersPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-7xl mx-auto px-5 py-8">
-        <h1 className="text-3xl font-bold text-text mb-8">Admin - Orders</h1>
+        <h1 className="text-3xl font-bold text-text mb-8">{t('adminOrders')}</h1>
 
         {/* Order Accepting Control */}
         <div className="mb-8 bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-lg font-semibold text-text">Order Accepting</h2>
+                <h2 className="text-lg font-semibold text-text">{t('orderAccepting')}</h2>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   orderAccepting.enabled
                     ? 'bg-green-500/20 text-green-500'
                     : 'bg-red-500/20 text-red-500'
                 }`}>
-                  {orderAccepting.enabled ? 'OPEN' : 'CLOSED'}
+                  {orderAccepting.enabled ? t('open') : t('closed')}
                 </span>
               </div>
               <p className="text-sm text-muted">
                 {orderAccepting.enabled
-                  ? 'Customers can place orders'
-                  : 'Customers are blocked from ordering'}
+                  ? t('customersCanOrder')
+                  : t('customersBlocked')}
               </p>
             </div>
             <button
@@ -150,7 +152,7 @@ export default function AdminOrdersPage() {
                   : 'bg-green-500 text-white hover:bg-green-600'
               }`}
             >
-              {toggling ? 'Processing...' : (orderAccepting.enabled ? 'Close Shop' : 'Open Shop')}
+              {toggling ? t('processing') : (orderAccepting.enabled ? t('closeShop') : t('openShop'))}
             </button>
           </div>
         </div>
@@ -159,11 +161,11 @@ export default function AdminOrdersPage() {
           <table className="w-full">
             <thead className="border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted">Order #</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted">Customer</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted">Pickup</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted">Total</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-muted">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted">{t('orderNumber')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted">{t('customer')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted">{t('pickup')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted">{t('total')}</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted">{t('status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -191,7 +193,7 @@ export default function AdminOrdersPage() {
 
           {orders.length === 0 && (
             <div className="px-4 py-12 text-center">
-              <p className="text-muted">No orders found</p>
+              <p className="text-muted">{t('noOrdersFound')}</p>
             </div>
           )}
         </div>

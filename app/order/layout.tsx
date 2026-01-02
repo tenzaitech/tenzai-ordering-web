@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 import TopBar from '@/components/TopBar'
 import FloatingCartButton from '@/components/FloatingCartButton'
 
@@ -50,10 +51,10 @@ export default function OrderLayout({
   }, [pathname, router])
 
   return (
-    <>
+    <LanguageProvider scope="customer">
       <TopBar />
       {children}
       <FloatingCartButton />
-    </>
+    </LanguageProvider>
   )
 }

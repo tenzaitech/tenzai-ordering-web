@@ -12,6 +12,7 @@ interface MenuItemRowProps {
   price_thb: number
   image: string
   is_sold_out?: boolean
+  description?: string
   subtitle?: string
 }
 
@@ -22,10 +23,14 @@ export default function MenuItemRow({
   price_thb,
   image,
   is_sold_out = false,
+  description,
   subtitle,
 }: MenuItemRowProps) {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
+
+  const displayName = language === 'th' ? name_th : name_en
+  const displayDescription = description ?? subtitle
 
   const handleClick = () => {
     if (is_sold_out) return
@@ -48,22 +53,22 @@ export default function MenuItemRow({
     >
       <div
         id={`menu-item-${id}`}
-        className={`flex items-center gap-3 px-5 py-4 bg-card border-b border-border transition-all ${
-          is_sold_out ? 'opacity-50' : 'active:bg-border'
+        className={`flex items-center gap-4 px-5 py-4 bg-bg-root border-b border-border-subtle ${
+          is_sold_out ? 'opacity-40' : 'active:bg-bg-surface'
         }`}
       >
         {/* Image */}
-        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-border">
+        <div className="relative w-28 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-bg-elevated">
           <Image
             src={image}
             alt={name_en}
             fill
             className="object-cover"
-            sizes="96px"
+            sizes="112px"
           />
           {is_sold_out && (
-            <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-              <span className="text-white text-xs font-medium px-2 py-1 bg-black/80 rounded">
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <span className="text-white text-xs font-medium px-2.5 py-1 bg-black/70 rounded">
                 {t('soldOut')}
               </span>
             </div>
@@ -72,31 +77,28 @@ export default function MenuItemRow({
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-text font-medium text-base line-clamp-1 mb-0.5">
-            {name_en}
+          <h3 className="text-text-primary font-semibold text-base line-clamp-2 mb-1.5 leading-snug">
+            {displayName}
           </h3>
-          <p className="text-muted text-xs line-clamp-1 mb-1">
-            {name_th}
-          </p>
-          {subtitle && (
-            <p className="text-muted text-xs line-clamp-1 mb-1">
-              {subtitle}
+          {displayDescription && displayDescription.trim() && (
+            <p className="text-text-secondary text-sm line-clamp-2 mb-2 leading-snug">
+              {displayDescription}
             </p>
           )}
-          <p className="text-primary font-semibold text-base">
+          <p className="text-accent font-bold text-lg">
             ฿{price_thb}
           </p>
         </div>
 
         {/* Add Button */}
         {!is_sold_out && (
-          <div className="w-10 h-10 flex-shrink-0 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
+          <div className="w-11 h-11 flex-shrink-0 rounded-full bg-accent flex items-center justify-center">
             <svg
               className="w-5 h-5 text-white"
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="2.5"
+              strokeWidth="3"
               viewBox="0 0 24 24"
               stroke="currentColor"
             >

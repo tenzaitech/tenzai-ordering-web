@@ -167,15 +167,15 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-20">
+    <div className="min-h-screen bg-bg-root pb-20">
       <div className="max-w-mobile mx-auto">
         <BrandHeader />
 
         {/* Search Bar */}
-        <div className="px-5 py-4 border-b border-border">
+        <div className="px-5 py-3">
           <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -184,14 +184,14 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="w-full bg-card border border-border rounded-lg pl-10 pr-10 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors"
+              className="w-full bg-bg-surface border border-border-subtle rounded-lg pl-9 pr-9 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -202,11 +202,11 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
         {/* Search Results */}
         {searchQuery.trim() && (
           <div className="px-5 py-4">
-            <h2 className="text-text text-sm font-semibold mb-3">
+            <h2 className="text-text-primary text-sm font-semibold mb-3">
               {t('searchResults')} {filteredItems.length > 0 && `(${filteredItems.length} ${filteredItems.length === 1 ? t('item') : t('items')})`}
             </h2>
             {filteredItems.length > 0 ? (
-              <div className="bg-card rounded-lg overflow-hidden">
+              <div className="bg-bg-surface rounded-lg overflow-hidden">
                 {filteredItems.map(item => (
                   <MenuItemRow
                     key={item.id}
@@ -221,7 +221,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                 ))}
               </div>
             ) : (
-              <p className="text-muted text-sm text-center py-8">{t('noItemsFound')}</p>
+              <p className="text-text-muted text-sm text-center py-8">{t('noItemsFound')}</p>
             )}
           </div>
         )}
@@ -230,9 +230,9 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
         {!searchQuery.trim() && (
           <>
             {/* Recommended Section */}
-            <div className="px-5 py-6">
-              <h2 className="text-text text-xl font-semibold mb-4">{t('recommended')}</h2>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="px-5 pt-4 pb-6">
+              <h2 className="text-text-primary text-lg font-bold mb-3">Popular</h2>
+              <div className="grid grid-cols-2 gap-4">
                 {recommendedItems.map((item, index) => (
                   <div
                     key={item.id}
@@ -258,21 +258,21 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
             </div>
 
             {/* Sticky Category Tabs */}
-            <div className="sticky top-[73px] bg-bg z-40 border-b border-border shadow-md shadow-black/10">
+            <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle">
               <div className="flex items-center gap-2">
                 {/* Hamburger Button */}
                 <button
                   onClick={() => setIsPickerOpen(true)}
-                  className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-text hover:text-primary transition-colors ml-2"
+                  className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-text-secondary ml-2"
                   aria-label="Open category picker"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
 
                 {/* Scrollable Tabs */}
-                <div ref={tabsRef} className="flex-1 flex flex-nowrap overflow-x-auto scrollbar-hide py-3 pr-5 gap-2.5" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div ref={tabsRef} className="flex-1 flex flex-nowrap overflow-x-auto scrollbar-hide py-2.5 pr-5 gap-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {categories.map(category => {
                     const sampleItem = menuItems.find(item => item.category === category)
                     const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
@@ -284,10 +284,10 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                         }}
                         data-category={category}
                         onClick={() => handleCategoryClick(category)}
-                        className={`flex-none px-4 py-2.5 min-h-[44px] rounded-lg whitespace-nowrap transition-all font-medium text-sm ${
+                        className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm ${
                           activeCategory === category
-                            ? 'bg-primary text-white shadow-lg shadow-primary/30'
-                            : 'bg-card text-muted hover:bg-border border border-border'
+                            ? 'bg-accent text-white'
+                            : 'bg-bg-surface text-text-secondary border border-border-subtle'
                         }`}
                       >
                         {categoryName || category}

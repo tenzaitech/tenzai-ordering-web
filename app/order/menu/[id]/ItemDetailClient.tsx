@@ -35,6 +35,7 @@ type MenuItem = {
   price_thb: number
   image: string
   is_sold_out: boolean
+  description?: string
   subtitle?: string
   option_group_ids?: string[]
 }
@@ -48,7 +49,7 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
   const router = useRouter()
   const searchParams = useSearchParams()
   const { addItem, updateItem, items } = useCart()
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
   const [note, setNote] = useState('')
   const [quantity, setQuantity] = useState(1)
@@ -167,11 +168,11 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
       optionGroups.forEach(group => {
         const selectedIds = selectedOptions[group.id] || []
         if (group.required && group.type === 'single' && selectedIds.length === 0) {
-          errors[group.id] = language === 'th' ? 'กรุณาเลือก' : 'Please select'
+          errors[group.id] = t('pleaseSelect')
         } else if (group.required && group.type === 'multi') {
           const min = group.min || 1
           if (selectedIds.length < min) {
-            errors[group.id] = language === 'th' ? `กรุณาเลือกอย่างน้อย ${min}` : `Select at least ${min}`
+            errors[group.id] = `${t('selectAtLeast')} ${min}`
           }
         }
       })
@@ -277,10 +278,7 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
     <div className={`min-h-screen bg-bg ${navDirection === 'forward' ? 'page-transition-forward' : 'page-transition-backward'} ${mounted ? 'page-mounted' : ''}`}>
       {showToast && (
         <Toast
-          message={isEditMode
-            ? (language === 'th' ? 'แก้ไขรายการแล้ว' : 'Item updated')
-            : (language === 'th' ? 'เพิ่มลงตะกร้าแล้ว' : 'Added to cart')
-          }
+          message={isEditMode ? t('itemUpdated') : t('addedToCart')}
           onClose={() => setShowToast(false)}
         />
       )}
@@ -303,7 +301,7 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
             </svg>
           </button>
           <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">
-            {isEditMode ? 'Edit Item' : 'Item Details'}
+            {isEditMode ? t('editItem') : t('itemDetails')}
           </h1>
         </header>
 
@@ -325,10 +323,9 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
           <div className="px-5 py-6">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-2xl font-medium text-text">{menuItem.name_en}</h2>
-                <p className="text-lg text-muted">{menuItem.name_th}</p>
-                {menuItem.subtitle && (
-                  <p className="text-sm text-muted mt-1">{menuItem.subtitle}</p>
+                <h2 className="text-2xl font-medium text-text">{language === 'th' ? menuItem.name_th : menuItem.name_en}</h2>
+                {(menuItem.description ?? menuItem.subtitle)?.trim() && (
+                  <p className="text-sm text-text-secondary mt-2 leading-relaxed">{menuItem.description ?? menuItem.subtitle}</p>
                 )}
               </div>
               <p className="text-2xl font-semibold text-primary">฿{calculateTotalPrice()}</p>
@@ -381,11 +378,11 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
             })}
 
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-3 text-text">Special Instructions</h3>
+              <h3 className="text-lg font-medium mb-3 text-text">{t('specialInstructions')}</h3>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Add any special requests here (optional)"
+                placeholder={t('specialInstructionsPlaceholder')}
                 className="w-full p-3 bg-card border border-border text-text placeholder:text-muted rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 rows={3}
               />
@@ -396,7 +393,7 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
           <div className="max-w-mobile mx-auto p-5">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-text font-medium">Quantity</span>
+              <span className="text-text font-medium">{t('quantity')}</span>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleQuantityChange(-1)}
@@ -420,7 +417,7 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
               disabled={!isFormValid()}
               className="w-full py-4 bg-primary text-white font-medium rounded-lg disabled:bg-border disabled:text-muted disabled:cursor-not-allowed transition-all active:scale-[0.98] active:bg-primary/90"
             >
-              {isEditMode ? 'Save Changes' : 'Add to Cart'}
+              {isEditMode ? t('saveChanges') : t('addToCart')}
             </button>
           </div>
         </div>
