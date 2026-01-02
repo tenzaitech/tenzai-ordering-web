@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { checkAdminAuth } from '@/lib/admin-gate'
 
 export async function POST(request: NextRequest) {
+  const authError = checkAdminAuth(request)
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { enabled, message } = body
@@ -37,7 +41,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = checkAdminAuth(request)
+  if (authError) return authError
+
   try {
     const { data, error } = await supabase
       .from('system_settings')

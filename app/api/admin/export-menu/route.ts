@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { checkAdminAuth } from '@/lib/admin-gate'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = checkAdminAuth(request)
+  if (authError) return authError
+
   try {
     // Fetch all canonical data
     const { data: categories, error: catError } = await supabase

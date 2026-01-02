@@ -308,9 +308,17 @@ export default function ItemDetailClient({ menuItem }: ItemDetailClientProps) {
 
         <div className="pb-24">
           <div className="relative h-64 bg-border">
-            <div className="absolute inset-0 flex items-center justify-center text-muted">
-              <span>Image Placeholder</span>
-            </div>
+            {menuItem.image ? (
+              <img
+                src={menuItem.image}
+                alt={menuItem.name_en}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-muted">
+                <span>Image Placeholder</span>
+              </div>
+            )}
           </div>
 
           <div className="px-5 py-6">

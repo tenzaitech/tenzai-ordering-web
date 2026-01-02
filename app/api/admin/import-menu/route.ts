@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { validateMenuData, ParsedMenuData, generateCode, parseIntegerPrice } from '@/lib/menu-import-validator'
+import { checkAdminAuth } from '@/lib/admin-gate'
 
 export async function POST(request: NextRequest) {
+  const authError = checkAdminAuth(request)
+  if (authError) return authError
+
   try {
     const data: ParsedMenuData = await request.json()
 
