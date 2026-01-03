@@ -218,16 +218,37 @@ export default function OrderConfirmedPage() {
           </div>
         </div>
 
-        {/* Back to Menu Button */}
-        <div className="px-5 pb-8">
+        {/* Order Status Message */}
+        <div className="px-5 pb-6">
+          <div className="bg-card border border-primary/30 rounded-lg p-5">
+            <p className="text-center text-text font-medium mb-2">
+              {language === 'th' ? 'เราได้รับออเดอร์แล้ว' : 'We received your order'}
+            </p>
+            <p className="text-center text-sm text-muted">
+              {language === 'th' ? 'สถานะ: รออนุมัติ' : 'Status: Waiting for approval'}
+            </p>
+          </div>
+        </div>
+
+        {/* CTA Buttons */}
+        <div className="px-5 pb-8 space-y-3">
+          <button
+            onClick={() => {
+              triggerHaptic()
+              router.push('/order/status')
+            }}
+            className="w-full py-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+          >
+            {language === 'th' ? 'ดูออเดอร์ของฉัน' : 'View My Orders'}
+          </button>
           <button
             onClick={() => {
               triggerHaptic()
               router.push('/order/menu')
             }}
-            className="w-full py-4 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+            className="w-full py-4 bg-card border border-border text-text font-semibold rounded-lg hover:bg-border/50 active:bg-border transition-colors"
           >
-            {t('backToMenu')}
+            {language === 'th' ? 'กลับไปเมนู' : 'Back to Menu'}
           </button>
         </div>
       </div>

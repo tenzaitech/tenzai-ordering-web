@@ -94,7 +94,10 @@ export default function OrderStatusPage() {
   }, [])
 
   const fetchOrders = async () => {
-    setLoading(true)
+    // Only show loading on initial fetch, not on auto-refresh
+    if (orders.length === 0) {
+      setLoading(true)
+    }
     setError(false)
 
     try {
@@ -132,6 +135,13 @@ export default function OrderStatusPage() {
 
   useEffect(() => {
     fetchOrders()
+
+    // Auto-refresh every 25 seconds
+    const interval = setInterval(() => {
+      fetchOrders()
+    }, 25000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const handleLanguageToggle = (lang: Language) => {

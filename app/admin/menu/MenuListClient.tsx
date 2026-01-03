@@ -43,6 +43,8 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
     onConfirm: () => void
   } | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 50
 
   const categoryMap = new Map(categories.map(cat => [cat.category_code, cat.name]))
 
@@ -56,6 +58,21 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
 
     return matchesSearch && matchesCategory
   })
+
+  // Pagination
+  const totalPages = Math.ceil(filteredItems.length / pageSize)
+  const paginatedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+  }
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value)
+    setCurrentPage(1)
+  }
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type })
@@ -166,7 +183,7 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder={t('searchByNameOrCode')}
                 className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -175,7 +192,7 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
               <label className="block text-sm font-medium text-text mb-2">{t('category')}</label>
               <select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="all">{t('allCategories')}</option>
@@ -225,11 +242,11 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
                     <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('price')}</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('status')}</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('updated')}</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-text w-16"></th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-text w-16 sticky right-0 bg-border/50"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredItems.map(item => (
+                  {paginatedItems.map(item => (
                     <tr key={item.menu_code} className="hover:bg-border/20 transition-colors">
                       <td className="px-4 py-3">
                         {item.image_url ? (
@@ -259,7 +276,7 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
                       <td className="px-4 py-3 text-sm text-muted">
                         {new Date(item.updated_at).toLocaleDateString('en-GB')}
                       </td>
-                      <td className="px-4 py-3 text-center relative">
+                      <td className="px-4 py-3 text-center relative sticky right-0 bg-card">
                         <button
                           onClick={() => setOpenDropdown(openDropdown === item.menu_code ? null : item.menu_code)}
                           disabled={loadingAction !== null}
@@ -305,6 +322,34 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-muted">
+              Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredItems.length)} of {filteredItems.length}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-card border border-border text-text rounded-lg hover:bg-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <span className="px-4 py-2 bg-primary/10 text-primary rounded-lg font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-card border border-border text-text rounded-lg hover:bg-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}

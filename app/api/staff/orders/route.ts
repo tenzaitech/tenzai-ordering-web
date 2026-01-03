@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   // Verify staff session
   const staffCookie = request.cookies.get('tenzai_staff')
 
-  if (!staffCookie || staffCookie.value !== 'STAFF_VERIFIED') {
+  if (!staffCookie || !staffCookie.value.startsWith('STAFF_VERIFIED')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

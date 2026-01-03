@@ -1,5 +1,19 @@
 import { supabase } from './supabase'
 
+// Fetch LINE recipient IDs from DB (with env fallback)
+async function getLineRecipients(): Promise<{ approverId: string; staffId: string }> {
+  const { data: settings } = await supabase
+    .from('admin_settings')
+    .select('line_approver_id, line_staff_id')
+    .limit(1)
+    .single()
+
+  return {
+    approverId: settings?.line_approver_id || process.env.LINE_APPROVER_ID || '',
+    staffId: settings?.line_staff_id || process.env.LINE_STAFF_ID || ''
+  }
+}
+
 export async function sendSlipNotification(orderId: string): Promise<void> {
   // Fetch order
   const { data: order, error: orderError } = await supabase
@@ -66,9 +80,16 @@ ${order.customer_note ? `📝 หมายเหตุ: ${order.customer_note}\n
 🧾 สลิป: ${order.slip_url}
   `.trim()
 
+  // Get approver ID from DB/env
+  const { approverId } = await getLineRecipients()
+
+  if (!approverId) {
+    throw new Error('LINE_APPROVER_ID not configured')
+  }
+
   // Validate env vars
-  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_APPROVER_ID) {
-    throw new Error('Missing LINE environment variables')
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
   }
 
   // Send via LINE Messaging API
@@ -79,7 +100,7 @@ ${order.customer_note ? `📝 หมายเหตุ: ${order.customer_note}\n
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: process.env.LINE_APPROVER_ID,
+      to: approverId,
       messages: [
         { type: 'text', text: message }
       ]
@@ -186,9 +207,16 @@ ${itemsList}
 ${order.customer_note ? `📝 หมายเหตุจากลูกค้า: ${order.customer_note}` : ''}
   `.trim()
 
+  // Get staff ID from DB/env
+  const { staffId } = await getLineRecipients()
+
+  if (!staffId) {
+    throw new Error('LINE_STAFF_ID not configured')
+  }
+
   // Validate env vars
-  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_STAFF_ID) {
-    throw new Error('Missing LINE environment variables')
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
   }
 
   // Send via LINE Messaging API
@@ -199,7 +227,7 @@ ${order.customer_note ? `📝 หมายเหตุจากลูกค้�
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: process.env.LINE_STAFF_ID,
+      to: staffId,
       messages: [
         { type: 'text', text: message }
       ]
@@ -256,9 +284,16 @@ ${order.adjustment_note}
 💰 ยอดรวม: ฿${order.total_amount}
   `.trim()
 
+  // Get staff ID from DB/env
+  const { staffId } = await getLineRecipients()
+
+  if (!staffId) {
+    throw new Error('LINE_STAFF_ID not configured')
+  }
+
   // Validate env vars
-  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_STAFF_ID) {
-    throw new Error('Missing LINE environment variables')
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
   }
 
   // Send via LINE Messaging API
@@ -269,7 +304,7 @@ ${order.adjustment_note}
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      to: process.env.LINE_STAFF_ID,
+      to: staffId,
       messages: [
         { type: 'text', text: message }
       ]
