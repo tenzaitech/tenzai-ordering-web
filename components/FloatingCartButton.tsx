@@ -4,14 +4,28 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCart } from '@/contexts/CartContext'
 
+// Routes where floating cart icon should NOT appear
+const HIDDEN_ROUTES = [
+  '/order/cart',
+  '/order/menu',       // Using bottom CTA bar instead
+  '/order/checkout',
+  '/order/payment',
+  '/order/confirmed',
+  '/order/status',
+  '/order/edit',
+]
+
 export default function FloatingCartButton() {
   const pathname = usePathname()
-  const isCartPage = pathname === '/order/cart'
-
-  // Don't render at all on cart page
-  if (isCartPage) return null
-
   const { getTotalItems } = useCart()
+
+  // Hide on specific routes (including dynamic segments)
+  const shouldHide = HIDDEN_ROUTES.some(route =>
+    pathname === route || pathname.startsWith(route + '/')
+  )
+
+  if (shouldHide) return null
+
   const totalItems = getTotalItems()
 
   return (

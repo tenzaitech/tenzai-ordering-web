@@ -209,22 +209,36 @@ export default function CartPage() {
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border shadow-lg shadow-black/30">
-          <div className="max-w-mobile mx-auto p-5">
-            <div className="flex justify-between items-center mb-4">
+          <div className="max-w-mobile mx-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex justify-between items-center mb-3">
               <span className="text-lg font-medium text-text">{t('total')}</span>
               <span className="text-2xl font-semibold text-primary">฿{getTotalPrice()}</span>
             </div>
-            <button
-              onClick={() => {
-                triggerHaptic()
-                setTimeout(() => {
-                  router.push('/order/checkout')
-                }, 120)
-              }}
-              className="block w-full py-4 bg-primary text-white font-medium text-center rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors cursor-pointer"
-            >
-              {t('continueToCheckout')}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  triggerHaptic()
+                  setTimeout(() => {
+                    sessionStorage.setItem('navigationDirection', 'forward')
+                    router.push('/order/menu')
+                  }, 120)
+                }}
+                className="flex-1 py-3.5 bg-bg border border-border text-text font-medium text-center rounded-lg hover:bg-border active:bg-border/80 transition-colors"
+              >
+                {language === 'th' ? 'สั่งเพิ่ม' : 'Add more'}
+              </button>
+              <button
+                onClick={() => {
+                  triggerHaptic()
+                  setTimeout(() => {
+                    router.push('/order/checkout')
+                  }, 120)
+                }}
+                className="flex-1 py-3.5 bg-primary text-white font-medium text-center rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+              >
+                {t('continueToCheckout')}
+              </button>
+            </div>
           </div>
         </div>
       </div>

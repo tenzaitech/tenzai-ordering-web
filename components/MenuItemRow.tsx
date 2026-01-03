@@ -14,6 +14,7 @@ interface MenuItemRowProps {
   is_sold_out?: boolean
   description?: string
   subtitle?: string
+  onTap?: () => void // Custom tap handler (for drawer support)
 }
 
 export default function MenuItemRow({
@@ -25,6 +26,7 @@ export default function MenuItemRow({
   is_sold_out = false,
   description,
   subtitle,
+  onTap,
 }: MenuItemRowProps) {
   const router = useRouter()
   const { language, t } = useLanguage()
@@ -35,12 +37,19 @@ export default function MenuItemRow({
   const handleClick = () => {
     if (is_sold_out) return
 
+    triggerHaptic()
+
+    // Use custom handler if provided (for drawer support)
+    if (onTap) {
+      onTap()
+      return
+    }
+
+    // Default: navigate to item detail
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
       sessionStorage.setItem('navigationDirection', 'forward')
     }
-
-    triggerHaptic()
     setTimeout(() => {
       router.push(`/order/menu/${id}`)
     }, 100)

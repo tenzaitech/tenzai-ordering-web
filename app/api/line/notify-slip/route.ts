@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { sendSlipNotification } from '@/lib/line'
+import { sendSlipNotification, sendCustomerSlipConfirmation } from '@/lib/line'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +35,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'slip_not_uploaded' })
     }
 
-    // Send notification
+    // Send notification to approver
     await sendSlipNotification(orderId)
+
+    // Send confirmation to customer (fire-and-forget, don't block on error)
+    sendCustomerSlipConfirmation(orderId).catch(err => {
+      console.error('[API:LINE:NOTIFY] Customer notification failed (non-blocking):', err)
+    })
 
     // Mark as notified
     const { error: updateError } = await supabase

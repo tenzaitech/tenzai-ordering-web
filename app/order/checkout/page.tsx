@@ -96,6 +96,16 @@ export default function CheckoutPage() {
       return
     }
 
+    // === VALIDATION GUARD: Ensure all cart items have valid menuId ===
+    const invalidItems = items.filter(item => !item.menuId || typeof item.menuId !== 'string' || item.menuId.trim() === '')
+    if (invalidItems.length > 0) {
+      console.error('[CHECKOUT] Invalid cart items detected (missing menuId):', invalidItems)
+      alert(language === 'th'
+        ? 'พบรายการที่ไม่ถูกต้อง กรุณาลบและเพิ่มรายการใหม่'
+        : 'Invalid items detected. Please remove and re-add them.')
+      return
+    }
+
     // Check offline before starting
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setErrorState({ step: 'ORDER' })
@@ -232,9 +242,13 @@ export default function CheckoutPage() {
       // Set navigating flag to prevent cart-empty redirect
       setIsNavigatingToPayment(true)
 
-      // Store active order ID and cart fingerprint (cart will be cleared after payment)
+      // Store active order ID and cart fingerprint
       setActiveOrderId(orderData.id)
       setLastSyncedCartFingerprint(getCartFingerprint(items))
+
+      // Clear cart immediately after successful order creation
+      clearCart()
+      clearDraft()
 
       // Navigate to payment page
       router.replace(`/order/payment?id=${orderData.id}`)

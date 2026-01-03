@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -8,7 +8,11 @@ import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
 import { getCartFingerprint } from '@/lib/orderUtils'
+import { generatePromptPayPayload } from '@/lib/promptpay'
 import ErrorModal from '@/components/ErrorModal'
+
+const PROMPTPAY_ID = '0988799990'
+const PROMPTPAY_NAME = 'ณัฐนันท์ มุ่งงาม'
 
 type ProcessingState = 'IDLE' | 'UPLOADING_SLIP' | 'SYNCING_ORDER'
 
@@ -20,6 +24,7 @@ export default function PaymentPage() {
   const { draft, clearDraft, activeOrderId, lastSyncedCartFingerprint, setLastSyncedCartFingerprint } = useCheckout()
 
   const [order, setOrder] = useState<any>(null)
+  const [orderItems, setOrderItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [slipFile, setSlipFile] = useState<File | null>(null)
   const [slipPreview, setSlipPreview] = useState<string | null>(null)
@@ -27,8 +32,11 @@ export default function PaymentPage() {
   const [showError, setShowError] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
+  const qrImageRef = useRef<HTMLImageElement>(null)
 
   const orderId = searchParams.get('id')
+  const fromPage = searchParams.get('from')
 
   useEffect(() => {
     setMounted(true)
@@ -53,7 +61,24 @@ export default function PaymentPage() {
         }
 
         setOrder(data)
+
+        // Fetch order items from DB for summary display
+        const { data: itemsData } = await supabase
+          .from('order_items')
+          .select('id, name_th, name_en, qty, base_price, final_price, note, selected_options_json')
+          .eq('order_id', orderId)
+          .order('id', { ascending: true })
+
+        setOrderItems(itemsData || [])
         setLoading(false)
+
+        // Generate PromptPay QR code with locked amount
+        if (data.total_amount) {
+          const payload = generatePromptPayPayload(PROMPTPAY_ID, data.total_amount)
+          const encodedPayload = encodeURIComponent(payload)
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedPayload}&format=png&margin=10`
+          setQrCodeUrl(qrUrl)
+        }
 
         // Check if cart is dirty (changed since order creation) - auto-sync silently
         if (orderId === activeOrderId && lastSyncedCartFingerprint) {
@@ -165,6 +190,27 @@ export default function PaymentPage() {
       console.error('[ERROR:SYNC]', error)
       setShowError(true)
       setProcessingState('IDLE')
+    }
+  }
+
+  const handleSaveQR = async () => {
+    if (!qrCodeUrl) return
+    triggerHaptic()
+
+    try {
+      const response = await fetch(qrCodeUrl)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `tenzai-promptpay-${order?.order_number || 'qr'}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[QR] Failed to save QR:', err)
     }
   }
 
@@ -327,7 +373,15 @@ export default function PaymentPage() {
           <button
             onClick={() => {
               triggerHaptic()
-              router.push('/order/checkout')
+              // Smart back navigation based on where user came from
+              if (fromPage === 'status') {
+                router.push('/order/status')
+              } else if (items.length === 0 && orderId) {
+                // Fallback: if cart is empty, go to status (not checkout)
+                router.push('/order/status')
+              } else {
+                router.back()
+              }
             }}
             className="text-muted hover:text-text active:text-text transition-colors"
             disabled={isProcessing}
@@ -339,20 +393,48 @@ export default function PaymentPage() {
           <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">{t('payment')}</h1>
         </header>
 
-        {/* Edit Items Button */}
-        <div className="px-5 py-3 border-b border-border flex justify-center">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic()
-              router.push('/order/cart')
-            }}
-            disabled={isProcessing}
-            className="px-4 py-2 text-sm text-muted hover:text-text active:text-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {language === 'th' ? 'แก้ไขรายการ' : 'Edit Items'}
-          </button>
-        </div>
+        {/* Edit Actions (for unpaid orders) */}
+        {(() => {
+          const isEditable = order && !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
+          if (!isEditable) {
+            return (
+              <div className="px-5 py-3 border-b border-border flex justify-center">
+                <span className="px-4 py-2 text-sm text-muted/50">
+                  {language === 'th' ? 'ล็อคแล้ว (อัปสลิปแล้ว)' : 'Locked (slip uploaded)'}
+                </span>
+              </div>
+            )
+          }
+          return (
+            <div className="px-5 py-3 border-b border-border flex justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic()
+                  router.push(`/order/edit/${orderId}`)
+                }}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm text-muted hover:text-text active:text-text transition-colors disabled:opacity-50"
+              >
+                {language === 'th' ? 'แก้ไขรายการ' : 'Edit Items'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic()
+                  router.push(`/order/menu?editOrderId=${orderId}&mode=add`)
+                }}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm text-primary hover:text-primary/80 active:text-primary/70 transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {language === 'th' ? 'สั่งเพิ่ม' : 'Add more'}
+              </button>
+            </div>
+          )
+        })()}
 
         <form onSubmit={handleSubmit} className="pb-32">
           {/* Order Summary */}
@@ -362,25 +444,25 @@ export default function PaymentPage() {
             <div className="bg-card border border-border rounded-lg p-4 mb-4">
               {/* Item List (collapsible) */}
               <div className="space-y-3 mb-3">
-                {items.slice(0, isExpanded ? items.length : 3).map((item) => {
+                {orderItems.slice(0, isExpanded ? orderItems.length : 3).map((item) => {
                   const itemName = language === 'th' ? item.name_th : item.name_en
                   return (
                     <div key={item.id} className="flex justify-between items-start">
                       <div className="flex-1">
                         <p className="text-text text-sm font-medium">{itemName}</p>
-                        <p className="text-xs text-muted">x{item.quantity}</p>
+                        <p className="text-xs text-muted">x{item.qty}</p>
                         {item.note && (
                           <p className="text-xs text-muted italic mt-1">{t('note')}: {item.note}</p>
                         )}
                       </div>
-                      <p className="text-text text-sm font-semibold ml-3">฿{item.final_price_thb * item.quantity}</p>
+                      <p className="text-text text-sm font-semibold ml-3">฿{item.final_price * item.qty}</p>
                     </div>
                   )
                 })}
               </div>
 
               {/* Expand/Collapse Control */}
-              {items.length > 3 && (
+              {orderItems.length > 3 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -389,7 +471,7 @@ export default function PaymentPage() {
                   }}
                   className="w-full py-2 flex items-center justify-center text-primary text-sm hover:text-primary/80 transition-colors"
                 >
-                  <span>{isExpanded ? (language === 'th' ? 'ย่อ' : 'Collapse') : (language === 'th' ? `แสดงทั้งหมด (${items.length} รายการ)` : `Show all (${items.length} items)`)}</span>
+                  <span>{isExpanded ? (language === 'th' ? 'ย่อ' : 'Collapse') : (language === 'th' ? `แสดงทั้งหมด (${orderItems.length} รายการ)` : `Show all (${orderItems.length} items)`)}</span>
                   <svg
                     className={`w-4 h-4 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                     fill="none"
@@ -402,12 +484,12 @@ export default function PaymentPage() {
               )}
 
               {/* Customer Note (read-only) */}
-              {draft.customerNote && (
+              {order?.customer_note && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <p className="text-xs text-muted mb-1">
                     {language === 'th' ? 'หมายเหตุถึงร้าน' : 'Note to Restaurant'}
                   </p>
-                  <p className="text-sm text-text">{draft.customerNote}</p>
+                  <p className="text-sm text-text">{order.customer_note}</p>
                 </div>
               )}
             </div>
@@ -416,7 +498,7 @@ export default function PaymentPage() {
             <div className="bg-card border border-primary/30 rounded-lg p-4">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-text">{t('total')}</span>
-                <span className="text-2xl font-bold text-primary">฿{getTotalPrice()}</span>
+                <span className="text-2xl font-bold text-primary">฿{order?.total_amount}</span>
               </div>
               {processingState === 'SYNCING_ORDER' && (
                 <p className="text-xs text-muted mt-2 text-center">
@@ -426,14 +508,60 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* PromptPay Instructions */}
+          {/* PromptPay QR Code */}
           <div className="px-5 py-6 border-b border-border">
             <h2 className="text-text text-lg font-semibold mb-4">{t('payment')}</h2>
 
             <div className="bg-card border border-border rounded-lg p-4">
-              <p className="text-sm text-muted mb-2">{t('promptPayInstructions')}</p>
-              <p className="text-text font-medium mb-1">{t('promptPayNumber')}</p>
-              <p className="text-2xl font-semibold text-primary">0812345678</p>
+              <p className="text-sm text-muted mb-3 text-center">{t('promptPayInstructions')}</p>
+
+              {/* QR Code Display */}
+              {qrCodeUrl && (
+                <div className="flex flex-col items-center">
+                  <div className="bg-white p-3 rounded-lg mb-3">
+                    <img
+                      ref={qrImageRef}
+                      src={qrCodeUrl}
+                      alt="PromptPay QR Code"
+                      className="w-48 h-48"
+                      crossOrigin="anonymous"
+                    />
+                  </div>
+
+                  {/* Amount Display */}
+                  <div className="text-center mb-3">
+                    <p className="text-xs text-muted mb-1">{language === 'th' ? 'ยอดชำระ' : 'Amount'}</p>
+                    <p className="text-2xl font-bold text-primary">฿{order?.total_amount}</p>
+                  </div>
+
+                  {/* Recipient Info */}
+                  <div className="text-center mb-4">
+                    <p className="text-xs text-muted">{language === 'th' ? 'ชื่อบัญชี' : 'Account Name'}</p>
+                    <p className="text-sm text-text font-medium">{PROMPTPAY_NAME}</p>
+                  </div>
+
+                  {/* Save QR Button */}
+                  <button
+                    type="button"
+                    onClick={handleSaveQR}
+                    disabled={isProcessing}
+                    className="flex items-center gap-2 px-4 py-2 bg-bg-surface border border-border rounded-lg text-sm text-text hover:bg-border transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    {language === 'th' ? 'บันทึก QR' : 'Save QR'}
+                  </button>
+                </div>
+              )}
+
+              {/* Fallback if QR not loaded */}
+              {!qrCodeUrl && (
+                <div className="text-center py-4">
+                  <div className="w-8 h-8 mx-auto mb-2 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm text-muted">{language === 'th' ? 'กำลังสร้าง QR...' : 'Generating QR...'}</p>
+                </div>
+              )}
             </div>
           </div>
 

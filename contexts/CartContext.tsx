@@ -31,6 +31,7 @@ interface CartContextType {
   updateQuantity: (id: string, quantity: number) => void
   removeItem: (id: string) => void
   clearCart: () => void
+  setItems: (items: CartItem[]) => void
   getTotalPrice: () => number
   getTotalItems: () => number
 }
@@ -38,7 +39,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([])
+  const [items, setItemsState] = useState<CartItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
   // Hydrate cart from localStorage on mount
@@ -47,11 +48,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart)
-        setItems(parsed)
+        setItemsState(parsed)
       } catch (e) {
         console.error('Failed to parse cart from localStorage:', e)
       }
     }
+    // Clean up any stale editingOrderId from previous implementation
+    localStorage.removeItem('tenzai_editing_order_id')
     setIsHydrated(true)
   }, [])
 
@@ -64,11 +67,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = (newItem: Omit<CartItem, 'id'>) => {
     const id = Date.now().toString()
-    setItems(prev => [...prev, { ...newItem, id }])
+    setItemsState(prev => [...prev, { ...newItem, id }])
   }
 
   const updateItem = (id: string, updates: Partial<CartItem>) => {
-    setItems(prev => prev.map(item =>
+    setItemsState(prev => prev.map(item =>
       item.id === id ? { ...item, ...updates } : item
     ))
   }
@@ -78,17 +81,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem(id)
       return
     }
-    setItems(prev => prev.map(item => 
+    setItemsState(prev => prev.map(item =>
       item.id === id ? { ...item, quantity } : item
     ))
   }
 
   const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id))
+    setItemsState(prev => prev.filter(item => item.id !== id))
   }
 
   const clearCart = () => {
-    setItems([])
+    setItemsState([])
+  }
+
+  const setItems = (newItems: CartItem[]) => {
+    setItemsState(newItems)
   }
 
   const getTotalPrice = () => {
@@ -109,8 +116,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQuantity,
       removeItem,
       clearCart,
+      setItems,
       getTotalPrice,
-      getTotalItems
+      getTotalItems,
     }}>
       {children}
     </CartContext.Provider>

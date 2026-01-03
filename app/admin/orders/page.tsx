@@ -42,6 +42,9 @@ export default function AdminOrdersPage() {
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
 
+      // Admin dashboard shows only paid orders (slip uploaded)
+      query = query.not('slip_url', 'is', null)
+
       // Status filter
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)

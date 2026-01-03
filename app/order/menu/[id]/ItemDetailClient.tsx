@@ -59,8 +59,11 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
   const [navDirection, setNavDirection] = useState<'forward' | 'backward'>('forward')
 
   const editId = searchParams.get('edit')
+  const addToOrderId = searchParams.get('addToOrder')
   const isEditMode = !!editId
+  const isAddToOrderMode = !!addToOrderId
   const cartItem = isEditMode ? items.find(item => item.id === editId) : null
+  const [isAddingToOrder, setIsAddingToOrder] = useState(false)
 
   useEffect(() => {
     const direction = sessionStorage.getItem('navigationDirection') as 'forward' | 'backward' || 'forward'
@@ -162,25 +165,8 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
     return total
   }
 
-  const handleAddToCart = () => {
-    if (!isFormValid()) {
-      const errors: Record<string, string> = {}
-      optionGroups.forEach(group => {
-        const selectedIds = selectedOptions[group.id] || []
-        if (group.required && group.type === 'single' && selectedIds.length === 0) {
-          errors[group.id] = t('pleaseSelect')
-        } else if (group.required && group.type === 'multi') {
-          const min = group.min || 1
-          if (selectedIds.length < min) {
-            errors[group.id] = `${t('selectAtLeast')} ${min}`
-          }
-        }
-      })
-      setValidationErrors(errors)
-      return
-    }
-
-    const cartOptions = optionGroups
+  const buildCartOptions = () => {
+    return optionGroups
       .filter(group => {
         const selectedIds = selectedOptions[group.id] || []
         return selectedIds.length > 0
@@ -210,7 +196,74 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
           price_delta_thb: priceDelta
         }
       })
+  }
 
+  const handleAddToOrder = async () => {
+    if (!isFormValid() || !addToOrderId) return
+
+    const cartOptions = buildCartOptions()
+    const finalPrice = calculateTotalPrice()
+
+    triggerHaptic()
+    setIsAddingToOrder(true)
+
+    try {
+      const response = await fetch(`/api/order/${addToOrderId}/add-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          menu_item_id: menuItem.id,
+          name_th: menuItem.name_th,
+          name_en: menuItem.name_en,
+          qty: quantity,
+          base_price: menuItem.price_thb,
+          final_price: finalPrice,
+          note: note.trim() || null,
+          selected_options_json: cartOptions.length > 0 ? cartOptions : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('[ADD_TO_ORDER] Failed:', errorData)
+        alert(language === 'th' ? 'เพิ่มรายการไม่สำเร็จ' : 'Failed to add item')
+        setIsAddingToOrder(false)
+        return
+      }
+
+      setShowToast(true)
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('navigationDirection', 'backward')
+        }
+        router.push(`/order/payment?id=${addToOrderId}`)
+      }, 150)
+    } catch (error) {
+      console.error('[ADD_TO_ORDER] Error:', error)
+      alert(language === 'th' ? 'เกิดข้อผิดพลาด' : 'An error occurred')
+      setIsAddingToOrder(false)
+    }
+  }
+
+  const handleAddToCart = () => {
+    if (!isFormValid()) {
+      const errors: Record<string, string> = {}
+      optionGroups.forEach(group => {
+        const selectedIds = selectedOptions[group.id] || []
+        if (group.required && group.type === 'single' && selectedIds.length === 0) {
+          errors[group.id] = t('pleaseSelect')
+        } else if (group.required && group.type === 'multi') {
+          const min = group.min || 1
+          if (selectedIds.length < min) {
+            errors[group.id] = `${t('selectAtLeast')} ${min}`
+          }
+        }
+      })
+      setValidationErrors(errors)
+      return
+    }
+
+    const cartOptions = buildCartOptions()
     const finalPrice = calculateTotalPrice()
 
     triggerHaptic()
@@ -291,17 +344,25 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
                 if (typeof window !== 'undefined') {
                   sessionStorage.setItem('navigationDirection', 'backward')
                 }
-                router.push(isEditMode ? "/order/cart" : "/order/menu")
+                if (isAddToOrderMode) {
+                  router.push(`/order/menu?editOrderId=${addToOrderId}&mode=add`)
+                } else {
+                  router.push(isEditMode ? "/order/cart" : "/order/menu")
+                }
               }, 120)
             }}
             className="text-muted hover:text-text active:text-text transition-colors"
+            disabled={isAddingToOrder}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">
-            {isEditMode ? t('editItem') : t('itemDetails')}
+            {isAddToOrderMode
+              ? (language === 'th' ? 'เพิ่มรายการ' : 'Add Item')
+              : isEditMode ? t('editItem') : t('itemDetails')
+            }
           </h1>
         </header>
 
@@ -413,11 +474,16 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
               </div>
             </div>
             <button
-              onClick={handleAddToCart}
-              disabled={!isFormValid()}
+              onClick={isAddToOrderMode ? handleAddToOrder : handleAddToCart}
+              disabled={!isFormValid() || isAddingToOrder}
               className="w-full py-4 bg-primary text-white font-medium rounded-lg disabled:bg-border disabled:text-muted disabled:cursor-not-allowed transition-all active:scale-[0.98] active:bg-primary/90"
             >
-              {isEditMode ? t('saveChanges') : t('addToCart')}
+              {isAddingToOrder
+                ? (language === 'th' ? 'กำลังเพิ่ม...' : 'Adding...')
+                : isAddToOrderMode
+                  ? (language === 'th' ? 'เพิ่มลงออเดอร์' : 'Add to Order')
+                  : isEditMode ? t('saveChanges') : t('addToCart')
+              }
             </button>
           </div>
         </div>

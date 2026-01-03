@@ -1,19 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { triggerHaptic } from '@/utils/haptic'
 
 type Order = {
   id: string
   order_number: string
-  customer_name: string
-  customer_phone: string
-  customer_line_user_id: string
   pickup_type: string
   pickup_time: string | null
   total_amount: number
   customer_note: string | null
-  slip_url: string | null
+  slip_notified_at: string | null
   status: 'pending' | 'approved' | 'rejected' | null
   created_at: string
 }
@@ -34,7 +33,9 @@ const translations = {
     total: 'ยอดรวม',
     pending: 'รอตรวจสอบ',
     approved: 'อนุมัติแล้ว',
-    rejected: 'ปฏิเสธ'
+    rejected: 'ปฏิเสธ',
+    slipNotUploaded: 'ยังไม่ได้อัปสลิป',
+    uploadSlip: 'อัปสลิป'
   },
   en: {
     myOrders: 'My Orders',
@@ -49,7 +50,9 @@ const translations = {
     total: 'Total',
     pending: 'Pending',
     approved: 'Approved',
-    rejected: 'Rejected'
+    rejected: 'Rejected',
+    slipNotUploaded: 'Slip not uploaded',
+    uploadSlip: 'Upload slip'
   }
 }
 
@@ -74,6 +77,7 @@ const getLiffLanguage = async (): Promise<Language> => {
 }
 
 export default function OrderStatusPage() {
+  const router = useRouter()
   const [language, setLanguage] = useState<Language>('th')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -112,10 +116,10 @@ export default function OrderStatusPage() {
         throw new Error('userId missing')
       }
 
-      // Query orders for this user
+      // Query orders for this user (explicit select, slip_url excluded for privacy)
       const { data, error: queryError } = await supabase
         .from('orders')
-        .select('*')
+        .select('id, order_number, status, pickup_type, pickup_time, total_amount, customer_note, created_at, slip_notified_at')
         .eq('customer_line_user_id', userId)
         .order('created_at', { ascending: false })
         .limit(5)
@@ -256,34 +260,70 @@ export default function OrderStatusPage() {
 
           {!loading && !error && orders.length > 0 && (
             <div className="space-y-4">
-              {orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-card border border-border rounded-lg p-4"
-                >
-                  {/* Order Number & Status */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-xs text-muted mb-1">{t.order}</p>
-                      <p className="text-lg font-semibold text-text">#{order.order_number}</p>
+              {orders.map((order) => {
+                // Determine if slip is missing (use slip_notified_at as safe signal)
+                const needsSlipUpload = !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
+
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      triggerHaptic()
+                      router.push(`/order/status/${order.id}`)
+                    }}
+                    className="bg-card border border-border rounded-lg p-4 cursor-pointer active:bg-border/50 transition-colors"
+                  >
+                    {/* Order Number & Status */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-xs text-muted mb-1">{t.order}</p>
+                        <p className="text-lg font-semibold text-text">#{order.order_number}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {getStatusLabel(order.status)}
+                        </span>
+                        {/* Slip not uploaded badge */}
+                        {needsSlipUpload && (
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-500">
+                            {t.slipNotUploaded}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </div>
 
-                  {/* Date */}
-                  <div className="mb-3 pb-3 border-b border-border">
-                    <p className="text-sm text-muted">{formatDate(order.created_at)}</p>
-                  </div>
+                    {/* Date */}
+                    <div className="mb-3 pb-3 border-b border-border">
+                      <p className="text-sm text-muted">{formatDate(order.created_at)}</p>
+                    </div>
 
-                  {/* Total */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted">{t.total}</span>
-                    <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
+                    {/* Total + Chevron */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted">{t.total}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
+                        <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Upload Slip CTA */}
+                    {needsSlipUpload && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          triggerHaptic()
+                          router.push(`/order/payment?id=${order.id}&from=status`)
+                        }}
+                        className="mt-3 w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+                      >
+                        {t.uploadSlip}
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

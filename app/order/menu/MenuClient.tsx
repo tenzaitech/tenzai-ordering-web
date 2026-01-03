@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import BrandHeader from '@/components/BrandHeader'
 import MenuItemRow from '@/components/MenuItemRow'
 import MenuCardLarge from '@/components/MenuCardLarge'
+import BottomCTABar from '@/components/BottomCTABar'
+import MenuItemDrawer from '@/components/MenuItemDrawer'
 import { triggerHaptic } from '@/utils/haptic'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useCart } from '@/contexts/CartContext'
+import { findItemsByMenuId } from '@/lib/cartUtils'
 
 type Category = string
 
@@ -31,16 +35,24 @@ interface MenuClientProps {
 
 export default function MenuClient({ initialMenuItems, initialCategories }: MenuClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { language, t } = useLanguage()
+  const { items: cartItems, getTotalPrice, getTotalItems } = useCart()
   const [activeCategory, setActiveCategory] = useState<Category>(initialCategories[0] || 'Menu')
   const [searchQuery, setSearchQuery] = useState('')
   const [isRestoringScroll, setIsRestoringScroll] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [drawerItem, setDrawerItem] = useState<MenuItem | null>(null)
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   const observerRef = useRef<IntersectionObserver | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
   const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+
+  // Add-to-order mode: when adding items directly to an existing DB order
+  const editOrderId = searchParams.get('editOrderId')
+  const mode = searchParams.get('mode')
+  const isAddToOrderMode = editOrderId && mode === 'add'
 
   const menuItems = initialMenuItems
   const categories = initialCategories
@@ -155,19 +167,51 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
     handleCategoryClick(category)
   }
 
-  const handleRecommendedTap = (itemId: string) => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
-      sessionStorage.setItem('navigationDirection', 'forward')
-    }
+  const handleMenuItemTap = (item: MenuItem) => {
     triggerHaptic()
-    setTimeout(() => {
-      router.push(`/order/menu/${itemId}`)
-    }, 100)
+
+    // In add-to-order mode, navigate directly to item detail with order params
+    if (isAddToOrderMode) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
+        sessionStorage.setItem('navigationDirection', 'forward')
+      }
+      setTimeout(() => {
+        router.push(`/order/menu/${item.id}?addToOrder=${editOrderId}`)
+      }, 100)
+      return
+    }
+
+    // Normal mode: Check if this item is already in cart
+    const itemsInCart = findItemsByMenuId(cartItems, item.id)
+
+    if (itemsInCart.length > 0) {
+      // Show drawer for items already in cart
+      setDrawerItem(item)
+    } else {
+      // Navigate to item detail for new items
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('menuScrollPosition', window.scrollY.toString())
+        sessionStorage.setItem('navigationDirection', 'forward')
+      }
+      setTimeout(() => {
+        router.push(`/order/menu/${item.id}`)
+      }, 100)
+    }
   }
 
+  const handleRecommendedTap = (itemId: string) => {
+    const item = menuItems.find(m => m.id === itemId)
+    if (item) {
+      handleMenuItemTap(item)
+    }
+  }
+
+  const totalItems = getTotalItems()
+  const totalPrice = getTotalPrice()
+
   return (
-    <div className="min-h-screen bg-bg-root pb-20">
+    <div className="min-h-screen bg-bg-root pb-28">
       <div className="max-w-mobile mx-auto">
         <BrandHeader />
 
@@ -217,6 +261,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                     image={item.image}
                     is_sold_out={item.is_sold_out}
                     subtitle={item.subtitle}
+                    onTap={() => handleMenuItemTap(item)}
                   />
                 ))}
               </div>
@@ -258,7 +303,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
             </div>
 
             {/* Sticky Category Tabs */}
-            <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle">
+            <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle shadow-sm shadow-black/20">
               <div className="flex items-center gap-2">
                 {/* Hamburger Button */}
                 <button
@@ -314,31 +359,23 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                 categoryRefs.current[category] = el
               }}
               data-category={category}
-              className="mb-6"
             >
-              {/* Category Header - Sticky with dynamic z-index */}
-              <div
-                className="sticky top-[141px] bg-card px-5 py-2.5 border-b border-border/50"
-                style={{ zIndex: 30 + index }}
-              >
-                <h2 className="text-text text-sm font-semibold leading-tight">{categoryName || category}</h2>
-              </div>
-
-              {/* Vertical List of Items */}
-              <div className="bg-card">
-                {items.map(item => (
-                  <MenuItemRow
-                    key={item.id}
-                    id={item.id}
-                    name_th={item.name_th}
-                    name_en={item.name_en}
-                    price_thb={item.price_thb}
-                    image={item.image}
-                    is_sold_out={item.is_sold_out}
-                    subtitle={item.subtitle}
-                  />
-                ))}
-              </div>
+              {/* Category Label - LINE MAN style: divider bar + inline label */}
+              {index > 0 && <div className="h-2 bg-bg-elevated" />}
+              <p className="px-5 py-2 text-text-primary font-bold text-base">{categoryName || category}</p>
+              {items.map(item => (
+                <MenuItemRow
+                  key={item.id}
+                  id={item.id}
+                  name_th={item.name_th}
+                  name_en={item.name_en}
+                  price_thb={item.price_thb}
+                  image={item.image}
+                  is_sold_out={item.is_sold_out}
+                  subtitle={item.subtitle}
+                  onTap={() => handleMenuItemTap(item)}
+                />
+              ))}
             </div>
           )
         })}
@@ -398,7 +435,58 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
             </div>
           </div>
         )}
+
+        {/* Item Drawer (when tapping item already in cart) */}
+        {drawerItem && (
+          <MenuItemDrawer
+            menuId={drawerItem.id}
+            menuName_th={drawerItem.name_th}
+            menuName_en={drawerItem.name_en}
+            basePrice={drawerItem.price_thb}
+            cartItems={findItemsByMenuId(cartItems, drawerItem.id)}
+            onClose={() => setDrawerItem(null)}
+          />
+        )}
       </div>
+
+      {/* Bottom CTA Bar - Different for add-to-order mode vs normal */}
+      <BottomCTABar>
+        {isAddToOrderMode ? (
+          <button
+            onClick={() => {
+              triggerHaptic()
+              router.push(`/order/payment?id=${editOrderId}`)
+            }}
+            className="w-full py-3.5 bg-card border border-border text-text font-medium rounded-lg flex items-center justify-center gap-2 hover:bg-border active:bg-border/80 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>{language === 'th' ? 'กลับไปชำระเงิน' : 'Back to Payment'}</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              triggerHaptic()
+              router.push('/order/cart')
+            }}
+            className="w-full py-3.5 bg-primary text-white font-medium rounded-lg flex items-center justify-between px-4 hover:bg-primary/90 active:bg-primary/80 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>{language === 'th' ? 'ตะกร้าของฉัน' : 'My Cart'}</span>
+              {totalItems > 0 && (
+                <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">
+                  {totalItems}
+                </span>
+              )}
+            </div>
+            <span className="font-semibold">฿{totalPrice}</span>
+          </button>
+        )}
+      </BottomCTABar>
     </div>
   )
 }

@@ -319,6 +319,73 @@ ${order.adjustment_note}
   console.log('[LINE:ADJUST] Success:', orderId)
 }
 
+export async function sendCustomerSlipConfirmation(orderId: string): Promise<void> {
+  // Fetch order
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  if (orderError || !order) {
+    console.error('[LINE:CUSTOMER_SLIP] Failed to fetch order:', orderError?.message || 'Not found')
+    throw new Error('Failed to fetch order')
+  }
+
+  if (!order.customer_line_user_id) {
+    console.error('[LINE:CUSTOMER_SLIP] No customer LINE user ID')
+    throw new Error('No customer LINE user ID')
+  }
+
+  // Get LIFF ID for links
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+
+  // Format message with LIFF links (bilingual)
+  const message = `
+🧾 ได้รับสลิปเรียบร้อยแล้ว
+We received your payment slip.
+
+📋 ออเดอร์ / Order: #${order.order_number}
+⏳ สถานะ: รอตรวจสอบ / Waiting for approval
+
+📱 ตรวจสอบสถานะออเดอร์:
+https://liff.line.me/${liffId}/order/status/${orderId}
+
+📋 ดูออเดอร์ทั้งหมด:
+https://liff.line.me/${liffId}/order/status
+
+ขอบคุณที่ใช้บริการ TENZAI
+Thank you for ordering with TENZAI!
+  `.trim()
+
+  // Validate env vars
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
+  }
+
+  // Send via LINE Messaging API
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      to: order.customer_line_user_id,
+      messages: [
+        { type: 'text', text: message }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`LINE API error ${response.status}: ${errorText}`)
+  }
+
+  console.log('[LINE:CUSTOMER_SLIP] Success:', orderId)
+}
+
 export async function sendCustomerNotification(orderId: string, status: 'ready' | 'picked_up'): Promise<void> {
   // Fetch order
   const { data: order, error: orderError } = await supabase
