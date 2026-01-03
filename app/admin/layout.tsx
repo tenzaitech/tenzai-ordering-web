@@ -9,9 +9,11 @@ import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 const navItems = [
   { href: '/admin', labelKey: 'dashboard' },
   { href: '/admin/orders', labelKey: 'orders' },
+  { href: '/staff', labelKey: 'staff' },
   { href: '/admin/menu', labelKey: 'menu' },
   { href: '/admin/categories', labelKey: 'categories' },
-  { href: '/admin/option-groups', labelKey: 'options' }
+  { href: '/admin/option-groups', labelKey: 'options' },
+  { href: '/admin/settings', labelKey: 'settings' }
 ]
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {

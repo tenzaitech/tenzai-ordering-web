@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/admin-fetch'
 
 export default function AdminSettingsPage() {
@@ -9,11 +9,26 @@ export default function AdminSettingsPage() {
   const [testingApprover, setTestingApprover] = useState(false)
   const [testingStaff, setTestingStaff] = useState(false)
 
+  const [promptPayId, setPromptPayId] = useState('')
   const [lineApproverId, setLineApproverId] = useState('')
   const [lineStaffId, setLineStaffId] = useState('')
   const [newStaffPin, setNewStaffPin] = useState('')
 
+  // Track original values to detect changes
+  const originalValues = useRef<{ promptpay_id: string; line_approver_id: string; line_staff_id: string }>({
+    promptpay_id: '',
+    line_approver_id: '',
+    line_staff_id: ''
+  })
+
   const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Check if any field has changed
+  const hasChanges =
+    promptPayId !== originalValues.current.promptpay_id ||
+    lineApproverId !== originalValues.current.line_approver_id ||
+    lineStaffId !== originalValues.current.line_staff_id ||
+    newStaffPin.length > 0
 
   useEffect(() => {
     fetchSettings()
@@ -24,8 +39,15 @@ export default function AdminSettingsPage() {
       const res = await adminFetch('/api/admin/settings')
       if (res.ok) {
         const data = await res.json()
-        setLineApproverId(data.line_approver_id)
-        setLineStaffId(data.line_staff_id)
+        setPromptPayId(data.promptpay_id || '')
+        setLineApproverId(data.line_approver_id || '')
+        setLineStaffId(data.line_staff_id || '')
+        // Store original values for dirty tracking
+        originalValues.current = {
+          promptpay_id: data.promptpay_id || '',
+          line_approver_id: data.line_approver_id || '',
+          line_staff_id: data.line_staff_id || ''
+        }
       } else if (res.status === 401) {
         showFeedback('Admin access required. Please access via /admin/menu first.', 'error')
       } else {
@@ -46,37 +68,57 @@ export default function AdminSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true)
 
-    // Validation
-    if (!lineApproverId.trim() || !lineStaffId.trim()) {
-      showFeedback('LINE IDs cannot be empty', 'error')
-      setSaving(false)
+    if (!hasChanges) {
+      showFeedback('No changes to save', 'error')
       return
     }
 
+    setSaving(true)
+
+    // Validate only changed fields
     if (newStaffPin && !/^\d{4}$/.test(newStaffPin)) {
       showFeedback('PIN must be exactly 4 digits', 'error')
       setSaving(false)
       return
     }
 
+    // Build payload with only changed fields (PATCH-style)
+    const payload: Record<string, string> = {}
+
+    if (promptPayId !== originalValues.current.promptpay_id) {
+      payload.promptpay_id = promptPayId.trim()
+    }
+    if (lineApproverId !== originalValues.current.line_approver_id) {
+      payload.line_approver_id = lineApproverId.trim()
+    }
+    if (lineStaffId !== originalValues.current.line_staff_id) {
+      payload.line_staff_id = lineStaffId.trim()
+    }
+    if (newStaffPin) {
+      payload.new_staff_pin = newStaffPin
+    }
+
     try {
       const res = await adminFetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          line_approver_id: lineApproverId.trim(),
-          line_staff_id: lineStaffId.trim(),
-          new_staff_pin: newStaffPin || undefined
-        })
+        body: JSON.stringify(payload)
       })
 
       if (res.ok) {
-        showFeedback('Settings saved successfully!', 'success')
+        // Update original values to reflect saved state
+        originalValues.current = {
+          promptpay_id: promptPayId,
+          line_approver_id: lineApproverId,
+          line_staff_id: lineStaffId
+        }
         setNewStaffPin('')
+
         if (newStaffPin) {
-          showFeedback('Settings saved! Staff PIN changed - all staff sessions will be invalidated on next request.', 'success')
+          showFeedback('Settings saved! Staff PIN changed - all staff sessions will be invalidated.', 'success')
+        } else {
+          showFeedback('Settings saved successfully!', 'success')
         }
       } else {
         const error = await res.json()
@@ -143,6 +185,23 @@ export default function AdminSettingsPage() {
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
+          {/* PromptPay ID */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-text mb-4">PromptPay ID</h2>
+            <p className="text-sm text-muted mb-4">
+              Phone number or National ID for receiving PromptPay payments.
+              <br />
+              <span className="text-primary">Format: 0XXXXXXXXX (10 digits) or 13-digit National ID</span>
+            </p>
+            <input
+              type="text"
+              value={promptPayId}
+              onChange={(e) => setPromptPayId(e.target.value)}
+              placeholder="0988799990"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
           {/* LINE Approver ID */}
           <div className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-lg font-semibold text-text mb-4">LINE Approver ID</h2>
@@ -156,7 +215,6 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setLineApproverId(e.target.value)}
                 placeholder="U1234567890abcdef..."
                 className="flex-1 px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                required
               />
               <button
                 type="button"
@@ -182,7 +240,6 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setLineStaffId(e.target.value)}
                 placeholder="C1234567890abcdef... or U1234567890abcdef..."
                 className="flex-1 px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                required
               />
               <button
                 type="button"
@@ -218,10 +275,10 @@ export default function AdminSettingsPage() {
           {/* Save Button */}
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || !hasChanges}
             className="w-full py-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? 'Saving...' : hasChanges ? 'Save Settings' : 'No Changes'}
           </button>
         </form>
       </div>

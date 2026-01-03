@@ -11,8 +11,8 @@ import { getCartFingerprint } from '@/lib/orderUtils'
 import { generatePromptPayPayload } from '@/lib/promptpay'
 import ErrorModal from '@/components/ErrorModal'
 
-const PROMPTPAY_ID = '0988799990'
-const PROMPTPAY_NAME = 'ณัฐนันท์ มุ่งงาม'
+// Fallback PromptPay ID (used only if DB has no promptpay_id configured)
+const FALLBACK_PROMPTPAY_ID = '0988799990'
 
 type ProcessingState = 'IDLE' | 'UPLOADING_SLIP' | 'SYNCING_ORDER'
 
@@ -33,6 +33,7 @@ export default function PaymentPage() {
   const [mounted, setMounted] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
+  const [promptPayId, setPromptPayId] = useState<string>(FALLBACK_PROMPTPAY_ID)
   const qrImageRef = useRef<HTMLImageElement>(null)
 
   const orderId = searchParams.get('id')
@@ -48,6 +49,17 @@ export default function PaymentPage() {
 
     const fetchOrder = async () => {
       try {
+        // Fetch PromptPay ID from admin_settings
+        const { data: settings } = await supabase
+          .from('admin_settings')
+          .select('promptpay_id')
+          .limit(1)
+          .single()
+
+        const dbPromptPayId = settings?.promptpay_id || FALLBACK_PROMPTPAY_ID
+        setPromptPayId(dbPromptPayId)
+
+        // Fetch order
         const { data, error } = await supabase
           .from('orders')
           .select('*')
@@ -72,9 +84,9 @@ export default function PaymentPage() {
         setOrderItems(itemsData || [])
         setLoading(false)
 
-        // Generate PromptPay QR code with locked amount
+        // Generate PromptPay QR code with locked amount using DB promptpay_id
         if (data.total_amount) {
-          const payload = generatePromptPayPayload(PROMPTPAY_ID, data.total_amount)
+          const payload = generatePromptPayPayload(dbPromptPayId, data.total_amount)
           const encodedPayload = encodeURIComponent(payload)
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedPayload}&format=png&margin=10`
           setQrCodeUrl(qrUrl)
@@ -536,8 +548,8 @@ export default function PaymentPage() {
 
                   {/* Recipient Info */}
                   <div className="text-center mb-4">
-                    <p className="text-xs text-muted">{language === 'th' ? 'ชื่อบัญชี' : 'Account Name'}</p>
-                    <p className="text-sm text-text font-medium">{PROMPTPAY_NAME}</p>
+                    <p className="text-xs text-muted">{language === 'th' ? 'พร้อมเพย์' : 'PromptPay'}</p>
+                    <p className="text-sm text-text font-medium">{promptPayId}</p>
                   </div>
 
                   {/* Save QR Button */}

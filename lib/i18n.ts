@@ -99,10 +99,12 @@ const translations = {
     // Admin navigation
     dashboard: 'แดชบอร์ด',
     orders: 'คำสั่งซื้อ',
+    staff: 'พนักงาน',
     menu: 'เมนู',
     categories: 'หมวดหมู่',
     options: 'ตัวเลือก',
     importExport: 'นำเข้า/ส่งออก',
+    settings: 'ตั้งค่า',
 
     // Admin dashboard
     operations: 'การดำเนินงาน',
@@ -287,10 +289,12 @@ const translations = {
     // Admin navigation
     dashboard: 'Dashboard',
     orders: 'Orders',
+    staff: 'Staff',
     menu: 'Menu',
     categories: 'Categories',
     options: 'Options',
     importExport: 'Import/Export',
+    settings: 'Settings',
 
     // Admin dashboard
     operations: 'Operations',
