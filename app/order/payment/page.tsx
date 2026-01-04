@@ -45,6 +45,9 @@ function PaymentPageContent() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
   const [promptPayId, setPromptPayId] = useState<string>(FALLBACK_PROMPTPAY_ID)
+  const [savingQR, setSavingQR] = useState(false)
+  const [showQRModal, setShowQRModal] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const qrImageRef = useRef<HTMLImageElement>(null)
 
   const orderId = searchParams.get('id')
@@ -255,23 +258,88 @@ function PaymentPageContent() {
   }
 
   const handleSaveQR = async () => {
-    if (!qrCodeUrl) return
+    if (!qrImageRef.current) return
     triggerHaptic()
+    setSavingQR(true)
 
     try {
-      const response = await fetch(qrCodeUrl)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+      const img = qrImageRef.current
+      const fileName = `tenzai-promptpay-${order?.order_number || 'qr'}.png`
 
+      // Step 1: Create canvas and draw the image
+      const canvas = document.createElement('canvas')
+      const padding = 20
+      canvas.width = img.naturalWidth + padding * 2
+      canvas.height = img.naturalHeight + padding * 2
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas not supported')
+
+      // White background
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw image centered with padding
+      ctx.drawImage(img, padding, padding, img.naturalWidth, img.naturalHeight)
+
+      // Step 2: Convert canvas to Blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b)
+          else reject(new Error('Failed to create blob'))
+        }, 'image/png')
+      })
+
+      // Step 3: Try Web Share API first (best for mobile)
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
+        const file = new File([blob], fileName, { type: 'image/png' })
+        const shareData = { files: [file], title: 'PromptPay QR' }
+
+        if (navigator.canShare(shareData)) {
+          try {
+            await navigator.share(shareData)
+            setSavingQR(false)
+            return
+          } catch (shareErr) {
+            // User cancelled or share failed, continue to fallback
+            if ((shareErr as Error).name === 'AbortError') {
+              setSavingQR(false)
+              return
+            }
+            console.log('[QR] Share API failed, trying download fallback')
+          }
+        }
+      }
+
+      // Step 4: Fallback - try download via <a download> (desktop + some Android)
+      const dataUrl = canvas.toDataURL('image/png')
       const link = document.createElement('a')
-      link.href = url
-      link.download = `tenzai-promptpay-${order?.order_number || 'qr'}.png`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      link.href = dataUrl
+      link.download = fileName
+
+      // Check if we're on iOS (download attribute doesn't work on iOS Safari)
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+      if (!isIOS && 'download' in link) {
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        setSavingQR(false)
+        return
+      }
+
+      // Step 5: Final fallback - show modal with press-and-hold instructions
+      setQrDataUrl(dataUrl)
+      setShowQRModal(true)
+      setSavingQR(false)
     } catch (err) {
       console.error('[QR] Failed to save QR:', err)
+      setSavingQR(false)
+
+      // Show error to user
+      alert(language === 'th'
+        ? 'ไม่สามารถบันทึก QR ได้ กรุณาลองกดค้างที่รูป QR เพื่อบันทึก'
+        : 'Could not save QR. Please try long-pressing the QR image to save.')
     }
   }
 
@@ -602,13 +670,22 @@ function PaymentPageContent() {
                   <button
                     type="button"
                     onClick={handleSaveQR}
-                    disabled={isProcessing}
+                    disabled={isProcessing || savingQR}
                     className="flex items-center gap-2 px-4 py-2 bg-bg-surface border border-border rounded-lg text-sm text-text hover:bg-border transition-colors disabled:opacity-50"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    {language === 'th' ? 'บันทึก QR' : 'Save QR'}
+                    {savingQR ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-text border-t-transparent rounded-full animate-spin"></div>
+                        {language === 'th' ? 'กำลังบันทึก...' : 'Saving...'}
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        {language === 'th' ? 'บันทึก QR' : 'Save QR'}
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -691,6 +768,55 @@ function PaymentPageContent() {
           </div>
         </div>
       </div>
+
+      {/* QR Save Modal (fallback for WebViews that don't support download) */}
+      {showQRModal && qrDataUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-5">
+          <div className="bg-card border border-border rounded-lg p-6 max-w-sm w-full text-center">
+            <h3 className="text-lg font-semibold text-text mb-2">
+              {language === 'th' ? 'บันทึก QR Code' : 'Save QR Code'}
+            </h3>
+            <p className="text-sm text-muted mb-4">
+              {language === 'th'
+                ? 'กดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ"'
+                : 'Press and hold the image, then select "Save Image"'}
+            </p>
+            <div className="bg-white p-4 rounded-lg mb-4 inline-block">
+              <img
+                src={qrDataUrl}
+                alt="PromptPay QR Code"
+                className="w-48 h-48 mx-auto"
+              />
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={async () => {
+                  // Try to open in external browser for easier saving
+                  try {
+                    const liff = (await import('@line/liff')).default
+                    if (liff.isInClient()) {
+                      liff.openWindow({ url: qrDataUrl, external: true })
+                    } else {
+                      window.open(qrDataUrl, '_blank')
+                    }
+                  } catch {
+                    window.open(qrDataUrl, '_blank')
+                  }
+                }}
+                className="w-full py-3 bg-bg-surface border border-border text-text font-medium rounded-lg hover:bg-border transition-colors"
+              >
+                {language === 'th' ? 'เปิดรูปภาพ' : 'Open Image'}
+              </button>
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="w-full py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                {language === 'th' ? 'ปิด' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

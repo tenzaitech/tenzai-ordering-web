@@ -29,6 +29,45 @@ type OrderItemRow = {
   note: string | null
 }
 
+// ============================================================
+// CANONICAL ORIGIN HELPERS
+// ============================================================
+
+/**
+ * Get the canonical app origin for generating public URLs.
+ * Uses NEXT_PUBLIC_APP_ORIGIN env var as single source of truth.
+ */
+function getAppOrigin(): string {
+  const origin = process.env.NEXT_PUBLIC_APP_ORIGIN
+  if (!origin) {
+    console.warn('[LINE:URL] NEXT_PUBLIC_APP_ORIGIN not set, using fallback')
+    return 'https://order.tenzai.com'
+  }
+  return origin.replace(/\/$/, '') // Remove trailing slash if present
+}
+
+/**
+ * Get the LIFF deep link URL for customer-facing pages.
+ * Uses LIFF URL format: https://liff.line.me/{LIFF_ID}/{path}
+ */
+function getLiffDeepLink(path: string): string {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  if (!liffId) {
+    console.warn('[LINE:URL] NEXT_PUBLIC_LIFF_ID not set')
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return `https://liff.line.me/${liffId}${cleanPath}`
+}
+
+/**
+ * Get the admin panel URL (not LIFF, direct browser access).
+ */
+function getAdminUrl(path: string): string {
+  const origin = getAppOrigin()
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return `${origin}${cleanPath}`
+}
+
 // Fetch LINE recipient IDs from DB (with env fallback)
 async function getLineRecipients(): Promise<{ approverId: string; staffId: string }> {
   const { data: settingsData } = await supabase
@@ -128,6 +167,8 @@ interface FlexCardOptions {
   slipUrl?: string
   actionUrl?: string
   showButton?: boolean
+  buttonLabel?: string
+  buttonColor?: string
   footerText?: string
 }
 
@@ -142,6 +183,8 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
     slipUrl,
     actionUrl,
     showButton = false,
+    buttonLabel,
+    buttonColor,
     footerText
   } = options
 
@@ -318,11 +361,11 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
           type: 'button',
           action: {
             type: 'uri',
-            label: 'ดูออเดอร์',
+            label: buttonLabel || 'ดูออเดอร์',
             uri: actionUrl
           },
           style: 'primary',
-          color: '#0066cc',
+          color: buttonColor || '#0066cc',
           height: 'sm'
         }
       ],
@@ -424,7 +467,10 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
   // Format items list (EN names with fallback to TH)
   const itemsList = items?.map(item => `${item.qty}x ${item.name_en || item.name_th}`) || []
 
-  // Build Flex card for approver (NO button, EN-first)
+  // Build admin approve URL (protected by admin session)
+  const approveUrl = getAdminUrl(`/admin/orders/${orderId}`)
+
+  // Build Flex card for approver (HAS Approve button, EN-first)
   const flexCard = buildFlexOrderCard({
     titleTH: 'New paid order to verify',
     titleEN: 'Check slip and approve',
@@ -439,8 +485,10 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
     noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     slipUrl: order.slip_url || undefined,
-    showButton: false,
-    footerText: 'Check in Admin Panel'
+    showButton: true,
+    buttonLabel: 'Approve Order',
+    buttonColor: '#22c55e',
+    actionUrl: approveUrl
   })
 
   // Get approver ID from DB/env
@@ -697,9 +745,8 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
     throw new Error('No customer LINE user ID')
   }
 
-  // Get LIFF ID for links
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
-  const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
+  // Build customer status URL via LIFF deep link
+  const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
 
   // Build Flex card for customer (HAS button)
   const flexCard = buildFlexOrderCard({
@@ -770,9 +817,8 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
     throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
   }
 
-  // Get LIFF ID for links
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
-  const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
+  // Build customer status URL via LIFF deep link
+  const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
 
   // Format pickup time
   const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
@@ -852,9 +898,8 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
   let message: object
 
   if (status === 'ready') {
-    // Get LIFF ID for links
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
-    const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
+    // Build customer status URL via LIFF deep link
+    const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
 
     // Build Flex card for "ready" status (HAS button)
     const flexCard = buildFlexOrderCard({
