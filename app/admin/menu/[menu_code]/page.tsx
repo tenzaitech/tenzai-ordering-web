@@ -25,6 +25,10 @@ type OptionGroup = {
   group_name: string
 }
 
+type MenuOptionGroupRow = {
+  group_code: string
+}
+
 async function getMenuEditData(menuCode: string) {
   const { data: categories } = await supabase
     .from('categories')
@@ -39,8 +43,8 @@ async function getMenuEditData(menuCode: string) {
   if (menuCode === 'new') {
     return {
       menuItem: null,
-      categories: categories as Category[] || [],
-      optionGroups: optionGroups as OptionGroup[] || [],
+      categories: (categories ?? []) as Category[],
+      optionGroups: (optionGroups ?? []) as OptionGroup[],
       selectedOptionGroups: []
     }
   }
@@ -51,16 +55,18 @@ async function getMenuEditData(menuCode: string) {
     .eq('menu_code', menuCode)
     .single()
 
-  const { data: menuOptionGroups } = await supabase
+  const { data: menuOptionGroupsData } = await supabase
     .from('menu_option_groups')
     .select('group_code')
     .eq('menu_code', menuCode)
 
+  const menuOptionGroups = (menuOptionGroupsData ?? []) as MenuOptionGroupRow[]
+
   return {
     menuItem: menuItem as MenuItem | null,
-    categories: categories as Category[] || [],
-    optionGroups: optionGroups as OptionGroup[] || [],
-    selectedOptionGroups: (menuOptionGroups || []).map(m => m.group_code)
+    categories: (categories ?? []) as Category[],
+    optionGroups: (optionGroups ?? []) as OptionGroup[],
+    selectedOptionGroups: menuOptionGroups.map(m => m.group_code)
   }
 }
 
