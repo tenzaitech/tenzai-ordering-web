@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useTheme } from '@/hooks/useTheme'
-import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const navItems = [
   { href: '/admin', labelKey: 'dashboard' },
@@ -181,9 +181,5 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <LanguageProvider scope="admin">
-      <AdminLayoutContent>{children}</AdminLayoutContent>
-    </LanguageProvider>
-  )
+  return <AdminLayoutContent>{children}</AdminLayoutContent>
 }
