@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabase } from '@/lib/supabase'
 
+type OrderRow = {
+  id: string
+  status: string
+  slip_notified_at: string | null
+  total_amount: number
+}
+
+type MenuItemRow = {
+  price: number
+}
+
+type OrderItemRow = {
+  final_price: number
+  qty: number
+}
+
+type NewItemRow = {
+  id: string
+}
+
 // Add a new item to an existing order (DB-only, no cart)
 export async function POST(
   request: NextRequest,
@@ -21,12 +41,14 @@ export async function POST(
     const userId = userIdCookie.value
 
     // Fetch order with ownership check
-    const { data: order, error: orderError } = await supabase
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select('id, status, slip_notified_at, total_amount')
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
       .single()
+
+    const order = orderData as OrderRow | null
 
     if (orderError || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
@@ -57,11 +79,13 @@ export async function POST(
     }
 
     // Server-side price verification
-    const { data: menuItem } = await supabase
+    const { data: menuData } = await supabase
       .from('menu_items')
       .select('price')
       .eq('menu_code', menu_item_id)
       .single()
+
+    const menuItem = menuData as MenuItemRow | null
 
     let verifiedFinalPrice = final_price
     if (menuItem) {
@@ -82,7 +106,7 @@ export async function POST(
     }
 
     // Insert new order item
-    const { data: newItem, error: insertError } = await supabase
+    const { data: newItemData, error: insertError } = await supabase
       .from('order_items')
       .insert({
         order_id: orderId,
@@ -94,9 +118,11 @@ export async function POST(
         final_price: verifiedFinalPrice,
         note: note || null,
         selected_options_json: selected_options_json || null,
-      })
+      } as never)
       .select('id')
       .single()
+
+    const newItem = newItemData as NewItemRow | null
 
     if (insertError) {
       console.error('[API:ADD_ITEM] Insert error:', insertError)
@@ -104,21 +130,22 @@ export async function POST(
     }
 
     // Recalculate total from DB (race-safe)
-    const { data: allItems, error: itemsError } = await supabase
+    const { data: allItemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('final_price, qty')
       .eq('order_id', orderId)
 
-    if (itemsError || !allItems) {
+    if (itemsError || !allItemsData) {
       console.error('[API:ADD_ITEM] Failed to fetch items for total recalculation:', itemsError)
       return NextResponse.json({ error: 'Failed to recalculate total' }, { status: 500 })
     }
 
+    const allItems = allItemsData as OrderItemRow[]
     const recalculatedTotal = allItems.reduce((sum, item) => sum + (item.final_price * item.qty), 0)
 
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ total_amount: recalculatedTotal })
+      .update({ total_amount: recalculatedTotal } as never)
       .eq('id', orderId)
 
     if (updateError) {
@@ -128,7 +155,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      item_id: newItem.id,
+      item_id: newItem!.id,
       new_total: recalculatedTotal,
     })
   } catch (error) {

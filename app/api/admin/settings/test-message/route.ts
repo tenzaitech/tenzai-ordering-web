@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type SettingsRow = {
+  line_approver_id: string | null
+  line_staff_id: string | null
+}
+
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -14,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch LINE IDs from DB settings
-    const { data: settings, error: settingsError } = await supabase
+    const { data: settingsData, error: settingsError } = await supabase
       .from('admin_settings')
       .select('line_approver_id, line_staff_id')
       .limit(1)
@@ -24,6 +29,8 @@ export async function POST(request: NextRequest) {
       console.error('[ADMIN:TEST] Settings fetch error:', settingsError.message)
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
+
+    const settings = settingsData as SettingsRow | null
 
     // Determine recipient (DB first, env fallback)
     let recipientId: string

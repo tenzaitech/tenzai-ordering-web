@@ -4,6 +4,24 @@ import { checkAdminAuth } from '@/lib/admin-gate'
 import { scrypt, randomBytes } from 'crypto'
 import { promisify } from 'util'
 
+type SettingsRow = {
+  id: string
+  promptpay_id: string | null
+  line_approver_id: string | null
+  line_staff_id: string | null
+  pin_version: number
+  staff_pin_hash?: string
+}
+
+type SettingsInsert = {
+  promptpay_id: string
+  line_approver_id: string
+  line_staff_id: string
+  staff_pin_hash: string
+  pin_version: number
+  updated_at: string
+}
+
 const scryptAsync = promisify(scrypt)
 
 async function hashPin(pin: string): Promise<string> {
@@ -24,7 +42,7 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-    const { data, error } = await supabase
+    const { data: rawData, error } = await supabase
       .from('admin_settings')
       .select('id, promptpay_id, line_approver_id, line_staff_id, pin_version')
       .limit(1)
@@ -34,6 +52,8 @@ export async function GET(request: NextRequest) {
       console.error('[ADMIN:SETTINGS] Fetch error:', error.message)
       return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
+
+    const data = rawData as SettingsRow | null
 
     // If no row exists, return defaults
     if (!data) {
@@ -81,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch existing settings
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('admin_settings')
       .select('*')
       .limit(1)
@@ -91,6 +111,8 @@ export async function POST(request: NextRequest) {
       console.error('[ADMIN:SETTINGS] Fetch error:', fetchError.message)
       return NextResponse.json({ error: 'Failed to fetch existing settings' }, { status: 500 })
     }
+
+    const existing = existingData as SettingsRow | null
 
     // Prepare update data (only include fields that were provided)
     const updateData: Record<string, any> = {
@@ -118,7 +140,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       const { error: updateError } = await supabase
         .from('admin_settings')
-        .update(updateData)
+        .update(updateData as never)
         .eq('id', existing.id)
 
       if (updateError) {
@@ -131,16 +153,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'PIN required for initial setup' }, { status: 400 })
       }
       const hashedPin = await hashPin(new_staff_pin)
+      const insertPayload: SettingsInsert = {
+        promptpay_id: promptpay_id || '',
+        line_approver_id: line_approver_id || '',
+        line_staff_id: line_staff_id || '',
+        staff_pin_hash: hashedPin,
+        pin_version: 1,
+        updated_at: new Date().toISOString()
+      }
       const { error: insertError } = await supabase
         .from('admin_settings')
-        .insert({
-          promptpay_id: promptpay_id || '',
-          line_approver_id: line_approver_id || '',
-          line_staff_id: line_staff_id || '',
-          staff_pin_hash: hashedPin,
-          pin_version: 1,
-          updated_at: new Date().toISOString()
-        })
+        .insert(insertPayload as never)
 
       if (insertError) {
         console.error('[ADMIN:SETTINGS] Insert error:', insertError.message)

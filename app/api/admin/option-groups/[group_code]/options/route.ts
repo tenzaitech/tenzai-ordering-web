@@ -3,6 +3,22 @@ import { supabase } from '@/lib/supabase'
 import { parseIntegerDelta, isValidIntegerDelta } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type SortOrderRow = {
+  sort_order: number
+}
+
+type OptionInsert = {
+  option_code: string
+  group_code: string
+  option_name: string
+  price_delta: number
+  sort_order: number
+}
+
+type SortOrderUpdate = {
+  sort_order: number
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ group_code: string }> }
@@ -24,7 +40,7 @@ export async function POST(
 
     const priceDelta = parseIntegerDelta(body.price_delta)
 
-    const { data: maxSortOrder } = await supabase
+    const { data: sortData } = await supabase
       .from('options')
       .select('sort_order')
       .eq('group_code', group_code)
@@ -32,19 +48,21 @@ export async function POST(
       .limit(1)
       .single()
 
+    const maxSortOrder = sortData as SortOrderRow | null
     const nextSortOrder = maxSortOrder ? maxSortOrder.sort_order + 1 : 0
 
     const optionCode = `${group_code}_${Date.now()}`
 
+    const insertPayload: OptionInsert = {
+      option_code: optionCode,
+      group_code: group_code,
+      option_name: body.option_name.trim(),
+      price_delta: priceDelta,
+      sort_order: nextSortOrder
+    }
     const { error } = await supabase
       .from('options')
-      .insert({
-        option_code: optionCode,
-        group_code: group_code,
-        option_name: body.option_name.trim(),
-        price_delta: priceDelta,
-        sort_order: nextSortOrder
-      })
+      .insert(insertPayload as never)
 
     if (error) {
       console.error('[ADMIN_OPTIONS_POST] Error:', error)
@@ -73,9 +91,10 @@ export async function PATCH(
       const updates = body.reorder as Array<{ option_code: string; sort_order: number }>
 
       for (const update of updates) {
+        const reorderPayload: SortOrderUpdate = { sort_order: update.sort_order }
         await supabase
           .from('options')
-          .update({ sort_order: update.sort_order })
+          .update(reorderPayload as never)
           .eq('option_code', update.option_code)
           .eq('group_code', group_code)
       }
@@ -105,7 +124,7 @@ export async function PATCH(
 
     const { error } = await supabase
       .from('options')
-      .update(updateData)
+      .update(updateData as never)
       .eq('option_code', body.option_code)
       .eq('group_code', group_code)
 

@@ -19,6 +19,11 @@ type ErrorState = {
   orderId?: string
 } | null
 
+type OrderInsertResult = {
+  id: string
+  order_number: string
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, getTotalPrice, clearCart } = useCart()
@@ -166,7 +171,7 @@ export default function CheckoutPage() {
         pickupTimeISO = `${year}-${month}-${day}T${hours}:${minutes}:00+07:00`
       }
 
-      const { data: orderData, error: orderError } = await supabase
+      const { data: orderInsertData, error: orderError } = await supabase
         .from('orders')
         .insert({
           order_number: orderNumber,
@@ -178,9 +183,11 @@ export default function CheckoutPage() {
           total_amount: getTotalPrice(),
           customer_note: customerNote.trim() || null,
           slip_url: null,
-        })
+        } as never)
         .select()
         .single()
+
+      const orderData = orderInsertData as OrderInsertResult | null
 
       if (orderError || !orderData) {
         console.error('[ERROR:ORDER]', orderError)
@@ -219,7 +226,7 @@ export default function CheckoutPage() {
 
       const { data: itemsData, error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems)
+        .insert(orderItems as never)
         .select()
 
       if (itemsError) {

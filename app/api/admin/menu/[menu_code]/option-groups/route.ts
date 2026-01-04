@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type MenuOptionGroupRow = {
+  group_code: string
+}
+
+type MenuOptionGroupInsert = {
+  menu_code: string
+  group_code: string
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ menu_code: string }> }
@@ -12,7 +21,7 @@ export async function GET(
   try {
     const { menu_code } = await params
 
-    const { data: mappings, error } = await supabase
+    const { data, error } = await supabase
       .from('menu_option_groups')
       .select('group_code')
       .eq('menu_code', menu_code)
@@ -22,7 +31,8 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch menu option groups' }, { status: 500 })
     }
 
-    return NextResponse.json({ group_codes: (mappings || []).map(m => m.group_code) })
+    const mappings = (data ?? []) as MenuOptionGroupRow[]
+    return NextResponse.json({ group_codes: mappings.map(m => m.group_code) })
   } catch (error) {
     console.error('[ADMIN_MENU_OPTION_GROUPS_GET] Unexpected error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
@@ -50,14 +60,14 @@ export async function POST(
       .eq('menu_code', menu_code)
 
     if (body.group_codes.length > 0) {
-      const mappings = body.group_codes.map((group_code: string) => ({
+      const mappings: MenuOptionGroupInsert[] = body.group_codes.map((group_code: string) => ({
         menu_code,
         group_code
       }))
 
       const { error } = await supabase
         .from('menu_option_groups')
-        .insert(mappings)
+        .insert(mappings as never)
 
       if (error) {
         console.error('[ADMIN_MENU_OPTION_GROUPS_POST] Error:', error)

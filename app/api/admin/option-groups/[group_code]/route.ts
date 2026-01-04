@@ -79,7 +79,7 @@ export async function PATCH(
 
     const { error } = await supabase
       .from('option_groups')
-      .update(updateData)
+      .update(updateData as never)
       .eq('group_code', group_code)
 
     if (error) {

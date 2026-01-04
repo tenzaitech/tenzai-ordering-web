@@ -30,6 +30,11 @@ type Order = {
 
 type Tab = 'prepare' | 'ready' | 'history'
 
+type OrderRow = {
+  [key: string]: unknown
+  id: string
+}
+
 export default function StaffBoardPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -140,9 +145,10 @@ export default function StaffBoardPage() {
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (!error && data) {
+      const orders = (data ?? []) as OrderRow[]
+      if (!error && orders.length > 0) {
         const ordersWithItems = await Promise.all(
-          data.map(async (order) => {
+          orders.map(async (order) => {
             const { data: items } = await supabase
               .from('order_items')
               .select('*')
@@ -150,7 +156,7 @@ export default function StaffBoardPage() {
             return { ...order, items: items || [] }
           })
         )
-        setHistoryOrders(ordersWithItems)
+        setHistoryOrders(ordersWithItems as unknown as Order[])
       }
     } catch (error) {
       console.error('[STAFF] Fetch history error:', error)

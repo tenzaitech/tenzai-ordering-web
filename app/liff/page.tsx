@@ -68,7 +68,7 @@ export default function LiffBootstrapPage() {
 
         // Determine redirect destination
         // Check if LIFF was opened with a specific path (e.g., /order/status/[id])
-        const context = liff.getContext()
+        const context = liff.getContext() as { path?: string } | null
         const rawPath = context?.path || ''
 
         // Normalize path: trim whitespace, ensure leading slash, preserve query/hash

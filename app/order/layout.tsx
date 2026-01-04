@@ -6,6 +6,10 @@ import { supabase } from '@/lib/supabase'
 import TopBar from '@/components/TopBar'
 import FloatingCartButton from '@/components/FloatingCartButton'
 
+type SettingsRow = {
+  value: { enabled: boolean; message?: string }
+}
+
 export default function OrderLayout({
   children,
 }: {
@@ -20,7 +24,7 @@ export default function OrderLayout({
 
     const checkOrderAccepting = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('system_settings')
           .select('value')
           .eq('key', 'order_accepting')
@@ -34,8 +38,9 @@ export default function OrderLayout({
           return
         }
 
+        const data = rawData as SettingsRow | null
         if (data) {
-          const { enabled } = data.value as { enabled: boolean; message?: string }
+          const { enabled } = data.value
           if (!enabled) {
             router.replace('/order/closed')
           }

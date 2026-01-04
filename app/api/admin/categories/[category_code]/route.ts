@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type CategoryUpdate = {
+  name: string
+  updated_at: string
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ category_code: string }> }
@@ -17,12 +22,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Category name is required' }, { status: 400 })
     }
 
+    const updatePayload: CategoryUpdate = {
+      name: body.name.trim(),
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('categories')
-      .update({
-        name: body.name.trim(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload as never)
       .eq('category_code', category_code)
 
     if (error) {

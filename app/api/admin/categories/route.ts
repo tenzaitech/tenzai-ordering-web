@@ -3,6 +3,12 @@ import { supabase } from '@/lib/supabase'
 import { generateCode } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type CategoryInsert = {
+  category_code: string
+  name: string
+  updated_at: string
+}
+
 export async function GET(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -38,13 +44,14 @@ export async function POST(request: NextRequest) {
 
     const categoryCode = generateCode(body.name)
 
+    const insertPayload: CategoryInsert = {
+      category_code: categoryCode,
+      name: body.name.trim(),
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('categories')
-      .insert({
-        category_code: categoryCode,
-        name: body.name.trim(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(insertPayload as never)
 
     if (error) {
       console.error('[ADMIN_CATEGORIES_POST] Error:', error)

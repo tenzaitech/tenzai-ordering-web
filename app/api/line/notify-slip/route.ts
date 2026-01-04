@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { sendSlipNotification, sendCustomerSlipConfirmation } from '@/lib/line'
 
+type OrderRow = {
+  slip_url: string | null
+  slip_notified_at: string | null
+}
+
+type SlipNotifiedUpdate = {
+  slip_notified_at: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -12,11 +21,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch order
-    const { data: order, error: orderError } = await supabase
+    const { data, error: orderError } = await supabase
       .from('orders')
       .select('slip_url, slip_notified_at')
       .eq('id', orderId)
       .single()
+
+    const order = data as OrderRow | null
 
     if (orderError || !order) {
       console.error('[API:LINE:NOTIFY] Order not found:', orderId)
@@ -42,9 +53,10 @@ export async function POST(request: NextRequest) {
     })
 
     // Mark as notified
+    const updatePayload: SlipNotifiedUpdate = { slip_notified_at: new Date().toISOString() }
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ slip_notified_at: new Date().toISOString() })
+      .update(updatePayload as never)
       .eq('id', orderId)
 
     if (updateError) {

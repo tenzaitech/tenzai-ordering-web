@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { sendStaffNotification, sendCustomerApprovedNotification } from '@/lib/line'
 
+type OrderRow = {
+  status: string
+  approved_at: string | null
+}
+
+type OrderApproval = {
+  status: string
+  approved_at: string
+  approved_by: string
+}
+
+type StaffNotifiedUpdate = {
+  staff_notified_at: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -12,11 +27,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch order
-    const { data: order, error: orderError } = await supabase
+    const { data, error: orderError } = await supabase
       .from('orders')
       .select('status, approved_at')
       .eq('id', orderId)
       .single()
+
+    const order = data as OrderRow | null
 
     if (orderError || !order) {
       console.error('[API:APPROVE] Order not found:', orderId)
@@ -29,13 +46,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update order status to approved
+    const approvalPayload: OrderApproval = {
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: 'admin'
+    }
     const { error: updateError } = await supabase
       .from('orders')
-      .update({
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        approved_by: 'admin'
-      })
+      .update(approvalPayload as never)
       .eq('id', orderId)
 
     if (updateError) {
@@ -50,9 +68,10 @@ export async function POST(request: NextRequest) {
       // Send staff notification
       try {
         await sendStaffNotification(orderId)
+        const staffUpdate: StaffNotifiedUpdate = { staff_notified_at: now }
         await supabase
           .from('orders')
-          .update({ staff_notified_at: now })
+          .update(staffUpdate as never)
           .eq('id', orderId)
       } catch (err) {
         console.error('[API:APPROVE] Staff notification failed:', err)

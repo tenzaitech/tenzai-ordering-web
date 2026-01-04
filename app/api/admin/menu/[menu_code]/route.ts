@@ -41,7 +41,7 @@ export async function PATCH(
 
     const { error } = await supabase
       .from('menu_items')
-      .update(updateData)
+      .update(updateData as never)
       .eq('menu_code', menu_code)
 
     if (error) {

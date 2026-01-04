@@ -3,6 +3,14 @@ import { supabase } from '@/lib/supabase'
 import { generateCode } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type OptionGroupInsert = {
+  group_code: string
+  group_name: string
+  is_required: boolean
+  max_select: number
+  updated_at: string
+}
+
 export async function GET(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -46,15 +54,16 @@ export async function POST(request: NextRequest) {
 
     const groupCode = generateCode(body.group_name)
 
+    const insertPayload: OptionGroupInsert = {
+      group_code: groupCode,
+      group_name: body.group_name.trim(),
+      is_required: body.is_required,
+      max_select: body.max_select,
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('option_groups')
-      .insert({
-        group_code: groupCode,
-        group_name: body.group_name.trim(),
-        is_required: body.is_required,
-        max_select: body.max_select,
-        updated_at: new Date().toISOString()
-      })
+      .insert(insertPayload as never)
 
     if (error) {
       console.error('[ADMIN_OPTION_GROUPS_POST] Error:', error)

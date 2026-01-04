@@ -3,6 +3,15 @@ import { supabase } from '@/lib/supabase'
 import { scrypt } from 'crypto'
 import { promisify } from 'util'
 
+type SettingsRow = {
+  staff_pin_hash: string | null
+  pin_version: number
+}
+
+type PinVersionRow = {
+  pin_version: number
+}
+
 const scryptAsync = promisify(scrypt)
 
 async function verifyPin(storedHash: string, suppliedPin: string): Promise<boolean> {
@@ -20,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch PIN hash from DB
-    const { data: settings, error: fetchError } = await supabase
+    const { data: settingsData, error: fetchError } = await supabase
       .from('admin_settings')
       .select('staff_pin_hash, pin_version')
       .limit(1)
@@ -30,6 +39,8 @@ export async function POST(request: NextRequest) {
       console.error('[STAFF:SESSION] Settings fetch error:', fetchError.message)
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
+
+    const settings = settingsData as SettingsRow | null
 
     // Fallback to env if DB not initialized
     let pinValid = false
@@ -81,13 +92,14 @@ export async function GET(request: NextRequest) {
   const cookieVersion = parseInt(staffCookie.value.split(':')[1] || '1')
 
   // Fetch current pin_version from DB
-  const { data: settings } = await supabase
+  const { data: pinData } = await supabase
     .from('admin_settings')
     .select('pin_version')
     .limit(1)
     .single()
 
-  const currentVersion = settings?.pin_version || 1
+  const pinSettings = pinData as PinVersionRow | null
+  const currentVersion = pinSettings?.pin_version || 1
 
   // If versions don't match, PIN was changed - invalidate session
   if (cookieVersion !== currentVersion) {

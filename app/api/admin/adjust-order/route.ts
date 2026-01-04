@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { sendStaffAdjustmentNotification } from '@/lib/line'
 
+type OrderRow = {
+  approved_at: string | null
+  rejected_at: string | null
+}
+
+type OrderUpdate = {
+  adjustment_note: string
+  adjusted_at: string
+  adjusted_by: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -12,11 +23,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch order
-    const { data: order, error: orderError } = await supabase
+    const { data, error: orderError } = await supabase
       .from('orders')
       .select('approved_at, rejected_at')
       .eq('id', orderId)
       .single()
+
+    const order = data as OrderRow | null
 
     if (orderError || !order) {
       console.error('[API:ADJUST] Order not found:', orderId)
@@ -29,13 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update adjustment fields
+    const updatePayload: OrderUpdate = {
+      adjustment_note: note.trim(),
+      adjusted_at: new Date().toISOString(),
+      adjusted_by: 'admin'
+    }
     const { error: updateError } = await supabase
       .from('orders')
-      .update({
-        adjustment_note: note.trim(),
-        adjusted_at: new Date().toISOString(),
-        adjusted_by: 'admin'
-      })
+      .update(updatePayload as never)
       .eq('id', orderId)
 
     if (updateError) {

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+type OrderRow = {
+  id: string
+  [key: string]: unknown
+}
+
 export async function GET(request: NextRequest) {
   // Verify staff session
   const staffCookie = request.cookies.get('tenzai_staff')
@@ -11,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch orders with status 'approved' or 'ready'
-    const { data: orders, error: ordersError } = await supabase
+    const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('*')
       .in('status', ['approved', 'ready'])
@@ -22,9 +27,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
     }
 
+    const orders = (ordersData ?? []) as OrderRow[]
+
     // Fetch items for each order
     const ordersWithItems = await Promise.all(
-      (orders || []).map(async (order) => {
+      orders.map(async (order) => {
         const { data: items, error: itemsError } = await supabase
           .from('order_items')
           .select('*')

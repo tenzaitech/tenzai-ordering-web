@@ -2,13 +2,50 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type CategoryRow = {
+  category_code: string
+  name: string
+}
+
+type MenuItemRow = {
+  menu_code: string
+  category_code: string
+  name_th: string
+  name_en: string | null
+  barcode: string | null
+  description: string | null
+  price: number
+  image_url: string | null
+  is_active: boolean
+}
+
+type OptionGroupRow = {
+  group_code: string
+  group_name: string
+  is_required: boolean
+  max_select: number
+}
+
+type OptionRow = {
+  option_code: string
+  group_code: string
+  option_name: string
+  price_delta: number
+  sort_order: number
+}
+
+type MenuOptionGroupRow = {
+  menu_code: string
+  group_code: string
+}
+
 export async function GET(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {
     // Fetch all canonical data
-    const { data: categories, error: catError } = await supabase
+    const { data: catData, error: catError } = await supabase
       .from('categories')
       .select('category_code, name')
       .order('category_code')
@@ -17,8 +54,9 @@ export async function GET(request: NextRequest) {
       console.error('[EXPORT] Categories fetch failed:', catError)
       return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
     }
+    const categories = (catData ?? []) as CategoryRow[]
 
-    const { data: menuItems, error: menuError } = await supabase
+    const { data: menuData, error: menuError } = await supabase
       .from('menu_items')
       .select('menu_code, category_code, name_th, name_en, barcode, description, price, image_url, is_active')
       .order('menu_code')
@@ -27,8 +65,9 @@ export async function GET(request: NextRequest) {
       console.error('[EXPORT] Menu items fetch failed:', menuError)
       return NextResponse.json({ error: 'Failed to fetch menu items' }, { status: 500 })
     }
+    const menuItems = (menuData ?? []) as MenuItemRow[]
 
-    const { data: optionGroups, error: groupError } = await supabase
+    const { data: groupData, error: groupError } = await supabase
       .from('option_groups')
       .select('group_code, group_name, is_required, max_select')
       .order('group_code')
@@ -37,8 +76,9 @@ export async function GET(request: NextRequest) {
       console.error('[EXPORT] Option groups fetch failed:', groupError)
       return NextResponse.json({ error: 'Failed to fetch option groups' }, { status: 500 })
     }
+    const optionGroups = (groupData ?? []) as OptionGroupRow[]
 
-    const { data: options, error: optError } = await supabase
+    const { data: optData, error: optError } = await supabase
       .from('options')
       .select('option_code, group_code, option_name, price_delta, sort_order')
       .order('group_code, sort_order')
@@ -47,8 +87,9 @@ export async function GET(request: NextRequest) {
       console.error('[EXPORT] Options fetch failed:', optError)
       return NextResponse.json({ error: 'Failed to fetch options' }, { status: 500 })
     }
+    const options = (optData ?? []) as OptionRow[]
 
-    const { data: menuOptionGroups, error: mapError } = await supabase
+    const { data: mapData, error: mapError } = await supabase
       .from('menu_option_groups')
       .select('menu_code, group_code')
       .order('menu_code, group_code')
@@ -57,6 +98,7 @@ export async function GET(request: NextRequest) {
       console.error('[EXPORT] Menu option groups fetch failed:', mapError)
       return NextResponse.json({ error: 'Failed to fetch menu option groups' }, { status: 500 })
     }
+    const menuOptionGroups = (mapData ?? []) as MenuOptionGroupRow[]
 
     // Build lookup maps
     const categoryCodeToName = new Map<string, string>()

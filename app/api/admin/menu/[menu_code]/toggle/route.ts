@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type MenuToggleUpdate = {
+  is_active: boolean
+  updated_at: string
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ menu_code: string }> }
@@ -17,12 +22,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'is_active must be a boolean' }, { status: 400 })
     }
 
+    const togglePayload: MenuToggleUpdate = {
+      is_active: body.is_active,
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('menu_items')
-      .update({
-        is_active: body.is_active,
-        updated_at: new Date().toISOString()
-      })
+      .update(togglePayload as never)
       .eq('menu_code', menu_code)
 
     if (error) {

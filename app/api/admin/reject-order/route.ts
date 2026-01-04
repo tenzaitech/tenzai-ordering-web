@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+type OrderRow = {
+  status: string
+  rejected_at: string | null
+}
+
+type OrderRejection = {
+  status: string
+  rejected_at: string
+  rejected_reason: string | null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -11,11 +22,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch order
-    const { data: order, error: orderError } = await supabase
+    const { data, error: orderError } = await supabase
       .from('orders')
       .select('status, rejected_at')
       .eq('id', orderId)
       .single()
+
+    const order = data as OrderRow | null
 
     if (orderError || !order) {
       console.error('[API:REJECT] Order not found:', orderId)
@@ -28,13 +41,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update order status to rejected
+    const rejectionPayload: OrderRejection = {
+      status: 'rejected',
+      rejected_at: new Date().toISOString(),
+      rejected_reason: reason || null
+    }
     const { error: updateError } = await supabase
       .from('orders')
-      .update({
-        status: 'rejected',
-        rejected_at: new Date().toISOString(),
-        rejected_reason: reason || null
-      })
+      .update(rejectionPayload as never)
       .eq('id', orderId)
 
     if (updateError) {

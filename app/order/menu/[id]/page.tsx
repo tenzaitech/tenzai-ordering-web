@@ -34,22 +34,53 @@ type OptionGroup = {
   default_choice_ids?: string[]
 }
 
+type MenuOptionGroupRow = {
+  group_code: string
+}
+
+type MenuItemRow = {
+  menu_code: string
+  name_th: string
+  name_en: string | null
+  price: number
+  image_url: string | null
+  is_active: boolean
+  description: string | null
+}
+
+type OptionGroupRow = {
+  group_code: string
+  group_name: string
+  is_required: boolean
+  max_select: number
+}
+
+type OptionRow = {
+  option_code: string
+  option_name: string
+  price_delta: number
+  sort_order: number
+}
+
 async function getMenuItem(menuCode: string) {
   try {
-    const { data: dbItem } = await supabase
+    const { data: dbItemData } = await supabase
       .from('menu_items')
       .select('menu_code, name_th, name_en, price, image_url, is_active, description')
       .eq('menu_code', menuCode)
       .eq('is_active', true)
       .single()
 
+    const dbItem = dbItemData as MenuItemRow | null
+
     if (dbItem) {
-      const { data: menuOptionGroups } = await supabase
+      const { data: menuOptionGroupsData } = await supabase
         .from('menu_option_groups')
         .select('group_code')
         .eq('menu_code', menuCode)
 
-      const optionGroupIds = (menuOptionGroups || []).map(m => m.group_code)
+      const menuOptionGroups = (menuOptionGroupsData ?? []) as MenuOptionGroupRow[]
+      const optionGroupIds = menuOptionGroups.map(m => m.group_code)
 
       return {
         id: dbItem.menu_code,
@@ -75,21 +106,24 @@ async function getOptionGroups(groupCodes: string[]): Promise<OptionGroup[]> {
   if (groupCodes.length === 0) return []
 
   try {
-    const { data: groups } = await supabase
+    const { data: groupsData } = await supabase
       .from('option_groups')
       .select('group_code, group_name, is_required, max_select')
       .in('group_code', groupCodes)
 
-    if (!groups || groups.length === 0) return []
+    const groups = (groupsData ?? []) as OptionGroupRow[]
+    if (groups.length === 0) return []
 
     const optionGroups: OptionGroup[] = []
 
     for (const group of groups) {
-      const { data: options } = await supabase
+      const { data: optionsData } = await supabase
         .from('options')
         .select('option_code, option_name, price_delta, sort_order')
         .eq('group_code', group.group_code)
         .order('sort_order', { ascending: true })
+
+      const options = (optionsData ?? []) as OptionRow[]
 
       optionGroups.push({
         id: group.group_code,
@@ -98,7 +132,7 @@ async function getOptionGroups(groupCodes: string[]): Promise<OptionGroup[]> {
         type: group.max_select === 1 ? 'single' : 'multi',
         required: group.is_required,
         max: group.max_select,
-        choices: (options || []).map(opt => ({
+        choices: options.map(opt => ({
           id: opt.option_code,
           name_th: opt.option_name,
           name_en: opt.option_name,

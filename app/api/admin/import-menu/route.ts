@@ -3,6 +3,46 @@ import { supabase } from '@/lib/supabase'
 import { validateMenuData, ParsedMenuData, generateCode, parseIntegerPrice } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type CategoryUpsert = {
+  category_code: string
+  name: string
+  updated_at: string
+}
+
+type OptionGroupUpsert = {
+  group_code: string
+  group_name: string
+  is_required: boolean
+  max_select: number
+  updated_at: string
+}
+
+type OptionInsert = {
+  option_code: string
+  group_code: string
+  option_name: string
+  price_delta: number
+  sort_order: number
+}
+
+type MenuItemUpsert = {
+  menu_code: string
+  category_code: string
+  name_th: string
+  name_en: string | null
+  barcode: string | null
+  description: string | null
+  price: number
+  image_url: string | null
+  is_active: boolean
+  updated_at: string
+}
+
+type MenuOptionGroupInsert = {
+  menu_code: string
+  group_code: string
+}
+
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -54,13 +94,14 @@ export async function POST(request: NextRequest) {
       const categoryCode = generateCode(cat.category_name)
       categoryNameToCode.set(cat.category_name.trim(), categoryCode)
 
+      const catPayload: CategoryUpsert = {
+        category_code: categoryCode,
+        name: cat.category_name.trim(),
+        updated_at: new Date().toISOString()
+      }
       const { error } = await supabase
         .from('categories')
-        .upsert({
-          category_code: categoryCode,
-          name: cat.category_name.trim(),
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(catPayload as never, {
           onConflict: 'category_code'
         })
 
@@ -109,16 +150,17 @@ export async function POST(request: NextRequest) {
     })
 
     // Upsert option_groups
-    for (const [groupCode, groupData] of optionGroupsToUpsert.entries()) {
+    for (const [groupCode, groupData] of Array.from(optionGroupsToUpsert.entries())) {
+      const groupPayload: OptionGroupUpsert = {
+        group_code: groupCode,
+        group_name: groupData.group_name,
+        is_required: groupData.is_required,
+        max_select: groupData.max_select,
+        updated_at: new Date().toISOString()
+      }
       const { error } = await supabase
         .from('option_groups')
-        .upsert({
-          group_code: groupCode,
-          group_name: groupData.group_name,
-          is_required: groupData.is_required,
-          max_select: groupData.max_select,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(groupPayload as never, {
           onConflict: 'group_code'
         })
 
@@ -146,7 +188,7 @@ export async function POST(request: NextRequest) {
     if (optionsToUpsert.length > 0) {
       const { error } = await supabase
         .from('options')
-        .insert(optionsToUpsert)
+        .insert(optionsToUpsert as never)
 
       if (error) {
         console.error('[IMPORT] Options insert failed:', error)
@@ -162,20 +204,21 @@ export async function POST(request: NextRequest) {
         continue
       }
 
+      const menuPayload: MenuItemUpsert = {
+        menu_code: item.menu_code.trim(),
+        category_code: categoryCode,
+        name_th: item.menu_name.trim(),
+        name_en: item.menu_name_2?.trim() || null,
+        barcode: item.barcode?.trim() || null,
+        description: item.description?.trim() || null,
+        price: parseIntegerPrice(item.price),
+        image_url: item.image_url?.trim() || null,
+        is_active: true,
+        updated_at: new Date().toISOString()
+      }
       const { error } = await supabase
         .from('menu_items')
-        .upsert({
-          menu_code: item.menu_code.trim(),
-          category_code: categoryCode,
-          name_th: item.menu_name.trim(),
-          name_en: item.menu_name_2?.trim() || null,
-          barcode: item.barcode?.trim() || null,
-          description: item.description?.trim() || null,
-          price: parseIntegerPrice(item.price),
-          image_url: item.image_url?.trim() || null,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(menuPayload as never, {
           onConflict: 'menu_code'
         })
 
@@ -186,7 +229,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Replace menu_option_groups mappings
-    const affectedMenuCodes = [...new Set(data.menu_option_groups.map(m => m.menu_code.trim()))]
+    const affectedMenuCodes = Array.from(new Set(data.menu_option_groups.map(m => m.menu_code.trim())))
 
     // Delete existing mappings for affected menus
     for (const menuCode of affectedMenuCodes) {
@@ -219,7 +262,7 @@ export async function POST(request: NextRequest) {
     if (mappingsToInsert.length > 0) {
       const { error } = await supabase
         .from('menu_option_groups')
-        .insert(mappingsToInsert)
+        .insert(mappingsToInsert as never)
 
       if (error) {
         console.error('[IMPORT] Menu option groups insert failed:', error)

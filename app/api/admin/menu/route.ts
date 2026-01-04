@@ -3,6 +3,19 @@ import { supabase } from '@/lib/supabase'
 import { generateCode, parseIntegerPrice, isValidIntegerPrice } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type MenuItemInsert = {
+  menu_code: string
+  category_code: string
+  name_th: string
+  name_en: string | null
+  barcode: string | null
+  description: string | null
+  price: number
+  image_url: string | null
+  is_active: boolean
+  updated_at: string
+}
+
 export async function GET(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -47,20 +60,21 @@ export async function POST(request: NextRequest) {
     const menuCode = body.menu_code?.trim() || generateCode(body.name_th)
     const price = parseIntegerPrice(body.price)
 
+    const insertPayload: MenuItemInsert = {
+      menu_code: menuCode,
+      category_code: body.category_code.trim(),
+      name_th: body.name_th.trim(),
+      name_en: body.name_en?.trim() || null,
+      barcode: body.barcode?.trim() || null,
+      description: body.description?.trim() || null,
+      price: price,
+      image_url: body.image_url?.trim() || null,
+      is_active: body.is_active ?? true,
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('menu_items')
-      .insert({
-        menu_code: menuCode,
-        category_code: body.category_code.trim(),
-        name_th: body.name_th.trim(),
-        name_en: body.name_en?.trim() || null,
-        barcode: body.barcode?.trim() || null,
-        description: body.description?.trim() || null,
-        price: price,
-        image_url: body.image_url?.trim() || null,
-        is_active: body.is_active ?? true,
-        updated_at: new Date().toISOString()
-      })
+      .insert(insertPayload as never)
 
     if (error) {
       console.error('[ADMIN_MENU_POST] Error:', error)

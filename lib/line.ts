@@ -1,13 +1,43 @@
 import { supabase } from './supabase'
 
+type AdminSettingsRow = {
+  line_approver_id: string | null
+  line_staff_id: string | null
+}
+
+type OrderRow = {
+  [key: string]: unknown
+  id: string
+  order_number: string
+  customer_name: string
+  customer_phone: string
+  pickup_type: string
+  pickup_time: string | null
+  total_amount: number
+  customer_note: string | null
+  slip_url: string | null
+  customer_line_user_id: string | null
+  adjustment_note: string | null
+}
+
+type OrderItemRow = {
+  [key: string]: unknown
+  qty: number
+  name_th: string
+  name_en: string | null
+  selected_options_json: unknown
+  note: string | null
+}
+
 // Fetch LINE recipient IDs from DB (with env fallback)
 async function getLineRecipients(): Promise<{ approverId: string; staffId: string }> {
-  const { data: settings } = await supabase
+  const { data: settingsData } = await supabase
     .from('admin_settings')
     .select('line_approver_id, line_staff_id')
     .limit(1)
     .single()
 
+  const settings = settingsData as AdminSettingsRow | null
   return {
     approverId: settings?.line_approver_id || process.env.LINE_APPROVER_ID || '',
     staffId: settings?.line_staff_id || process.env.LINE_STAFF_ID || ''
@@ -364,23 +394,25 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
 
 export async function sendSlipNotification(orderId: string): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:NOTIFY] Failed to fetch order:', orderError)
     throw new Error('Failed to fetch order')
   }
 
   // Fetch order items
-  const { data: items, error: itemsError } = await supabase
+  const { data: itemsData, error: itemsError } = await supabase
     .from('order_items')
     .select('*')
     .eq('order_id', orderId)
 
+  const items = (itemsData ?? []) as OrderItemRow[]
   if (itemsError) {
     console.error('[LINE:NOTIFY] Failed to fetch order items:', itemsError)
     throw new Error('Failed to fetch order items')
@@ -406,7 +438,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
     items: itemsList,
     noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
-    slipUrl: order.slip_url,
+    slipUrl: order.slip_url || undefined,
     showButton: false,
     footerText: 'Check in Admin Panel'
   })
@@ -452,23 +484,25 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
 
 export async function sendStaffNotification(orderId: string): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:STAFF] Failed to fetch order:', orderError)
     throw new Error('Failed to fetch order')
   }
 
   // Fetch order items
-  const { data: items, error: itemsError } = await supabase
+  const { data: itemsData, error: itemsError } = await supabase
     .from('order_items')
     .select('*')
     .eq('order_id', orderId)
 
+  const items = (itemsData ?? []) as OrderItemRow[]
   if (itemsError) {
     console.error('[LINE:STAFF] Failed to fetch order items:', itemsError)
     throw new Error('Failed to fetch order items')
@@ -574,12 +608,13 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
 
 export async function sendStaffAdjustmentNotification(orderId: string): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:ADJUST] Failed to fetch order:', orderError)
     throw new Error('Failed to fetch order')
@@ -599,7 +634,7 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
       { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
     ],
     noteLabel: 'Changes',
-    noteValue: order.adjustment_note,
+    noteValue: order.adjustment_note || undefined,
     showButton: false,
     footerText: 'Check in Staff Board'
   })
@@ -645,12 +680,13 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
 
 export async function sendCustomerSlipConfirmation(orderId: string): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:CUSTOMER_SLIP] Failed to fetch order:', orderError?.message || 'Not found')
     throw new Error('Failed to fetch order')
@@ -712,12 +748,13 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
 
 export async function sendCustomerApprovedNotification(orderId: string): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:CUSTOMER_APPROVED] Failed to fetch order:', orderError?.message || 'Not found')
     throw new Error('Failed to fetch order')
@@ -790,12 +827,13 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
 
 export async function sendCustomerNotification(orderId: string, status: 'ready' | 'picked_up'): Promise<void> {
   // Fetch order
-  const { data: order, error: orderError } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .select('*')
     .eq('id', orderId)
     .single()
 
+  const order = orderData as OrderRow | null
   if (orderError || !order) {
     console.error('[LINE:CUSTOMER] Failed to fetch order:', orderError?.message || 'Not found')
     throw new Error('Failed to fetch order')

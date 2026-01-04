@@ -19,20 +19,39 @@ type MenuItem = {
   options?: any[]
 }
 
+type CategoryRow = {
+  category_code: string
+  name: string
+}
+
+type MenuItemRow = {
+  menu_code: string
+  category_code: string
+  name_th: string
+  name_en: string | null
+  price: number
+  image_url: string | null
+  is_active: boolean
+  description: string | null
+}
+
 async function getMenuData() {
   try {
-    const { data: dbCategories } = await supabase
+    const { data: dbCategoriesData } = await supabase
       .from('categories')
       .select('category_code, name')
       .order('category_code')
 
-    const { data: dbMenuItems } = await supabase
+    const { data: dbMenuItemsData } = await supabase
       .from('menu_items')
       .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description')
       .eq('is_active', true)
       .order('menu_code')
 
-    if (dbCategories && dbCategories.length > 0 && dbMenuItems && dbMenuItems.length > 0) {
+    const dbCategories = (dbCategoriesData ?? []) as CategoryRow[]
+    const dbMenuItems = (dbMenuItemsData ?? []) as MenuItemRow[]
+
+    if (dbCategories.length > 0 && dbMenuItems.length > 0) {
       const categoryMap = new Map(dbCategories.map(cat => [cat.category_code, cat.name]))
 
       const transformedItems: MenuItem[] = dbMenuItems.map(item => ({

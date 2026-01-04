@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { supabase } from '@/lib/supabase'
 
+type OrderRow = {
+  id: string
+  order_number: string
+  status: string
+  created_at: string
+  pickup_type: string
+  pickup_time: string | null
+  total_amount: number
+  customer_note: string | null
+  slip_notified_at: string | null
+}
+
+type MenuPriceRow = {
+  menu_code: string
+  price: number
+}
+
+type OrderItemIdRow = {
+  id: string
+}
+
 // Safe order fields (slip_url excluded)
 const ORDER_SAFE_FIELDS = 'id, order_number, status, created_at, pickup_type, pickup_time, total_amount, customer_note, slip_notified_at'
 const ITEM_SAFE_FIELDS = 'id, menu_item_id, name_th, name_en, qty, base_price, final_price, note, selected_options_json'
@@ -25,12 +46,14 @@ export async function GET(
     const userId = userIdCookie.value
 
     // Fetch order with ownership check
-    const { data: order, error: orderError } = await supabase
+    const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .select(ORDER_SAFE_FIELDS)
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
       .single()
+
+    const order = orderData as OrderRow | null
 
     if (orderError || !order) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -92,12 +115,14 @@ export async function POST(
     const userId = userIdCookie.value
 
     // Fetch order with ownership check
-    const { data: order, error: orderError } = await supabase
+    const { data: postOrderData, error: orderError } = await supabase
       .from('orders')
       .select(ORDER_SAFE_FIELDS)
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
       .single()
+
+    const order = postOrderData as OrderRow | null
 
     if (orderError || !order) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -141,17 +166,16 @@ export async function POST(
 
     // === SERVER-SIDE PRICE VERIFICATION (best effort) ===
     // Fetch menu prices for verification
-    const menuIds = [...new Set(items.map(i => i.menu_item_id))]
-    const { data: menuPrices } = await supabase
+    const menuIds = Array.from(new Set(items.map(i => i.menu_item_id)))
+    const { data: menuPricesData } = await supabase
       .from('menu_items')
       .select('menu_code, price')
       .in('menu_code', menuIds)
 
+    const menuPrices = (menuPricesData ?? []) as MenuPriceRow[]
     const priceMap = new Map<string, number>()
-    if (menuPrices) {
-      for (const mp of menuPrices) {
-        priceMap.set(mp.menu_code, mp.price)
-      }
+    for (const mp of menuPrices) {
+      priceMap.set(mp.menu_code, mp.price)
     }
 
     // Recalculate total using server-known base prices where available
@@ -192,18 +216,19 @@ export async function POST(
 
     // === SAFE UPDATE SEQUENCE ===
     // Step 1: Get existing item IDs
-    const { data: existingItems } = await supabase
+    const { data: existingItemsData } = await supabase
       .from('order_items')
       .select('id')
       .eq('order_id', orderId)
 
-    const existingIds = new Set((existingItems || []).map(i => i.id))
+    const existingItems = (existingItemsData ?? []) as OrderItemIdRow[]
+    const existingIds = new Set(existingItems.map(i => i.id))
     const newItemIds = new Set(validatedItems.filter(i => i.id).map(i => i.id))
 
     // Step 2: Insert/Update items one by one (safer than delete-all)
     const insertItems = validatedItems.filter(i => !i.id || !existingIds.has(i.id))
     const updateItems = validatedItems.filter(i => i.id && existingIds.has(i.id))
-    const deleteIds = [...existingIds].filter(id => !newItemIds.has(id))
+    const deleteIds = Array.from(existingIds).filter(id => !newItemIds.has(id))
 
     // Insert new items
     if (insertItems.length > 0) {
@@ -221,7 +246,7 @@ export async function POST(
 
       const { error: insertError } = await supabase
         .from('order_items')
-        .insert(toInsert)
+        .insert(toInsert as never)
 
       if (insertError) {
         console.error('[API:ORDER_EDIT] Insert error:', insertError)
@@ -238,7 +263,7 @@ export async function POST(
           note: item.note || null,
           selected_options_json: item.selected_options_json || null,
           // Don't update menu_item_id/names/prices for existing items to preserve data integrity
-        })
+        } as never)
         .eq('id', item.id!)
         .eq('order_id', orderId)
 
@@ -278,7 +303,7 @@ export async function POST(
 
     const { error: orderUpdateError } = await supabase
       .from('orders')
-      .update(orderUpdate)
+      .update(orderUpdate as never)
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
 

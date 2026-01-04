@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/contexts/LanguageContext'
 
+type SettingsRow = {
+  value: { message?: string }
+}
+
 export default function OrderClosedPage() {
   const { t } = useLanguage()
   const [customMessage, setCustomMessage] = useState<string | null>(null)
@@ -11,12 +15,13 @@ export default function OrderClosedPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: rawData, error } = await supabase
           .from('system_settings')
           .select('value')
           .eq('key', 'order_accepting')
           .single()
 
+        const data = rawData as SettingsRow | null
         if (!error && data?.value?.message) {
           setCustomMessage(data.value.message)
         }

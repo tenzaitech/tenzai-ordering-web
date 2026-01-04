@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
+type SystemSettingUpsert = {
+  key: string
+  value: { enabled: boolean; message: string }
+  updated_at: string
+}
+
+type SystemSettingRow = {
+  value: { enabled: boolean; message?: string }
+}
+
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
@@ -15,16 +25,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert the setting
+    const upsertPayload: SystemSettingUpsert = {
+      key: 'order_accepting',
+      value: {
+        enabled,
+        message: message || ''
+      },
+      updated_at: new Date().toISOString()
+    }
     const { error } = await supabase
       .from('system_settings')
-      .upsert({
-        key: 'order_accepting',
-        value: {
-          enabled,
-          message: message || ''
-        },
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(upsertPayload as never, {
         onConflict: 'key'
       })
 
@@ -45,7 +56,7 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-    const { data, error } = await supabase
+    const { data: rawData, error } = await supabase
       .from('system_settings')
       .select('value')
       .eq('key', 'order_accepting')
@@ -60,7 +71,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch setting' }, { status: 500 })
     }
 
-    const { enabled, message } = data.value as { enabled: boolean; message?: string }
+    const data = rawData as SystemSettingRow | null
+    const { enabled, message } = data?.value || { enabled: true, message: '' }
     return NextResponse.json({ enabled, message: message || '' })
   } catch (error) {
     console.error('[API:TOGGLE] Unexpected error:', error)

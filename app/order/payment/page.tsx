@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -17,7 +17,17 @@ const FALLBACK_PROMPTPAY_ID = '0988799990'
 
 type ProcessingState = 'IDLE' | 'UPLOADING_SLIP' | 'SYNCING_ORDER'
 
-export default function PaymentPage() {
+type AdminSettingsRow = {
+  promptpay_id: string | null
+}
+
+type OrderRow = {
+  [key: string]: unknown
+  id: string
+  total_amount: number
+}
+
+function PaymentPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { items, getTotalPrice, clearCart } = useCart()
@@ -90,22 +100,24 @@ export default function PaymentPage() {
     const fetchOrder = async () => {
       try {
         // Fetch PromptPay ID from admin_settings
-        const { data: settings } = await supabase
+        const { data: settingsData } = await supabase
           .from('admin_settings')
           .select('promptpay_id')
           .limit(1)
           .single()
 
+        const settings = settingsData as AdminSettingsRow | null
         const dbPromptPayId = settings?.promptpay_id || FALLBACK_PROMPTPAY_ID
         setPromptPayId(dbPromptPayId)
 
         // Fetch order
-        const { data, error } = await supabase
+        const { data: orderData, error } = await supabase
           .from('orders')
           .select('*')
           .eq('id', orderId)
           .single()
 
+        const data = orderData as OrderRow | null
         if (error || !data) {
           console.error('[ERROR] Failed to fetch order:', error)
           setLoading(false)
@@ -160,7 +172,7 @@ export default function PaymentPage() {
         .update({
           total_amount: getTotalPrice(),
           customer_note: draft.customerNote.trim() || null,
-        })
+        } as never)
         .eq('id', orderId)
 
       if (updateError) {
@@ -210,7 +222,7 @@ export default function PaymentPage() {
 
       const { error: insertError } = await supabase
         .from('order_items')
-        .insert(orderItems)
+        .insert(orderItems as never)
 
       if (insertError) {
         console.error('[ERROR:SYNC] Failed to insert order items:', insertError)
@@ -223,12 +235,13 @@ export default function PaymentPage() {
       setLastSyncedCartFingerprint(getCartFingerprint(items))
 
       // Refetch order to update display
-      const { data: refreshedOrder } = await supabase
+      const { data: refreshedOrderData } = await supabase
         .from('orders')
         .select('*')
         .eq('id', orderId)
         .single()
 
+      const refreshedOrder = refreshedOrderData as OrderRow | null
       if (refreshedOrder) {
         setOrder(refreshedOrder)
       }
@@ -312,7 +325,7 @@ export default function PaymentPage() {
       // Update order with slip URL
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ slip_url: publicUrl })
+        .update({ slip_url: publicUrl } as never)
         .eq('id', orderId)
 
       if (updateError) {
@@ -679,5 +692,24 @@ export default function PaymentPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function PaymentLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<PaymentLoadingFallback />}>
+      <PaymentPageContent />
+    </Suspense>
   )
 }

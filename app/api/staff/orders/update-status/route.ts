@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { sendCustomerNotification } from '@/lib/line'
 
+type OrderRow = {
+  id: string
+  order_number: string
+  status: string
+  customer_line_user_id: string | null
+}
+
 export async function POST(request: NextRequest) {
   // Verify staff session
   const staffCookie = request.cookies.get('tenzai_staff')
@@ -24,11 +31,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch current order
-    const { data: order, error: fetchError } = await supabase
+    const { data: orderData, error: fetchError } = await supabase
       .from('orders')
       .select('id, order_number, status, customer_line_user_id')
       .eq('id', orderId)
       .single()
+
+    const order = orderData as OrderRow | null
 
     if (fetchError || !order) {
       console.error('[STAFF:UPDATE] Fetch error:', fetchError?.message || 'Not found')
@@ -52,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Update with optimistic guard
     const { data: updated, error: updateError } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ status: newStatus } as never)
       .eq('id', orderId)
       .eq('status', order.status)
       .select('id')
