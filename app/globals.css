@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* Text scale for accessibility (customer pages) */
+  --text-scale: 1;
+
   /* Dark Loft Theme (DEFAULT - RGB triplets for alpha support) */
   --bg-root: 11 13 16;
   --bg-surface: 18 22 28;
@@ -86,9 +89,49 @@ html[data-theme="light"] {
   body {
     @apply text-text bg-bg;
   }
+
+  /* Customer text scaling - applies to /order/* pages */
+  body[data-customer-scale="true"] {
+    font-size: calc(1rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] h1,
+  body[data-customer-scale="true"] h2,
+  body[data-customer-scale="true"] h3 {
+    font-size: calc(1em * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-xs {
+    font-size: calc(0.75rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-sm {
+    font-size: calc(0.875rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-base {
+    font-size: calc(1rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-lg {
+    font-size: calc(1.125rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-xl {
+    font-size: calc(1.25rem * var(--text-scale, 1));
+  }
+
+  body[data-customer-scale="true"] .text-2xl {
+    font-size: calc(1.5rem * var(--text-scale, 1));
+  }
 }
 
 @layer utilities {
+  /* Scalable text for customer-facing primary content */
+  .scale-text {
+    font-size: calc(1em * var(--text-scale, 1));
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

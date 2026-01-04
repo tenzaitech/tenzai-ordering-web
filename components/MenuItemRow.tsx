@@ -86,7 +86,7 @@ export default function MenuItemRow({
 
         {/* Details */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-text-primary font-semibold text-base line-clamp-2 mb-1.5 leading-snug">
+          <h3 className="text-text-primary font-semibold text-base line-clamp-2 mb-1.5 leading-snug scale-text">
             {displayName}
           </h3>
           {displayDescription && displayDescription.trim() && (
@@ -94,7 +94,7 @@ export default function MenuItemRow({
               {displayDescription}
             </p>
           )}
-          <p className="text-accent font-bold text-lg">
+          <p className="text-accent font-bold text-lg scale-text">
             ฿{price_thb}
           </p>
         </div>

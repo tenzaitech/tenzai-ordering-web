@@ -43,10 +43,10 @@ export default function MenuCardLarge({
       </div>
 
       <div className="px-1">
-        <h3 className="text-text-primary font-medium text-base mb-1.5 line-clamp-2 leading-snug">
+        <h3 className="text-text-primary font-medium text-base mb-1.5 line-clamp-2 leading-snug scale-text">
           {displayName}
         </h3>
-        <p className="text-accent font-bold text-lg">
+        <p className="text-accent font-bold text-lg scale-text">
           ฿{price_thb}
         </p>
       </div>

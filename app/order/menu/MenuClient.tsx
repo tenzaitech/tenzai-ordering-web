@@ -270,7 +270,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                     }}
                     data-category={category}
                     onClick={() => handleCategoryClick(category)}
-                    className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm ${
+                    className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm scale-text ${
                       activeCategory === category
                         ? 'bg-accent text-white'
                         : 'bg-bg-surface text-text-secondary border border-border-subtle'
@@ -329,7 +329,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
             >
               {/* Category Label - LINE MAN style: divider bar + inline label */}
               {index > 0 && <div className="h-2 bg-bg-elevated" />}
-              <p className="px-5 py-2 text-text-primary font-bold text-base">{categoryName || category}</p>
+              <p className="px-5 py-2 text-text-primary font-bold text-base scale-text">{categoryName || category}</p>
               {items.map(item => (
                 <MenuItemRow
                   key={item.id}
@@ -481,7 +481,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                           : 'text-text hover:bg-border active:bg-border'
                       }`}
                     >
-                      <span className="text-lg font-medium">{categoryName || category}</span>
+                      <span className="text-lg font-medium scale-text">{categoryName || category}</span>
                       <span className="text-sm text-muted">
                         {itemCount} {itemCount === 1 ? t('item') : t('items')}
                       </span>
