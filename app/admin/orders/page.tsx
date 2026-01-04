@@ -100,7 +100,7 @@ export default function AdminOrdersPage() {
 
   const handleToggle = async () => {
     const newState = !orderAccepting.enabled
-    const confirmMsg = newState ? 'เปิดรับออเดอร์อีกครั้ง?' : 'ปิดรับออเดอร์ชั่วคราว?'
+    const confirmMsg = newState ? t('confirmOpenShop') : t('confirmCloseShop')
     if (!confirm(confirmMsg)) return
 
     setToggling(true)
@@ -115,10 +115,10 @@ export default function AdminOrdersPage() {
 
       const data = await response.json()
       setOrderAccepting({ enabled: data.enabled, message: data.message })
-      alert(newState ? 'เปิดรับออเดอร์แล้ว' : 'ปิดรับออเดอร์แล้ว')
+      alert(newState ? t('shopOpened') : t('shopClosed'))
     } catch (error) {
       console.error('[ADMIN:TOGGLE] Error:', error)
-      alert('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      alert(t('errorGenericMessage'))
     } finally {
       setToggling(false)
     }
@@ -157,7 +157,7 @@ export default function AdminOrdersPage() {
   }
 
   const handleApprove = async () => {
-    if (!selectedOrder || !confirm('อนุมัติคำสั่งซื้อนี้และแจ้งทีมครัว?')) return
+    if (!selectedOrder || !confirm(t('confirmApprove'))) return
 
     setProcessing(true)
     try {
@@ -169,12 +169,12 @@ export default function AdminOrdersPage() {
 
       if (!response.ok) throw new Error('Failed to approve')
 
-      showFeedbackMessage('Order approved successfully', 'success')
+      showFeedbackMessage(t('orderApprovedSuccess'), 'success')
       setSelectedOrder({ ...selectedOrder, status: 'approved', approved_at: new Date().toISOString() })
       fetchOrders()
     } catch (error) {
       console.error('[ADMIN:APPROVE] Error:', error)
-      showFeedbackMessage('Failed to approve order', 'error')
+      showFeedbackMessage(t('orderApprovedError'), 'error')
     } finally {
       setProcessing(false)
     }
@@ -193,22 +193,22 @@ export default function AdminOrdersPage() {
 
       if (!response.ok) throw new Error('Failed to reject')
 
-      showFeedbackMessage('Order rejected successfully', 'success')
+      showFeedbackMessage(t('orderRejectedSuccess'), 'success')
       setSelectedOrder({ ...selectedOrder, status: 'rejected', rejected_at: new Date().toISOString() })
       setShowRejectModal(false)
       setRejectReason('')
       fetchOrders()
     } catch (error) {
       console.error('[ADMIN:REJECT] Error:', error)
-      showFeedbackMessage('Failed to reject order', 'error')
+      showFeedbackMessage(t('orderRejectedError'), 'error')
     } finally {
       setProcessing(false)
     }
   }
 
-  const copyToClipboard = (text: string, label: string) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    showFeedbackMessage(`${label} copied to clipboard`, 'success')
+    showFeedbackMessage(t('copiedToClipboard'), 'success')
   }
 
   const getStatusColor = (status: string) => {
@@ -444,7 +444,7 @@ export default function AdminOrdersPage() {
                 <h2 className="text-xl font-bold text-text flex items-center gap-3">
                   Order #{selectedOrder.order_number}
                   <button
-                    onClick={() => copyToClipboard(selectedOrder.order_number, 'Order number')}
+                    onClick={() => copyToClipboard(selectedOrder.order_number)}
                     className="p-1 text-muted hover:text-primary transition-colors"
                     title="Copy order number"
                   >
@@ -484,7 +484,7 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-text font-medium">{selectedOrder.customer_phone}</span>
                       <button
-                        onClick={() => copyToClipboard(selectedOrder.customer_phone, 'Phone number')}
+                        onClick={() => copyToClipboard(selectedOrder.customer_phone)}
                         className="p-1 text-muted hover:text-primary transition-colors"
                         title="Copy phone"
                       >

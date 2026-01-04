@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/utils/haptic'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 type Order = {
   id: string
@@ -17,85 +18,12 @@ type Order = {
   created_at: string
 }
 
-type Language = 'th' | 'en'
-
-const translations = {
-  th: {
-    myOrders: 'ออเดอร์ของฉัน',
-    loading: 'กำลังโหลด...',
-    noOrders: 'ยังไม่มีออเดอร์',
-    noOrdersDesc: 'เมื่อคุณสั่งอาหาร ออเดอร์จะแสดงที่นี่',
-    errorTitle: 'เกิดข้อผิดพลาด',
-    errorMessage: 'ไม่สามารถโหลดออเดอร์ได้',
-    retry: 'ลองใหม่',
-    order: 'ออเดอร์',
-    status: 'สถานะ',
-    total: 'ยอดรวม',
-    pending: 'รอตรวจสอบ',
-    approved: 'อนุมัติแล้ว',
-    rejected: 'ปฏิเสธ',
-    slipNotUploaded: 'ยังไม่ได้อัปสลิป',
-    uploadSlip: 'อัปสลิป'
-  },
-  en: {
-    myOrders: 'My Orders',
-    loading: 'Loading...',
-    noOrders: 'No orders yet',
-    noOrdersDesc: 'When you place an order, it will appear here',
-    errorTitle: 'Error',
-    errorMessage: 'Unable to load orders',
-    retry: 'Retry',
-    order: 'Order',
-    status: 'Status',
-    total: 'Total',
-    pending: 'Pending',
-    approved: 'Approved',
-    rejected: 'Rejected',
-    slipNotUploaded: 'Slip not uploaded',
-    uploadSlip: 'Upload slip'
-  }
-}
-
-const getStoredLanguage = (): Language | null => {
-  if (typeof window === 'undefined') return null
-  const stored = localStorage.getItem('tenzai_lang')
-  if (stored === 'en' || stored === 'th') return stored
-  return null
-}
-
-const getLiffLanguage = async (): Promise<Language> => {
-  try {
-    const liff = (await import('@line/liff')).default
-    if (liff.isInClient() && liff.isLoggedIn()) {
-      const lang = liff.getLanguage()
-      if (lang === 'en') return 'en'
-    }
-  } catch (error) {
-    // LIFF not available or not initialized
-  }
-  return 'th'
-}
-
 export default function OrderStatusPage() {
   const router = useRouter()
-  const [language, setLanguage] = useState<Language>('th')
+  const { language, setLanguage, t } = useLanguage()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  const t = translations[language]
-
-  useEffect(() => {
-    const initLanguage = async () => {
-      const stored = getStoredLanguage()
-      setMounted(true)
-      const liffLang = await getLiffLanguage()
-      const initialLang = stored ?? liffLang
-      setLanguage(initialLang)
-    }
-    initLanguage()
-  }, [])
 
   const fetchOrders = async () => {
     // Only show loading on initial fetch, not on auto-refresh
@@ -148,11 +76,6 @@ export default function OrderStatusPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleLanguageToggle = (lang: Language) => {
-    setLanguage(lang)
-    localStorage.setItem('tenzai_lang', lang)
-  }
-
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'pending': return 'bg-primary/20 text-primary'
@@ -164,10 +87,10 @@ export default function OrderStatusPage() {
 
   const getStatusLabel = (status: string | null) => {
     switch (status) {
-      case 'pending': return t.pending
-      case 'approved': return t.approved
-      case 'rejected': return t.rejected
-      default: return t.pending
+      case 'pending': return t('statusPending')
+      case 'approved': return t('statusApproved')
+      case 'rejected': return t('statusRejected')
+      default: return t('statusPending')
     }
   }
 
@@ -181,22 +104,18 @@ export default function OrderStatusPage() {
     return `${day}/${month}/${year} ${hours}:${minutes}`
   }
 
-  if (!mounted) {
-    return null
-  }
-
   return (
     <div className="min-h-screen bg-bg pb-20">
       <div className="max-w-mobile mx-auto">
         {/* Header */}
         <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-text">{t.myOrders}</h1>
+            <h1 className="text-xl font-semibold text-text">{t('myOrders')}</h1>
 
             {/* Language Toggle */}
             <div className="flex gap-1 bg-bg border border-border rounded-lg p-1">
               <button
-                onClick={() => handleLanguageToggle('th')}
+                onClick={() => setLanguage('th')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   language === 'th'
                     ? 'bg-primary text-white'
@@ -206,7 +125,7 @@ export default function OrderStatusPage() {
                 TH
               </button>
               <button
-                onClick={() => handleLanguageToggle('en')}
+                onClick={() => setLanguage('en')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   language === 'en'
                     ? 'bg-primary text-white'
@@ -224,7 +143,7 @@ export default function OrderStatusPage() {
           {loading && (
             <div className="text-center py-12">
               <div className="w-12 h-12 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-muted">{t.loading}</p>
+              <p className="text-muted">{t('loading')}</p>
             </div>
           )}
 
@@ -235,13 +154,13 @@ export default function OrderStatusPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-text mb-2">{t.errorTitle}</h2>
-              <p className="text-sm text-muted mb-6">{t.errorMessage}</p>
+              <h2 className="text-xl font-semibold text-text mb-2">{t('errorGeneric')}</h2>
+              <p className="text-sm text-muted mb-6">{t('unableToLoadOrders')}</p>
               <button
                 onClick={fetchOrders}
                 className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
               >
-                {t.retry}
+                {t('retry')}
               </button>
             </div>
           )}
@@ -253,8 +172,8 @@ export default function OrderStatusPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-text mb-2">{t.noOrders}</h2>
-              <p className="text-sm text-muted">{t.noOrdersDesc}</p>
+              <h2 className="text-xl font-semibold text-text mb-2">{t('noOrders')}</h2>
+              <p className="text-sm text-muted">{t('noOrdersDesc')}</p>
             </div>
           )}
 
@@ -276,7 +195,7 @@ export default function OrderStatusPage() {
                     {/* Order Number & Status */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="text-xs text-muted mb-1">{t.order}</p>
+                        <p className="text-xs text-muted mb-1">{t('order')}</p>
                         <p className="text-lg font-semibold text-text">#{order.order_number}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
@@ -286,7 +205,7 @@ export default function OrderStatusPage() {
                         {/* Slip not uploaded badge */}
                         {needsSlipUpload && (
                           <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-500">
-                            {t.slipNotUploaded}
+                            {t('slipNotUploaded')}
                           </span>
                         )}
                       </div>
@@ -299,7 +218,7 @@ export default function OrderStatusPage() {
 
                     {/* Total + Chevron */}
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted">{t.total}</span>
+                      <span className="text-sm text-muted">{t('total')}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
                         <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,7 +237,7 @@ export default function OrderStatusPage() {
                         }}
                         className="mt-3 w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
                       >
-                        {t.uploadSlip}
+                        {t('uploadSlip')}
                       </button>
                     )}
                   </div>

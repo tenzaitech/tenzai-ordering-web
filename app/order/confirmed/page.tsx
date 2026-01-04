@@ -84,10 +84,10 @@ export default function OrderConfirmedPage() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-text mb-2">
-            {language === 'th' ? 'ไม่พบคำสั่งซื้อ' : 'Order Not Found'}
+            {t('orderNotFound')}
           </h2>
           <p className="text-muted mb-6">
-            {language === 'th' ? 'ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง' : 'Could not load order information. Please try again'}
+            {t('couldNotLoadOrder')}
           </p>
           <button
             onClick={() => {
@@ -222,10 +222,10 @@ export default function OrderConfirmedPage() {
         <div className="px-5 pb-6">
           <div className="bg-card border border-primary/30 rounded-lg p-5">
             <p className="text-center text-text font-medium mb-2">
-              {language === 'th' ? 'เราได้รับออเดอร์แล้ว' : 'We received your order'}
+              {t('orderReceived')}
             </p>
             <p className="text-center text-sm text-muted">
-              {language === 'th' ? 'สถานะ: รออนุมัติ' : 'Status: Waiting for approval'}
+              {t('statusWaitingApproval')}
             </p>
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function OrderConfirmedPage() {
             }}
             className="w-full py-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
           >
-            {language === 'th' ? 'ดูออเดอร์ของฉัน' : 'View My Orders'}
+            {t('viewMyOrders')}
           </button>
           <button
             onClick={() => {
@@ -248,7 +248,7 @@ export default function OrderConfirmedPage() {
             }}
             className="w-full py-4 bg-card border border-border text-text font-semibold rounded-lg hover:bg-border/50 active:bg-border transition-colors"
           >
-            {language === 'th' ? 'กลับไปเมนู' : 'Back to Menu'}
+            {t('backToMenu')}
           </button>
         </div>
       </div>

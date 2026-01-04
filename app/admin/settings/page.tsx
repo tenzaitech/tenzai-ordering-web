@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/admin-fetch'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminSettingsPage() {
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingApprover, setTestingApprover] = useState(false)
@@ -49,13 +51,13 @@ export default function AdminSettingsPage() {
           line_staff_id: data.line_staff_id || ''
         }
       } else if (res.status === 401) {
-        showFeedback('Admin access required. Please access via /admin/menu first.', 'error')
+        showFeedback(t('adminAccessRequired'), 'error')
       } else {
-        showFeedback('Failed to load settings', 'error')
+        showFeedback(t('failedToLoadSettings'), 'error')
       }
     } catch (error) {
       console.error('[ADMIN:SETTINGS] Fetch error:', error)
-      showFeedback('Failed to load settings', 'error')
+      showFeedback(t('failedToLoadSettings'), 'error')
     } finally {
       setLoading(false)
     }
@@ -70,7 +72,7 @@ export default function AdminSettingsPage() {
     e.preventDefault()
 
     if (!hasChanges) {
-      showFeedback('No changes to save', 'error')
+      showFeedback(t('noChangesToSave'), 'error')
       return
     }
 
@@ -78,7 +80,7 @@ export default function AdminSettingsPage() {
 
     // Validate only changed fields
     if (newStaffPin && !/^\d{4}$/.test(newStaffPin)) {
-      showFeedback('PIN must be exactly 4 digits', 'error')
+      showFeedback(t('pinMustBe4Digits'), 'error')
       setSaving(false)
       return
     }
@@ -116,17 +118,17 @@ export default function AdminSettingsPage() {
         setNewStaffPin('')
 
         if (newStaffPin) {
-          showFeedback('Settings saved! Staff PIN changed - all staff sessions will be invalidated.', 'success')
+          showFeedback(t('settingsSavedWithPin'), 'success')
         } else {
-          showFeedback('Settings saved successfully!', 'success')
+          showFeedback(t('settingsSaved'), 'success')
         }
       } else {
         const error = await res.json()
-        showFeedback(error.error || 'Failed to save settings', 'error')
+        showFeedback(error.error || t('failedToSaveSettings'), 'error')
       }
     } catch (error) {
       console.error('[ADMIN:SETTINGS] Save error:', error)
-      showFeedback('Failed to save settings', 'error')
+      showFeedback(t('failedToSaveSettings'), 'error')
     } finally {
       setSaving(false)
     }
@@ -144,14 +146,14 @@ export default function AdminSettingsPage() {
       })
 
       if (res.ok) {
-        showFeedback(`Test message sent to ${target === 'approver' ? 'approver' : 'staff'}!`, 'success')
+        showFeedback(t('testMessageSent'), 'success')
       } else {
         const error = await res.json()
-        showFeedback(error.error || 'Failed to send test message', 'error')
+        showFeedback(error.error || t('failedToSendTestMessage'), 'error')
       }
     } catch (error) {
       console.error('[ADMIN:TEST] Error:', error)
-      showFeedback('Failed to send test message', 'error')
+      showFeedback(t('failedToSendTestMessage'), 'error')
     } finally {
       if (target === 'approver') setTestingApprover(false)
       else setTestingStaff(false)
@@ -163,7 +165,7 @@ export default function AdminSettingsPage() {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted">Loading settings...</p>
+          <p className="text-muted">{t('loadingSettings')}</p>
         </div>
       </div>
     )
@@ -172,7 +174,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-3xl mx-auto px-5 py-8">
-        <h1 className="text-3xl font-bold text-text mb-8">System Settings</h1>
+        <h1 className="text-3xl font-bold text-text mb-8">{t('systemSettings')}</h1>
 
         {feedback && (
           <div className={`mb-6 p-4 rounded-lg border ${
@@ -187,11 +189,11 @@ export default function AdminSettingsPage() {
         <form onSubmit={handleSave} className="space-y-6">
           {/* PromptPay ID */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-text mb-4">PromptPay ID</h2>
+            <h2 className="text-lg font-semibold text-text mb-4">{t('promptPayIdLabel')}</h2>
             <p className="text-sm text-muted mb-4">
-              Phone number or National ID for receiving PromptPay payments.
+              {t('promptPayIdDesc')}
               <br />
-              <span className="text-primary">Format: 0XXXXXXXXX (10 digits) or 13-digit National ID</span>
+              <span className="text-primary">{t('promptPayIdFormat')}</span>
             </p>
             <input
               type="text"
@@ -204,9 +206,9 @@ export default function AdminSettingsPage() {
 
           {/* LINE Approver ID */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-text mb-4">LINE Approver ID</h2>
+            <h2 className="text-lg font-semibold text-text mb-4">{t('lineApproverIdLabel')}</h2>
             <p className="text-sm text-muted mb-4">
-              LINE User ID that receives new order notifications (for payment approval).
+              {t('lineApproverIdDesc')}
             </p>
             <div className="flex gap-3">
               <input
@@ -222,16 +224,16 @@ export default function AdminSettingsPage() {
                 disabled={testingApprover || !lineApproverId.trim()}
                 className="px-5 py-3 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {testingApprover ? 'Sending...' : 'Test'}
+                {testingApprover ? t('sending') : t('test')}
               </button>
             </div>
           </div>
 
           {/* LINE Staff ID */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-text mb-4">LINE Staff ID</h2>
+            <h2 className="text-lg font-semibold text-text mb-4">{t('lineStaffIdLabel')}</h2>
             <p className="text-sm text-muted mb-4">
-              LINE User/Group ID that receives approved order notifications (kitchen staff).
+              {t('lineStaffIdDesc')}
             </p>
             <div className="flex gap-3">
               <input
@@ -247,18 +249,18 @@ export default function AdminSettingsPage() {
                 disabled={testingStaff || !lineStaffId.trim()}
                 className="px-5 py-3 bg-border text-text font-medium rounded-lg hover:bg-border/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {testingStaff ? 'Sending...' : 'Test'}
+                {testingStaff ? t('sending') : t('test')}
               </button>
             </div>
           </div>
 
           {/* Staff PIN */}
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-text mb-4">Change Staff PIN</h2>
+            <h2 className="text-lg font-semibold text-text mb-4">{t('changeStaffPin')}</h2>
             <p className="text-sm text-muted mb-4">
-              4-digit PIN for staff board access. Leave empty to keep current PIN.
+              {t('changeStaffPinDesc')}
               <br />
-              <span className="text-primary">⚠️ Changing PIN will log out all staff on their next request.</span>
+              <span className="text-primary">⚠️ {t('changeStaffPinWarning')}</span>
             </p>
             <input
               type="password"
@@ -266,7 +268,7 @@ export default function AdminSettingsPage() {
               pattern="[0-9]*"
               value={newStaffPin}
               onChange={(e) => setNewStaffPin(e.target.value)}
-              placeholder="Leave empty to keep current PIN"
+              placeholder={t('leaveEmptyToKeepPin')}
               maxLength={4}
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -278,7 +280,7 @@ export default function AdminSettingsPage() {
             disabled={saving || !hasChanges}
             className="w-full py-4 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : hasChanges ? 'Save Settings' : 'No Changes'}
+            {saving ? t('saving') : hasChanges ? t('saveSettings') : t('noChanges')}
           </button>
         </form>
       </div>

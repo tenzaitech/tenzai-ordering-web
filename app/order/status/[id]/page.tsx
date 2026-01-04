@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/utils/haptic'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 type OrderItem = {
   id: string
@@ -28,104 +29,17 @@ type Order = {
   created_at: string
 }
 
-type Language = 'th' | 'en'
-
-const translations = {
-  th: {
-    orderDetails: 'รายละเอียดออเดอร์',
-    loading: 'กำลังโหลด...',
-    order: 'ออเดอร์',
-    status: 'สถานะ',
-    total: 'ยอดรวม',
-    pending: 'รอตรวจสอบ',
-    approved: 'อนุมัติแล้ว',
-    rejected: 'ปฏิเสธ',
-    items: 'รายการสั่งซื้อ',
-    note: 'หมายเหตุ',
-    noteToRestaurant: 'หมายเหตุถึงร้าน',
-    back: 'กลับ',
-    notFound: 'ไม่พบออเดอร์',
-    notFoundDesc: 'ออเดอร์นี้ไม่พบหรือคุณไม่มีสิทธิ์เข้าถึง',
-    goBack: 'กลับไปหน้าออเดอร์',
-    errorTitle: 'เกิดข้อผิดพลาด',
-    errorMessage: 'ไม่สามารถโหลดข้อมูลได้',
-    retry: 'ลองใหม่',
-    orderedAt: 'สั่งเมื่อ',
-    pickupType: 'รูปแบบรับ',
-    asap: 'ให้ร้านทำทันที',
-    scheduled: 'นัดเวลารับ'
-  },
-  en: {
-    orderDetails: 'Order Details',
-    loading: 'Loading...',
-    order: 'Order',
-    status: 'Status',
-    total: 'Total',
-    pending: 'Pending',
-    approved: 'Approved',
-    rejected: 'Rejected',
-    items: 'Order Items',
-    note: 'Note',
-    noteToRestaurant: 'Note to Restaurant',
-    back: 'Back',
-    notFound: 'Order Not Found',
-    notFoundDesc: 'This order was not found or you do not have access.',
-    goBack: 'Go Back',
-    errorTitle: 'Error',
-    errorMessage: 'Unable to load data',
-    retry: 'Retry',
-    orderedAt: 'Ordered at',
-    pickupType: 'Pickup Type',
-    asap: 'ASAP',
-    scheduled: 'Scheduled'
-  }
-}
-
-const getStoredLanguage = (): Language | null => {
-  if (typeof window === 'undefined') return null
-  const stored = localStorage.getItem('tenzai_lang')
-  if (stored === 'en' || stored === 'th') return stored
-  return null
-}
-
-const getLiffLanguage = async (): Promise<Language> => {
-  try {
-    const liff = (await import('@line/liff')).default
-    if (liff.isInClient() && liff.isLoggedIn()) {
-      const lang = liff.getLanguage()
-      if (lang === 'en') return 'en'
-    }
-  } catch (error) {
-    // LIFF not available
-  }
-  return 'th'
-}
-
 export default function OrderDetailPage() {
   const params = useParams()
   const router = useRouter()
   const orderId = params.id as string
+  const { language, setLanguage, t } = useLanguage()
 
-  const [language, setLanguage] = useState<Language>('th')
   const [order, setOrder] = useState<Order | null>(null)
   const [items, setItems] = useState<OrderItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [notFound, setNotFound] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  const t = translations[language]
-
-  useEffect(() => {
-    const initLanguage = async () => {
-      const stored = getStoredLanguage()
-      setMounted(true)
-      const liffLang = await getLiffLanguage()
-      const initialLang = stored ?? liffLang
-      setLanguage(initialLang)
-    }
-    initLanguage()
-  }, [])
 
   const fetchOrderDetails = async () => {
     setLoading(true)
@@ -163,11 +77,6 @@ export default function OrderDetailPage() {
     }
   }, [orderId])
 
-  const handleLanguageToggle = (lang: Language) => {
-    setLanguage(lang)
-    localStorage.setItem('tenzai_lang', lang)
-  }
-
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'pending': return 'bg-primary/20 text-primary'
@@ -179,10 +88,10 @@ export default function OrderDetailPage() {
 
   const getStatusLabel = (status: string | null) => {
     switch (status) {
-      case 'pending': return t.pending
-      case 'approved': return t.approved
-      case 'rejected': return t.rejected
-      default: return t.pending
+      case 'pending': return t('statusPending')
+      case 'approved': return t('statusApproved')
+      case 'rejected': return t('statusRejected')
+      default: return t('statusPending')
     }
   }
 
@@ -198,7 +107,7 @@ export default function OrderDetailPage() {
 
   const formatPickupTime = (pickupType: string, pickupTime: string | null) => {
     if (pickupType === 'ASAP') {
-      return t.asap
+      return t('asap')
     }
     if (pickupTime) {
       const date = new Date(pickupTime)
@@ -228,10 +137,6 @@ export default function OrderDetailPage() {
     return optionStrings.length > 0 ? optionStrings : null
   }
 
-  if (!mounted) {
-    return null
-  }
-
   return (
     <div className="min-h-screen bg-bg pb-20">
       <div className="max-w-mobile mx-auto">
@@ -250,13 +155,13 @@ export default function OrderDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <h1 className="text-xl font-semibold text-text">{t.orderDetails}</h1>
+              <h1 className="text-xl font-semibold text-text">{t('orderDetails')}</h1>
             </div>
 
             {/* Language Toggle */}
             <div className="flex gap-1 bg-bg border border-border rounded-lg p-1">
               <button
-                onClick={() => handleLanguageToggle('th')}
+                onClick={() => setLanguage('th')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   language === 'th'
                     ? 'bg-primary text-white'
@@ -266,7 +171,7 @@ export default function OrderDetailPage() {
                 TH
               </button>
               <button
-                onClick={() => handleLanguageToggle('en')}
+                onClick={() => setLanguage('en')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   language === 'en'
                     ? 'bg-primary text-white'
@@ -284,7 +189,7 @@ export default function OrderDetailPage() {
           {loading && (
             <div className="text-center py-12">
               <div className="w-12 h-12 mx-auto mb-4 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-muted">{t.loading}</p>
+              <p className="text-muted">{t('loading')}</p>
             </div>
           )}
 
@@ -295,13 +200,13 @@ export default function OrderDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-text mb-2">{t.errorTitle}</h2>
-              <p className="text-sm text-muted mb-6">{t.errorMessage}</p>
+              <h2 className="text-xl font-semibold text-text mb-2">{t('errorGeneric')}</h2>
+              <p className="text-sm text-muted mb-6">{t('unableToLoadData')}</p>
               <button
                 onClick={fetchOrderDetails}
                 className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
               >
-                {t.retry}
+                {t('retry')}
               </button>
             </div>
           )}
@@ -313,8 +218,8 @@ export default function OrderDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-text mb-2">{t.notFound}</h2>
-              <p className="text-sm text-muted mb-6">{t.notFoundDesc}</p>
+              <h2 className="text-xl font-semibold text-text mb-2">{t('orderNotFound')}</h2>
+              <p className="text-sm text-muted mb-6">{t('orderNotFoundDetail')}</p>
               <button
                 onClick={() => {
                   triggerHaptic()
@@ -322,7 +227,7 @@ export default function OrderDetailPage() {
                 }}
                 className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
               >
-                {t.goBack}
+                {t('goBack')}
               </button>
             </div>
           )}
@@ -333,7 +238,7 @@ export default function OrderDetailPage() {
               <div className="bg-card border border-border rounded-lg p-4">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <p className="text-xs text-muted mb-1">{t.order}</p>
+                    <p className="text-xs text-muted mb-1">{t('order')}</p>
                     <p className="text-2xl font-bold text-text">#{order.order_number}</p>
                   </div>
                   <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
@@ -343,18 +248,18 @@ export default function OrderDetailPage() {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted">{t.orderedAt}</span>
+                    <span className="text-muted">{t('orderedAt')}</span>
                     <span className="text-text">{formatDate(order.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">{t.pickupType}</span>
+                    <span className="text-muted">{t('pickupTime')}</span>
                     <span className="text-text">{formatPickupTime(order.pickup_type, order.pickup_time)}</span>
                   </div>
                 </div>
 
                 {/* Total */}
                 <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-lg font-semibold text-text">{t.total}</span>
+                  <span className="text-lg font-semibold text-text">{t('total')}</span>
                   <span className="text-2xl font-bold text-primary">฿{order.total_amount}</span>
                 </div>
               </div>
@@ -362,7 +267,7 @@ export default function OrderDetailPage() {
               {/* Order Items */}
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-3 border-b border-border">
-                  <h3 className="font-semibold text-text">{t.items}</h3>
+                  <h3 className="font-semibold text-text">{t('orderItems')}</h3>
                 </div>
                 <div className="divide-y divide-border">
                   {items.map((item) => {
@@ -388,7 +293,7 @@ export default function OrderDetailPage() {
                             {/* Item Note */}
                             {item.note && (
                               <p className="text-xs text-muted italic mt-2">
-                                {t.note}: {item.note}
+                                {t('note')}: {item.note}
                               </p>
                             )}
                           </div>
@@ -403,7 +308,7 @@ export default function OrderDetailPage() {
               {/* Customer Note */}
               {order.customer_note && (
                 <div className="bg-card border border-border rounded-lg p-4">
-                  <h3 className="font-semibold text-text mb-2">{t.noteToRestaurant}</h3>
+                  <h3 className="font-semibold text-text mb-2">{t('noteToRestaurant')}</h3>
                   <p className="text-sm text-muted">{order.customer_note}</p>
                 </div>
               )}

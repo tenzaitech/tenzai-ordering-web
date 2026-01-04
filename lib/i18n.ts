@@ -4,58 +4,79 @@ type TranslationKey = keyof typeof translations.th
 
 const translations = {
   th: {
-    // Menu page
-    searchPlaceholder: 'ค้นหาเมนู...',
-    recommended: 'แนะนำ',
-    searchResults: 'ผลการค้นหา',
+    // ============================================
+    // COMMON / SHARED
+    // ============================================
+    loading: 'กำลังโหลด...',
+    pleaseWait: 'กรุณารอสักครู่...',
+    retry: 'ลองใหม่',
+    cancel: 'ยกเลิก',
+    save: 'บันทึก',
+    saving: 'กำลังบันทึก...',
+    confirm: 'ยืนยัน',
+    back: 'กลับ',
+    close: 'ปิด',
+    edit: 'แก้ไข',
+    delete: 'ลบ',
+    deleting: 'กำลังลบ...',
+    create: 'สร้าง',
+    creating: 'กำลังสร้าง...',
+    updating: 'กำลังอัปเดต...',
+    processing: 'กำลังดำเนินการ...',
+    required: '(จำเป็น)',
+    optional: '(ไม่บังคับ)',
+    note: 'หมายเหตุ',
+    total: 'รวมทั้งหมด',
     items: 'รายการ',
     item: 'รายการ',
     noItemsFound: 'ไม่พบรายการ',
-    categories: 'หมวดหมู่',
+    errorGeneric: 'เกิดข้อผิดพลาด',
+    errorGenericMessage: 'ไม่สามารถดำเนินการได้',
+    unauthorized: 'ไม่ได้รับอนุญาต (คีย์ผู้ดูแลหายไปหรือไม่ถูกต้อง)',
+    copiedToClipboard: 'คัดลอกแล้ว',
 
-    // Cart page
+    // ============================================
+    // MENU PAGE
+    // ============================================
+    searchPlaceholder: 'ค้นหาเมนู...',
+    recommended: 'แนะนำ',
+    searchResults: 'ผลการค้นหา',
+    categories: 'หมวดหมู่',
+    soldOut: 'หมด',
+
+    // ============================================
+    // CART PAGE
+    // ============================================
     cart: 'ตะกร้า',
     cartEmpty: 'ตะกร้าของคุณยังว่างอยู่',
     cartEmptyDesc: 'เลือกเมนูที่คุณชอบเพื่อเริ่มสั่งอาหาร',
     viewMenu: 'ดูเมนู',
-    note: 'หมายเหตุ',
-    total: 'รวมทั้งหมด',
     continueToCheckout: 'ดำเนินการชำระเงิน',
+    addMore: 'สั่งเพิ่ม',
 
-    // Menu item
-    soldOut: 'หมด',
-
-    // Checkout page
+    // ============================================
+    // CHECKOUT PAGE
+    // ============================================
     checkout: 'ชำระเงิน',
-    pickupTime: 'เวลารับอาหาร',
-    asap: 'โดยเร็ว (ASAP)',
-    scheduledPickup: 'กำหนดเวลารับ',
-    selectTime: 'เลือกเวลา',
     customerInfo: 'ข้อมูลลูกค้า',
     name: 'ชื่อ',
     namePlaceholder: 'กรอกชื่อของคุณ',
     phone: 'เบอร์โทร',
     phonePlaceholder: '08XXXXXXXX',
-    payment: 'ชำระเงิน',
-    promptPayInstructions: 'โอนเงินผ่าน PromptPay',
-    promptPayNumber: 'หมายเลข PromptPay',
-    uploadSlip: 'อัปโหลดสลิป',
-    uploadSlipDesc: 'กรุณาแนบหลักฐานการโอนเงิน',
-    slipUploaded: 'อัปโหลดสลิปแล้ว',
-    changeSlip: 'เปลี่ยนสลิป',
+    pickupTime: 'เวลารับอาหาร',
+    pickupType: 'รูปแบบรับ',
+    asap: 'โดยเร็ว (ASAP)',
+    asapFull: 'ให้ร้านทำทันที',
+    scheduledPickup: 'กำหนดเวลารับ',
+    scheduled: 'นัดเวลารับ',
+    selectTime: 'เลือกเวลา',
     orderSummary: 'รายการสั่งซื้อ',
-    confirmOrder: 'ยืนยันคำสั่งซื้อ',
-    pleaseWait: 'กรุณารอสักครู่...',
-    orderCreated: 'สร้างคำสั่งซื้อแล้ว',
-    orderNumber: 'หมายเลขคำสั่งซื้อ',
-    orderConfirmed: 'ยืนยันคำสั่งซื้อแล้ว',
-    orderConfirmedDesc: 'ขอบคุณสำหรับคำสั่งซื้อ เราจะเตรียมอาหารของคุณให้',
-    backToMenu: 'กลับไปหน้าเมนู',
-    orderDetails: 'รายละเอียดคำสั่งซื้อ',
-    pickupInfo: 'ข้อมูลการรับอาหาร',
-    customerDetails: 'ข้อมูลลูกค้า',
-    items: 'รายการ',
-    required: '(จำเป็น)',
+    noteToRestaurant: 'หมายเหตุถึงร้าน',
+    noteToRestaurantPlaceholder: 'เช่น ไม่ใส่วาซาบิ / แพ้อาหาร / ฝากบอกพนักงาน…',
+    goToPayment: 'ไปหน้าชำระเงิน',
+    fillAllFields: 'กรุณากรอกข้อมูลให้ครบถ้วน',
+    selectPickupTime: 'กรุณาเลือกเวลารับอาหาร',
+    invalidItemsDetected: 'พบรายการที่ไม่ถูกต้อง กรุณาลบและเพิ่มรายการใหม่',
 
     // Processing states
     processingUploadingSlip: 'กำลังอัปโหลดสลิปการชำระเงิน… กรุณาอย่าปิดหน้านี้',
@@ -83,30 +104,122 @@ const translations = {
     retryUploadSlip: 'ลองอัปโหลดอีกครั้ง',
     backToEdit: 'กลับไปแก้ไข',
 
-    // Item detail page
+    // ============================================
+    // PAYMENT PAGE
+    // ============================================
+    payment: 'ชำระเงิน',
+    promptPayInstructions: 'โอนเงินผ่าน PromptPay',
+    promptPayNumber: 'หมายเลข PromptPay',
+    promptPay: 'พร้อมเพย์',
+    amount: 'ยอดชำระ',
+    uploadSlip: 'อัปโหลดสลิป',
+    uploadSlipDesc: 'กรุณาแนบหลักฐานการโอนเงิน',
+    slipUploaded: 'อัปโหลดสลิปแล้ว',
+    changeSlip: 'เปลี่ยนสลิป',
+    confirmOrder: 'ยืนยันคำสั่งซื้อ',
+    orderNotFound: 'ไม่พบคำสั่งซื้อ',
+    orderNotFoundDesc: 'กรุณากลับไปหน้าชำระเงินและลองใหม่อีกครั้ง',
+    backToCheckout: 'กลับไปหน้าชำระเงิน',
+    orderLocked: 'ล็อคแล้ว (อัปสลิปแล้ว)',
+    editItems: 'แก้ไขรายการ',
+    updatingTotal: 'กำลังอัปเดตยอดรวม…',
+    generatingQR: 'กำลังสร้าง QR...',
+    saveQR: 'บันทึก QR',
+    pleaseAttachSlip: 'กรุณาแนบสลิปการชำระเงิน',
+    collapse: 'ย่อ',
+    showAll: 'แสดงทั้งหมด',
+
+    // ============================================
+    // CONFIRMED PAGE
+    // ============================================
+    orderCreated: 'สร้างคำสั่งซื้อแล้ว',
+    orderNumber: 'หมายเลขคำสั่งซื้อ',
+    orderConfirmed: 'ยืนยันคำสั่งซื้อแล้ว',
+    orderConfirmedDesc: 'ขอบคุณสำหรับคำสั่งซื้อ เราจะเตรียมอาหารของคุณให้',
+    orderDetails: 'รายละเอียดคำสั่งซื้อ',
+    pickupInfo: 'ข้อมูลการรับอาหาร',
+    customerDetails: 'ข้อมูลลูกค้า',
+    backToMenu: 'กลับไปหน้าเมนู',
+    orderReceived: 'เราได้รับออเดอร์แล้ว',
+    statusWaitingApproval: 'สถานะ: รออนุมัติ',
+    viewMyOrders: 'ดูออเดอร์ของฉัน',
+    couldNotLoadOrder: 'ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง',
+
+    // ============================================
+    // ORDER STATUS PAGE
+    // ============================================
+    myOrders: 'ออเดอร์ของฉัน',
+    noOrders: 'ยังไม่มีออเดอร์',
+    noOrdersDesc: 'เมื่อคุณสั่งอาหาร ออเดอร์จะแสดงที่นี่',
+    order: 'ออเดอร์',
+    status: 'สถานะ',
+    statusPending: 'รอตรวจสอบ',
+    statusApproved: 'อนุมัติแล้ว',
+    statusRejected: 'ปฏิเสธ',
+    statusReady: 'พร้อมรับ',
+    statusPickedUp: 'รับแล้ว',
+    slipNotUploaded: 'ยังไม่ได้อัปสลิป',
+    orderedAt: 'สั่งเมื่อ',
+    orderNotFoundDetail: 'ออเดอร์นี้ไม่พบหรือคุณไม่มีสิทธิ์เข้าถึง',
+    goBack: 'กลับไปหน้าออเดอร์',
+    unableToLoadOrders: 'ไม่สามารถโหลดออเดอร์ได้',
+    unableToLoadData: 'ไม่สามารถโหลดข้อมูลได้',
+
+    // ============================================
+    // LIFF PAGE
+    // ============================================
+    liffNotConfigured: 'ยังไม่ได้ตั้งค่า LIFF',
+    failedToCreateSession: 'ไม่สามารถสร้างเซสชันได้',
+    pleaseOpenInLine: 'กรุณาเปิดหน้านี้ใน LINE',
+    openInLine: 'เปิดใน LINE',
+    ifNotOpenTapHere: 'หากไม่เปิด ให้แตะที่นี่',
+    connectionError: 'เชื่อมต่อไม่สำเร็จ',
+    connectingLine: 'กำลังเชื่อมต่อ LINE…',
+    loggingIn: 'กำลังเข้าสู่ระบบ…',
+    liffInstructionsIOS: 'แตะ "เปิดใน LINE" ด้านล่าง หากมีการถาม ให้เลือก "เปิด"',
+    liffInstructionsAndroid: 'แตะ "เปิดใน LINE" ด้านล่าง หากมีการถาม ให้อนุญาตเปิดใน LINE',
+    liffInstructionsDesktop: 'กรุณาเปิดลิงก์นี้บนโทรศัพท์ในแอป LINE',
+
+    // ============================================
+    // CLOSED PAGE
+    // ============================================
+    shopClosedTitle: 'ร้านปิดรับออเดอร์ชั่วคราว',
+    shopClosedMessage: 'ขออภัยในความไม่สะดวกครับ\n\nสามารถดูเมนูได้ที่ปุ่ม MENU\nในหน้าแชท LINE ของร้าน',
+
+    // ============================================
+    // ITEM DETAIL PAGE
+    // ============================================
     itemDetails: 'รายละเอียดสินค้า',
     editItem: 'แก้ไขรายการ',
+    addItem: 'เพิ่มรายการ',
     specialInstructions: 'คำขอพิเศษ',
     specialInstructionsPlaceholder: 'เพิ่มคำขอพิเศษที่นี่ (ถ้ามี)',
     quantity: 'จำนวน',
     saveChanges: 'บันทึกการเปลี่ยนแปลง',
     addToCart: 'เพิ่มลงตะกร้า',
+    addToOrder: 'เพิ่มลงออเดอร์',
     itemUpdated: 'แก้ไขรายการแล้ว',
     addedToCart: 'เพิ่มลงตะกร้าแล้ว',
     pleaseSelect: 'กรุณาเลือก',
     selectAtLeast: 'กรุณาเลือกอย่างน้อย',
+    adding: 'กำลังเพิ่ม...',
+    failedToAddItem: 'เพิ่มรายการไม่สำเร็จ',
 
-    // Admin navigation
+    // ============================================
+    // ADMIN NAVIGATION
+    // ============================================
     dashboard: 'แดชบอร์ด',
     orders: 'คำสั่งซื้อ',
     staff: 'พนักงาน',
     menu: 'เมนู',
-    categories: 'หมวดหมู่',
+    category: 'หมวดหมู่',
     options: 'ตัวเลือก',
     importExport: 'นำเข้า/ส่งออก',
     settings: 'ตั้งค่า',
 
-    // Admin dashboard
+    // ============================================
+    // ADMIN DASHBOARD
+    // ============================================
     operations: 'การดำเนินงาน',
     restaurantManagement: 'การจัดการร้านอาหาร',
     ordersDesc: 'ดูและจัดการคำสั่งซื้อ',
@@ -115,7 +228,9 @@ const translations = {
     optionsDesc: 'การปรับแต่งและส่วนเสริม',
     importExportDesc: 'การจัดการข้อมูลจำนวนมาก',
 
-    // Admin orders page
+    // ============================================
+    // ADMIN ORDERS PAGE
+    // ============================================
     adminOrders: 'ผู้ดูแล - คำสั่งซื้อ',
     loadingOrders: 'กำลังโหลดคำสั่งซื้อ...',
     orderAccepting: 'การรับคำสั่งซื้อ',
@@ -125,20 +240,87 @@ const translations = {
     customersBlocked: 'ลูกค้าไม่สามารถสั่งอาหารได้',
     closeShop: 'ปิดร้าน',
     openShop: 'เปิดร้าน',
-    processing: 'กำลังดำเนินการ...',
-    orderNumber: 'หมายเลขออเดอร์',
     customer: 'ลูกค้า',
     pickup: 'รับสินค้า',
-    status: 'สถานะ',
     noOrdersFound: 'ไม่พบคำสั่งซื้อ',
     immediate: 'ทันที',
+    filterStatus: 'สถานะ',
+    filterDate: 'วันที่',
+    filterAll: 'ทั้งหมด',
+    filterToday: 'วันนี้',
+    filterPending: 'รอดำเนินการ',
+    filterApproved: 'อนุมัติแล้ว',
+    filterRejected: 'ปฏิเสธแล้ว',
+    filterReady: 'พร้อมรับ',
+    filterPickedUp: 'รับแล้ว',
+    search: 'ค้นหา',
+    searchPlaceholderAdmin: 'เลขออเดอร์, ชื่อ, เบอร์โทร...',
+    showing: 'แสดง',
+    of: 'จาก',
+    prev: 'ก่อนหน้า',
+    next: 'ถัดไป',
+    page: 'หน้า',
+    created: 'สร้างเมื่อ',
+    customerInfo: 'ข้อมูลลูกค้า',
+    pickupInfo: 'ข้อมูลการรับ',
+    totalAmount: 'ยอดรวม',
+    paymentSlip: 'สลิปการชำระเงิน',
+    openSlip: 'ดูสลิป',
+    noSlipUploaded: 'ยังไม่ได้อัปโหลดสลิป',
+    customerNote: 'หมายเหตุจากลูกค้า',
+    orderItems: 'รายการสั่งซื้อ',
+    approve: 'อนุมัติ',
+    reject: 'ปฏิเสธ',
+    confirmApprove: 'อนุมัติคำสั่งซื้อนี้และแจ้งทีมครัว?',
+    confirmOpenShop: 'เปิดรับออเดอร์อีกครั้ง?',
+    confirmCloseShop: 'ปิดรับออเดอร์ชั่วคราว?',
+    shopOpened: 'เปิดรับออเดอร์แล้ว',
+    shopClosed: 'ปิดรับออเดอร์แล้ว',
+    orderApprovedSuccess: 'อนุมัติคำสั่งซื้อสำเร็จ',
+    orderApprovedError: 'ไม่สามารถอนุมัติคำสั่งซื้อได้',
+    orderRejectedSuccess: 'ปฏิเสธคำสั่งซื้อสำเร็จ',
+    orderRejectedError: 'ไม่สามารถปฏิเสธคำสั่งซื้อได้',
+    rejectOrder: 'ปฏิเสธคำสั่งซื้อ',
+    rejectReasonOptional: 'เหตุผล (ไม่บังคับ)',
+    rejectReasonPlaceholder: 'เช่น สินค้าหมด, การชำระเงินไม่ถูกต้อง...',
+    confirmReject: 'ยืนยันปฏิเสธ',
 
-    // Admin menu management
+    // ============================================
+    // ADMIN SETTINGS PAGE
+    // ============================================
+    systemSettings: 'ตั้งค่าระบบ',
+    loadingSettings: 'กำลังโหลดการตั้งค่า...',
+    promptPayIdLabel: 'หมายเลข PromptPay',
+    promptPayIdDesc: 'เบอร์โทรหรือเลขบัตรประชาชนสำหรับรับเงินผ่าน PromptPay',
+    promptPayIdFormat: 'รูปแบบ: 0XXXXXXXXX (10 หลัก) หรือเลขบัตรประชาชน 13 หลัก',
+    lineApproverIdLabel: 'LINE Approver ID',
+    lineApproverIdDesc: 'LINE User ID ที่จะได้รับแจ้งเตือนออเดอร์ใหม่ (สำหรับอนุมัติ)',
+    lineStaffIdLabel: 'LINE Staff ID',
+    lineStaffIdDesc: 'LINE User/Group ID ที่จะได้รับแจ้งเตือนออเดอร์ที่อนุมัติแล้ว (พนักงานครัว)',
+    changeStaffPin: 'เปลี่ยน Staff PIN',
+    changeStaffPinDesc: 'PIN 4 หลักสำหรับเข้าใช้งาน Staff Board',
+    changeStaffPinWarning: 'การเปลี่ยน PIN จะทำให้พนักงานทั้งหมดต้องเข้าสู่ระบบใหม่',
+    leaveEmptyToKeepPin: 'เว้นว่างเพื่อใช้ PIN เดิม',
+    test: 'ทดสอบ',
+    sending: 'กำลังส่ง...',
+    noChanges: 'ไม่มีการเปลี่ยนแปลง',
+    saveSettings: 'บันทึกการตั้งค่า',
+    settingsSaved: 'บันทึกการตั้งค่าสำเร็จ!',
+    settingsSavedWithPin: 'บันทึกการตั้งค่าสำเร็จ! PIN ถูกเปลี่ยน - พนักงานทั้งหมดจะต้องเข้าสู่ระบบใหม่',
+    failedToLoadSettings: 'โหลดการตั้งค่าไม่สำเร็จ',
+    failedToSaveSettings: 'บันทึกการตั้งค่าไม่สำเร็จ',
+    adminAccessRequired: 'ต้องมีสิทธิ์ Admin กรุณาเข้าผ่าน /admin/menu ก่อน',
+    pinMustBe4Digits: 'PIN ต้องเป็นตัวเลข 4 หลัก',
+    noChangesToSave: 'ไม่มีการเปลี่ยนแปลงที่จะบันทึก',
+    testMessageSent: 'ส่งข้อความทดสอบสำเร็จ!',
+    failedToSendTestMessage: 'ส่งข้อความทดสอบไม่สำเร็จ',
+
+    // ============================================
+    // ADMIN MENU MANAGEMENT
+    // ============================================
     menuManagement: 'การจัดการเมนู',
     createNewItem: '+ สร้างรายการใหม่',
-    search: 'ค้นหา',
     searchByNameOrCode: 'ค้นหาด้วยชื่อหรือรหัส...',
-    category: 'หมวดหมู่',
     allCategories: 'หมวดหมู่ทั้งหมด',
     noMenuItemsFound: 'ไม่พบรายการเมนู',
     tryAdjustingFilters: 'ลองปรับการค้นหาหรือตัวกรอง',
@@ -153,12 +335,8 @@ const translations = {
     noImage: 'ไม่มีรูป',
     active: 'ใช้งาน',
     inactive: 'ไม่ใช้งาน',
-    edit: 'แก้ไข',
     setInactive: 'ตั้งเป็นไม่ใช้งาน',
     setActive: 'ตั้งเป็นใช้งาน',
-    delete: 'ลบ',
-    deleting: 'กำลังลบ...',
-    updating: 'กำลังอัปเดต...',
     menuActivated: 'เปิดใช้งานเมนูแล้ว',
     menuDeactivated: 'ปิดใช้งานเมนูแล้ว',
     failedToToggle: 'ไม่สามารถเปลี่ยนสถานะได้',
@@ -167,14 +345,13 @@ const translations = {
     actionCannotBeUndone: 'การดำเนินการนี้ไม่สามารถยกเลิกได้',
     menuItemDeleted: 'ลบรายการเมนูแล้ว',
 
-    // Admin category management
+    // ============================================
+    // ADMIN CATEGORY MANAGEMENT
+    // ============================================
     categoryManagement: 'การจัดการหมวดหมู่',
     createCategory: '+ สร้างหมวดหมู่',
     createNewCategory: 'สร้างหมวดหมู่ใหม่',
     enterCategoryName: 'ป้อนชื่อหมวดหมู่...',
-    creating: 'กำลังสร้าง...',
-    create: 'สร้าง',
-    cancel: 'ยกเลิก',
     categoryNameRequired: 'ต้องระบุชื่อหมวดหมู่',
     categoryCreated: 'สร้างหมวดหมู่แล้ว',
     categoryUpdated: 'อัปเดตหมวดหมู่แล้ว',
@@ -185,67 +362,83 @@ const translations = {
     getStartedByCreatingCategory: 'เริ่มต้นด้วยการสร้างหมวดหมู่แรกของคุณ',
     createFirstCategory: '+ สร้างหมวดหมู่แรก',
     rename: 'เปลี่ยนชื่อ',
-    saving: 'กำลังบันทึก...',
-    save: 'บันทึก',
     cannotDeleteCategory: 'ไม่สามารถลบหมวดหมู่: มีรายการเมนู',
     deleteCategory: 'ลบหมวดหมู่',
-
-    // Common
-    unauthorized: 'ไม่ได้รับอนุญาต (คีย์ผู้ดูแลหายไปหรือไม่ถูกต้อง)',
   },
   en: {
-    // Menu page
-    searchPlaceholder: 'Search menu...',
-    recommended: 'Recommended',
-    searchResults: 'Search Results',
+    // ============================================
+    // COMMON / SHARED
+    // ============================================
+    loading: 'Loading...',
+    pleaseWait: 'Please wait...',
+    retry: 'Retry',
+    cancel: 'Cancel',
+    save: 'Save',
+    saving: 'Saving...',
+    confirm: 'Confirm',
+    back: 'Back',
+    close: 'Close',
+    edit: 'Edit',
+    delete: 'Delete',
+    deleting: 'Deleting...',
+    create: 'Create',
+    creating: 'Creating...',
+    updating: 'Updating...',
+    processing: 'Processing...',
+    required: '(required)',
+    optional: '(Optional)',
+    note: 'Note',
+    total: 'Total',
     items: 'items',
     item: 'item',
     noItemsFound: 'No items found',
-    categories: 'Categories',
+    errorGeneric: 'Error',
+    errorGenericMessage: 'Unable to process request',
+    unauthorized: 'Unauthorized (admin key missing/invalid)',
+    copiedToClipboard: 'Copied',
 
-    // Cart page
+    // ============================================
+    // MENU PAGE
+    // ============================================
+    searchPlaceholder: 'Search menu...',
+    recommended: 'Recommended',
+    searchResults: 'Search Results',
+    categories: 'Categories',
+    soldOut: 'Sold out',
+
+    // ============================================
+    // CART PAGE
+    // ============================================
     cart: 'Cart',
     cartEmpty: 'Your cart is empty',
     cartEmptyDesc: 'Choose your favorite menu to start ordering',
     viewMenu: 'View Menu',
-    note: 'Note',
-    total: 'Total',
     continueToCheckout: 'Continue to Checkout',
+    addMore: 'Add more',
 
-    // Menu item
-    soldOut: 'Sold out',
-
-    // Checkout page
+    // ============================================
+    // CHECKOUT PAGE
+    // ============================================
     checkout: 'Checkout',
-    pickupTime: 'Pickup Time',
-    asap: 'ASAP',
-    scheduledPickup: 'Scheduled Pickup',
-    selectTime: 'Select Time',
     customerInfo: 'Customer Information',
     name: 'Name',
     namePlaceholder: 'Enter your name',
     phone: 'Phone',
     phonePlaceholder: '08XXXXXXXX',
-    payment: 'Payment',
-    promptPayInstructions: 'Transfer via PromptPay',
-    promptPayNumber: 'PromptPay Number',
-    uploadSlip: 'Upload Slip',
-    uploadSlipDesc: 'Please attach payment proof',
-    slipUploaded: 'Slip uploaded',
-    changeSlip: 'Change slip',
+    pickupTime: 'Pickup Time',
+    pickupType: 'Pickup Type',
+    asap: 'ASAP',
+    asapFull: 'Prepare immediately',
+    scheduledPickup: 'Scheduled Pickup',
+    scheduled: 'Scheduled',
+    selectTime: 'Select Time',
     orderSummary: 'Order Summary',
-    confirmOrder: 'Confirm Order',
-    pleaseWait: 'Please wait...',
-    orderCreated: 'Order created',
-    orderNumber: 'Order Number',
-    orderConfirmed: 'Order Confirmed',
-    orderConfirmedDesc: 'Thank you for your order. We will prepare your food',
-    backToMenu: 'Back to Menu',
-    orderDetails: 'Order Details',
-    pickupInfo: 'Pickup Information',
-    customerDetails: 'Customer Details',
-    items: 'items',
-    required: '(required)',
+    noteToRestaurant: 'Note to Restaurant',
+    noteToRestaurantPlaceholder: 'e.g. No wasabi / Allergies / Special instructions…',
+    goToPayment: 'Go to Payment',
+    fillAllFields: 'Please fill in all required fields',
+    selectPickupTime: 'Please select pickup time',
+    invalidItemsDetected: 'Invalid items detected. Please remove and re-add them.',
 
     // Processing states
     processingUploadingSlip: 'Uploading payment slip… Please do not close this page',
@@ -273,30 +466,122 @@ const translations = {
     retryUploadSlip: 'Try Uploading Again',
     backToEdit: 'Back to Edit',
 
-    // Item detail page
+    // ============================================
+    // PAYMENT PAGE
+    // ============================================
+    payment: 'Payment',
+    promptPayInstructions: 'Transfer via PromptPay',
+    promptPayNumber: 'PromptPay Number',
+    promptPay: 'PromptPay',
+    amount: 'Amount',
+    uploadSlip: 'Upload Slip',
+    uploadSlipDesc: 'Please attach payment proof',
+    slipUploaded: 'Slip uploaded',
+    changeSlip: 'Change slip',
+    confirmOrder: 'Confirm Order',
+    orderNotFound: 'Order Not Found',
+    orderNotFoundDesc: 'Please go back to checkout and try again',
+    backToCheckout: 'Back to Checkout',
+    orderLocked: 'Locked (slip uploaded)',
+    editItems: 'Edit Items',
+    updatingTotal: 'Updating total…',
+    generatingQR: 'Generating QR...',
+    saveQR: 'Save QR',
+    pleaseAttachSlip: 'Please attach payment slip',
+    collapse: 'Collapse',
+    showAll: 'Show all',
+
+    // ============================================
+    // CONFIRMED PAGE
+    // ============================================
+    orderCreated: 'Order created',
+    orderNumber: 'Order Number',
+    orderConfirmed: 'Order Confirmed',
+    orderConfirmedDesc: 'Thank you for your order. We will prepare your food',
+    orderDetails: 'Order Details',
+    pickupInfo: 'Pickup Information',
+    customerDetails: 'Customer Details',
+    backToMenu: 'Back to Menu',
+    orderReceived: 'We received your order',
+    statusWaitingApproval: 'Status: Waiting for approval',
+    viewMyOrders: 'View My Orders',
+    couldNotLoadOrder: 'Could not load order information. Please try again',
+
+    // ============================================
+    // ORDER STATUS PAGE
+    // ============================================
+    myOrders: 'My Orders',
+    noOrders: 'No orders yet',
+    noOrdersDesc: 'When you place an order, it will appear here',
+    order: 'Order',
+    status: 'Status',
+    statusPending: 'Pending',
+    statusApproved: 'Approved',
+    statusRejected: 'Rejected',
+    statusReady: 'Ready',
+    statusPickedUp: 'Picked Up',
+    slipNotUploaded: 'Slip not uploaded',
+    orderedAt: 'Ordered at',
+    orderNotFoundDetail: 'This order was not found or you do not have access.',
+    goBack: 'Go Back',
+    unableToLoadOrders: 'Unable to load orders',
+    unableToLoadData: 'Unable to load data',
+
+    // ============================================
+    // LIFF PAGE
+    // ============================================
+    liffNotConfigured: 'LIFF ID not configured',
+    failedToCreateSession: 'Failed to create session',
+    pleaseOpenInLine: 'Please open this page in LINE',
+    openInLine: 'Open in LINE',
+    ifNotOpenTapHere: 'If it doesn\'t open, tap here',
+    connectionError: 'Connection Error',
+    connectingLine: 'Connecting LINE…',
+    loggingIn: 'Logging in…',
+    liffInstructionsIOS: 'Tap "Open in LINE" below. If prompted, choose "Open".',
+    liffInstructionsAndroid: 'Tap "Open in LINE" below. If prompted, allow opening in LINE.',
+    liffInstructionsDesktop: 'Please open this link on your phone in the LINE app.',
+
+    // ============================================
+    // CLOSED PAGE
+    // ============================================
+    shopClosedTitle: 'Shop is temporarily closed',
+    shopClosedMessage: 'We apologize for the inconvenience.\n\nYou can view the menu using the MENU button\nin the LINE chat.',
+
+    // ============================================
+    // ITEM DETAIL PAGE
+    // ============================================
     itemDetails: 'Item Details',
     editItem: 'Edit Item',
+    addItem: 'Add Item',
     specialInstructions: 'Special Instructions',
     specialInstructionsPlaceholder: 'Add any special requests here (optional)',
     quantity: 'Quantity',
     saveChanges: 'Save Changes',
     addToCart: 'Add to Cart',
+    addToOrder: 'Add to Order',
     itemUpdated: 'Item updated',
     addedToCart: 'Added to cart',
     pleaseSelect: 'Please select',
     selectAtLeast: 'Select at least',
+    adding: 'Adding...',
+    failedToAddItem: 'Failed to add item',
 
-    // Admin navigation
+    // ============================================
+    // ADMIN NAVIGATION
+    // ============================================
     dashboard: 'Dashboard',
     orders: 'Orders',
     staff: 'Staff',
     menu: 'Menu',
-    categories: 'Categories',
+    category: 'Category',
     options: 'Options',
     importExport: 'Import/Export',
     settings: 'Settings',
 
-    // Admin dashboard
+    // ============================================
+    // ADMIN DASHBOARD
+    // ============================================
     operations: 'Operations',
     restaurantManagement: 'Restaurant management',
     ordersDesc: 'View and manage customer orders',
@@ -305,7 +590,9 @@ const translations = {
     optionsDesc: 'Customizations and add-ons',
     importExportDesc: 'Bulk data operations',
 
-    // Admin orders page
+    // ============================================
+    // ADMIN ORDERS PAGE
+    // ============================================
     adminOrders: 'Admin - Orders',
     loadingOrders: 'Loading orders...',
     orderAccepting: 'Order Accepting',
@@ -315,20 +602,87 @@ const translations = {
     customersBlocked: 'Customers are blocked from ordering',
     closeShop: 'Close Shop',
     openShop: 'Open Shop',
-    processing: 'Processing...',
-    orderNumber: 'Order #',
     customer: 'Customer',
     pickup: 'Pickup',
-    status: 'Status',
     noOrdersFound: 'No orders found',
     immediate: 'ASAP',
+    filterStatus: 'Status',
+    filterDate: 'Date',
+    filterAll: 'All',
+    filterToday: 'Today',
+    filterPending: 'Pending',
+    filterApproved: 'Approved',
+    filterRejected: 'Rejected',
+    filterReady: 'Ready',
+    filterPickedUp: 'Picked Up',
+    search: 'Search',
+    searchPlaceholderAdmin: 'Order #, name, phone...',
+    showing: 'Showing',
+    of: 'of',
+    prev: 'Prev',
+    next: 'Next',
+    page: 'Page',
+    created: 'Created',
+    customerInfo: 'Customer Information',
+    pickupInfo: 'Pickup Information',
+    totalAmount: 'Total Amount',
+    paymentSlip: 'Payment Slip',
+    openSlip: 'Open Slip',
+    noSlipUploaded: 'No slip uploaded',
+    customerNote: 'Customer Note',
+    orderItems: 'Order Items',
+    approve: 'Approve',
+    reject: 'Reject',
+    confirmApprove: 'Approve this order and notify kitchen?',
+    confirmOpenShop: 'Open shop for orders?',
+    confirmCloseShop: 'Temporarily close shop?',
+    shopOpened: 'Shop is now open',
+    shopClosed: 'Shop is now closed',
+    orderApprovedSuccess: 'Order approved successfully',
+    orderApprovedError: 'Failed to approve order',
+    orderRejectedSuccess: 'Order rejected successfully',
+    orderRejectedError: 'Failed to reject order',
+    rejectOrder: 'Reject Order',
+    rejectReasonOptional: 'Reason (optional)',
+    rejectReasonPlaceholder: 'e.g., Out of stock, Invalid payment...',
+    confirmReject: 'Confirm Reject',
 
-    // Admin menu management
+    // ============================================
+    // ADMIN SETTINGS PAGE
+    // ============================================
+    systemSettings: 'System Settings',
+    loadingSettings: 'Loading settings...',
+    promptPayIdLabel: 'PromptPay ID',
+    promptPayIdDesc: 'Phone number or National ID for receiving PromptPay payments.',
+    promptPayIdFormat: 'Format: 0XXXXXXXXX (10 digits) or 13-digit National ID',
+    lineApproverIdLabel: 'LINE Approver ID',
+    lineApproverIdDesc: 'LINE User ID that receives new order notifications (for payment approval).',
+    lineStaffIdLabel: 'LINE Staff ID',
+    lineStaffIdDesc: 'LINE User/Group ID that receives approved order notifications (kitchen staff).',
+    changeStaffPin: 'Change Staff PIN',
+    changeStaffPinDesc: '4-digit PIN for staff board access.',
+    changeStaffPinWarning: 'Changing PIN will log out all staff on their next request.',
+    leaveEmptyToKeepPin: 'Leave empty to keep current PIN',
+    test: 'Test',
+    sending: 'Sending...',
+    noChanges: 'No Changes',
+    saveSettings: 'Save Settings',
+    settingsSaved: 'Settings saved successfully!',
+    settingsSavedWithPin: 'Settings saved! Staff PIN changed - all staff sessions will be invalidated.',
+    failedToLoadSettings: 'Failed to load settings',
+    failedToSaveSettings: 'Failed to save settings',
+    adminAccessRequired: 'Admin access required. Please access via /admin/menu first.',
+    pinMustBe4Digits: 'PIN must be exactly 4 digits',
+    noChangesToSave: 'No changes to save',
+    testMessageSent: 'Test message sent!',
+    failedToSendTestMessage: 'Failed to send test message',
+
+    // ============================================
+    // ADMIN MENU MANAGEMENT
+    // ============================================
     menuManagement: 'Menu Management',
     createNewItem: '+ Create New Item',
-    search: 'Search',
     searchByNameOrCode: 'Search by name or code...',
-    category: 'Category',
     allCategories: 'All Categories',
     noMenuItemsFound: 'No menu items found',
     tryAdjustingFilters: 'Try adjusting your search or filters',
@@ -343,12 +697,8 @@ const translations = {
     noImage: 'No image',
     active: 'Active',
     inactive: 'Inactive',
-    edit: 'Edit',
     setInactive: 'Set Inactive',
     setActive: 'Set Active',
-    delete: 'Delete',
-    deleting: 'Deleting...',
-    updating: 'Updating...',
     menuActivated: 'Menu activated successfully',
     menuDeactivated: 'Menu deactivated successfully',
     failedToToggle: 'Failed to toggle active status',
@@ -357,14 +707,13 @@ const translations = {
     actionCannotBeUndone: 'This action cannot be undone',
     menuItemDeleted: 'Menu item deleted successfully',
 
-    // Admin category management
+    // ============================================
+    // ADMIN CATEGORY MANAGEMENT
+    // ============================================
     categoryManagement: 'Category Management',
     createCategory: '+ Create Category',
     createNewCategory: 'Create New Category',
     enterCategoryName: 'Enter category name...',
-    creating: 'Creating...',
-    create: 'Create',
-    cancel: 'Cancel',
     categoryNameRequired: 'Category name is required',
     categoryCreated: 'Category created successfully',
     categoryUpdated: 'Category updated successfully',
@@ -375,13 +724,8 @@ const translations = {
     getStartedByCreatingCategory: 'Get started by creating your first category',
     createFirstCategory: '+ Create First Category',
     rename: 'Rename',
-    saving: 'Saving...',
-    save: 'Save',
     cannotDeleteCategory: 'Cannot delete category: menu items are using this category',
     deleteCategory: 'Delete Category',
-
-    // Common
-    unauthorized: 'Unauthorized (admin key missing/invalid)',
   },
 }
 

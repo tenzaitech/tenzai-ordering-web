@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function OrderClosedPage() {
+  const { t } = useLanguage()
   const [customMessage, setCustomMessage] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-
     const fetchSettings = async () => {
       try {
         const { data, error } = await supabase
@@ -30,14 +29,6 @@ export default function OrderClosedPage() {
     fetchSettings()
   }, [])
 
-  const defaultMessage = `ร้านปิดรับออเดอร์ชั่วคราว
-ขออภัยในความไม่สะดวกครับ
-
-สามารถดูเมนูได้ที่ปุ่ม MENU
-ในหน้าแชท LINE ของร้าน`
-
-  if (!mounted) return null
-
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-5">
       <div className="max-w-md text-center">
@@ -56,8 +47,9 @@ export default function OrderClosedPage() {
             />
           </svg>
         </div>
+        <h1 className="text-xl font-bold text-text mb-4">{t('shopClosedTitle')}</h1>
         <div className="whitespace-pre-line text-text text-lg leading-relaxed">
-          {customMessage || defaultMessage}
+          {customMessage || t('shopClosedMessage')}
         </div>
       </div>
     </div>
