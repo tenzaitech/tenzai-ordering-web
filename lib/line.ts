@@ -14,6 +14,273 @@ async function getLineRecipients(): Promise<{ approverId: string; staffId: strin
   }
 }
 
+// Format pickup time to Bangkok timezone
+function formatPickupTime(pickupType: string, pickupTime: string | null): string {
+  if (pickupType === 'ASAP') {
+    return 'ให้ร้านทำทันที'
+  } else if (pickupTime) {
+    const date = new Date(pickupTime)
+    const bangkokOffsetMs = 7 * 60 * 60 * 1000
+    const bangkokTime = new Date(date.getTime() + bangkokOffsetMs)
+    const hours = String(bangkokTime.getUTCHours()).padStart(2, '0')
+    const minutes = String(bangkokTime.getUTCMinutes()).padStart(2, '0')
+    const day = String(bangkokTime.getUTCDate()).padStart(2, '0')
+    const month = String(bangkokTime.getUTCMonth() + 1).padStart(2, '0')
+    return `${hours}:${minutes} (${day}/${month})`
+  }
+  return ''
+}
+
+// ============================================================
+// FLEX MESSAGE BUILDER
+// ============================================================
+
+interface FlexField {
+  label: string
+  value: string
+}
+
+interface FlexCardOptions {
+  titleTH: string
+  titleEN?: string
+  fields: FlexField[]
+  items?: string[]
+  noteLabel?: string
+  noteValue?: string
+  slipUrl?: string
+  actionUrl?: string
+  showButton?: boolean
+  footerText?: string
+}
+
+function buildFlexOrderCard(options: FlexCardOptions): object {
+  const {
+    titleTH,
+    titleEN,
+    fields,
+    items,
+    noteLabel,
+    noteValue,
+    slipUrl,
+    actionUrl,
+    showButton = false,
+    footerText
+  } = options
+
+  // Header contents
+  const headerContents: object[] = [
+    {
+      type: 'text',
+      text: titleTH,
+      weight: 'bold',
+      size: 'lg',
+      color: '#1a1a1a'
+    }
+  ]
+
+  if (titleEN) {
+    headerContents.push({
+      type: 'text',
+      text: titleEN,
+      size: 'sm',
+      color: '#666666',
+      margin: 'xs'
+    })
+  }
+
+  // Body contents
+  const bodyContents: object[] = []
+
+  // Add key-value fields
+  for (const field of fields) {
+    if (field.value) {
+      bodyContents.push({
+        type: 'box',
+        layout: 'horizontal',
+        margin: 'md',
+        contents: [
+          {
+            type: 'text',
+            text: field.label,
+            size: 'sm',
+            color: '#666666',
+            flex: 0,
+            wrap: false
+          },
+          {
+            type: 'text',
+            text: field.value,
+            size: 'sm',
+            color: '#1a1a1a',
+            flex: 1,
+            wrap: true,
+            align: 'end'
+          }
+        ]
+      })
+    }
+  }
+
+  // Add items section if present
+  if (items && items.length > 0) {
+    bodyContents.push({
+      type: 'separator',
+      margin: 'lg'
+    })
+
+    bodyContents.push({
+      type: 'text',
+      text: 'รายการ',
+      size: 'sm',
+      color: '#666666',
+      margin: 'lg',
+      weight: 'bold'
+    })
+
+    // Show up to 8 items
+    const displayItems = items.slice(0, 8)
+    const remainingCount = items.length - 8
+
+    for (const item of displayItems) {
+      bodyContents.push({
+        type: 'text',
+        text: item,
+        size: 'sm',
+        color: '#1a1a1a',
+        margin: 'sm',
+        wrap: true
+      })
+    }
+
+    if (remainingCount > 0) {
+      bodyContents.push({
+        type: 'text',
+        text: `และอีก ${remainingCount} รายการ…`,
+        size: 'sm',
+        color: '#888888',
+        margin: 'sm',
+        style: 'italic'
+      })
+    }
+  }
+
+  // Add note section if present
+  if (noteLabel && noteValue) {
+    bodyContents.push({
+      type: 'separator',
+      margin: 'lg'
+    })
+
+    bodyContents.push({
+      type: 'text',
+      text: noteLabel,
+      size: 'sm',
+      color: '#666666',
+      margin: 'lg',
+      weight: 'bold'
+    })
+
+    bodyContents.push({
+      type: 'text',
+      text: noteValue,
+      size: 'sm',
+      color: '#1a1a1a',
+      margin: 'sm',
+      wrap: true
+    })
+  }
+
+  // Add slip URL if present (for approver)
+  if (slipUrl) {
+    bodyContents.push({
+      type: 'separator',
+      margin: 'lg'
+    })
+
+    bodyContents.push({
+      type: 'text',
+      text: '🧾 ดูสลิป',
+      size: 'sm',
+      color: '#0066cc',
+      margin: 'lg',
+      action: {
+        type: 'uri',
+        uri: slipUrl
+      },
+      decoration: 'underline'
+    })
+  }
+
+  // Build footer
+  let footer: object | undefined
+
+  if (showButton && actionUrl) {
+    footer = {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          action: {
+            type: 'uri',
+            label: 'ดูออเดอร์',
+            uri: actionUrl
+          },
+          style: 'primary',
+          color: '#0066cc',
+          height: 'sm'
+        }
+      ],
+      paddingAll: 'lg'
+    }
+  } else if (footerText) {
+    footer = {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: footerText,
+          size: 'xs',
+          color: '#888888',
+          align: 'center',
+          wrap: true
+        }
+      ],
+      paddingAll: 'md'
+    }
+  }
+
+  // Build bubble
+  const bubble: Record<string, unknown> = {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: headerContents,
+      backgroundColor: '#f5f5f5',
+      paddingAll: 'lg'
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: bodyContents,
+      paddingAll: 'lg'
+    }
+  }
+
+  if (footer) {
+    bubble.footer = footer
+  }
+
+  return bubble
+}
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
+
 export async function sendSlipNotification(orderId: string): Promise<void> {
   // Fetch order
   const { data: order, error: orderError } = await supabase
@@ -39,46 +306,28 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
   }
 
   // Format pickup time
-  let pickupText = ''
-  if (order.pickup_type === 'ASAP') {
-    pickupText = 'ให้ร้านทำทันที'
-  } else if (order.pickup_time) {
-    const date = new Date(order.pickup_time)
-    const bangkokOffsetMs = 7 * 60 * 60 * 1000
-    const bangkokTime = new Date(date.getTime() + bangkokOffsetMs)
-    const hours = String(bangkokTime.getUTCHours()).padStart(2, '0')
-    const minutes = String(bangkokTime.getUTCMinutes()).padStart(2, '0')
-    const day = String(bangkokTime.getUTCDate()).padStart(2, '0')
-    const month = String(bangkokTime.getUTCMonth() + 1).padStart(2, '0')
-    pickupText = `${hours}:${minutes} (${day}/${month})`
-  }
+  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
 
-  // Format items (first 3)
-  const itemsList = items?.slice(0, 3).map(item =>
-    `${item.qty}x ${item.name_th}`
-  ).join('\n') || ''
+  // Format items list
+  const itemsList = items?.map(item => `${item.qty}x ${item.name_th}`) || []
 
-  const remainingCount = (items?.length || 0) - 3
-  const itemsText = remainingCount > 0
-    ? `${itemsList}\n+${remainingCount} รายการ`
-    : itemsList
-
-  // Format message
-  const message = `
-🔔 คำสั่งซื้อใหม่
-
-📋 เลขที่: ${order.order_number}
-👤 ชื่อ: ${order.customer_name}
-📞 เบอร์: ${order.customer_phone}
-⏰ รับเมื่อ: ${pickupText}
-
-🍱 รายการ:
-${itemsText}
-
-💰 ยอดรวม: ฿${order.total_amount}
-${order.customer_note ? `📝 หมายเหตุ: ${order.customer_note}\n\n` : ''}
-🧾 สลิป: ${order.slip_url}
-  `.trim()
+  // Build Flex card for approver (NO button)
+  const flexCard = buildFlexOrderCard({
+    titleTH: '🔔 คำสั่งซื้อใหม่',
+    fields: [
+      { label: 'เลขที่', value: `#${order.order_number}` },
+      { label: 'ชื่อ', value: order.customer_name },
+      { label: 'เบอร์', value: order.customer_phone },
+      { label: 'รับเมื่อ', value: pickupText },
+      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+    ],
+    items: itemsList,
+    noteLabel: order.customer_note ? 'หมายเหตุ' : undefined,
+    noteValue: order.customer_note || undefined,
+    slipUrl: order.slip_url,
+    showButton: false,
+    footerText: 'ดูรายละเอียดใน Admin Panel'
+  })
 
   // Get approver ID from DB/env
   const { approverId } = await getLineRecipients()
@@ -102,7 +351,11 @@ ${order.customer_note ? `📝 หมายเหตุ: ${order.customer_note}\n
     body: JSON.stringify({
       to: approverId,
       messages: [
-        { type: 'text', text: message }
+        {
+          type: 'flex',
+          altText: `คำสั่งซื้อใหม่ #${order.order_number}`,
+          contents: flexCard
+        }
       ]
     })
   })
@@ -140,72 +393,59 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
   }
 
   // Format pickup time
-  let pickupText = ''
-  if (order.pickup_type === 'ASAP') {
-    pickupText = 'ให้ร้านทำทันที'
-  } else if (order.pickup_time) {
-    const date = new Date(order.pickup_time)
-    const bangkokOffsetMs = 7 * 60 * 60 * 1000
-    const bangkokTime = new Date(date.getTime() + bangkokOffsetMs)
-    const hours = String(bangkokTime.getUTCHours()).padStart(2, '0')
-    const minutes = String(bangkokTime.getUTCMinutes()).padStart(2, '0')
-    const day = String(bangkokTime.getUTCDate()).padStart(2, '0')
-    const month = String(bangkokTime.getUTCMonth() + 1).padStart(2, '0')
-    pickupText = `${hours}:${minutes} (${day}/${month})`
-  }
+  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
 
-  // Format all items (staff needs full list)
+  // Format items with options for staff (need full details)
   const itemsList = items?.map(item => {
     let itemText = `${item.qty}x ${item.name_th}`
 
-    // Format selected options
+    // Add selected options
     if (item.selected_options_json) {
       try {
         const options = item.selected_options_json
         if (Array.isArray(options) && options.length > 0) {
-          const optionLines = options.map((opt: any) => {
+          const optionNames = options.flatMap((opt: { choice_names_th?: string[]; name_th?: string }) => {
             if (opt.choice_names_th && Array.isArray(opt.choice_names_th)) {
-              return opt.choice_names_th.map((choice: string) => `  - ${choice}`).join('\n')
+              return opt.choice_names_th
             } else if (opt.name_th) {
-              return `  - ${opt.name_th}`
-            } else if (typeof opt === 'string') {
-              return `  - ${opt}`
+              return [opt.name_th]
             }
-            return ''
-          }).filter(Boolean).join('\n')
-
-          if (optionLines) {
-            itemText += '\n' + optionLines
+            return []
+          })
+          if (optionNames.length > 0) {
+            itemText += ` (${optionNames.join(', ')})`
           }
         }
-      } catch (e) {
+      } catch {
         // Ignore malformed options
       }
     }
 
     // Add item note
     if (item.note) {
-      itemText += `\n  📝 ${item.note}`
+      itemText += ` 📝${item.note}`
     }
 
     return itemText
-  }).join('\n\n') || ''
+  }) || []
 
-  // Format message for staff
-  const message = `
-✅ คำสั่งซื้อได้รับการอนุมัติ - เริ่มทำได้เลย
-
-📋 เลขที่: ${order.order_number}
-👤 ชื่อ: ${order.customer_name}
-📞 เบอร์: ${order.customer_phone}
-⏰ รับเมื่อ: ${pickupText}
-
-🍱 รายการ:
-${itemsList}
-
-💰 ยอดรวม: ฿${order.total_amount}
-${order.customer_note ? `📝 หมายเหตุจากลูกค้า: ${order.customer_note}` : ''}
-  `.trim()
+  // Build Flex card for staff (NO button)
+  const flexCard = buildFlexOrderCard({
+    titleTH: '✅ ออเดอร์อนุมัติแล้ว',
+    titleEN: 'เริ่มทำได้เลย',
+    fields: [
+      { label: 'เลขที่', value: `#${order.order_number}` },
+      { label: 'ชื่อ', value: order.customer_name },
+      { label: 'เบอร์', value: order.customer_phone },
+      { label: 'รับเมื่อ', value: pickupText },
+      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+    ],
+    items: itemsList,
+    noteLabel: order.customer_note ? 'หมายเหตุจากลูกค้า' : undefined,
+    noteValue: order.customer_note || undefined,
+    showButton: false,
+    footerText: 'ดูรายละเอียดใน Staff Board'
+  })
 
   // Get staff ID from DB/env
   const { staffId } = await getLineRecipients()
@@ -229,7 +469,11 @@ ${order.customer_note ? `📝 หมายเหตุจากลูกค้�
     body: JSON.stringify({
       to: staffId,
       messages: [
-        { type: 'text', text: message }
+        {
+          type: 'flex',
+          altText: `ออเดอร์อนุมัติ #${order.order_number}`,
+          contents: flexCard
+        }
       ]
     })
   })
@@ -256,33 +500,23 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
   }
 
   // Format pickup time
-  let pickupText = ''
-  if (order.pickup_type === 'ASAP') {
-    pickupText = 'ให้ร้านทำทันที'
-  } else if (order.pickup_time) {
-    const date = new Date(order.pickup_time)
-    const bangkokOffsetMs = 7 * 60 * 60 * 1000
-    const bangkokTime = new Date(date.getTime() + bangkokOffsetMs)
-    const hours = String(bangkokTime.getUTCHours()).padStart(2, '0')
-    const minutes = String(bangkokTime.getUTCMinutes()).padStart(2, '0')
-    const day = String(bangkokTime.getUTCDate()).padStart(2, '0')
-    const month = String(bangkokTime.getUTCMonth() + 1).padStart(2, '0')
-    pickupText = `${hours}:${minutes} (${day}/${month})`
-  }
+  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
 
-  // Format message for adjustment
-  const message = `
-⚠️ ADJUSTMENT UPDATE
-
-📋 เลขที่: ${order.order_number}
-👤 ชื่อ: ${order.customer_name}
-⏰ รับเมื่อ: ${pickupText}
-
-📝 การปรับเปลี่ยน:
-${order.adjustment_note}
-
-💰 ยอดรวม: ฿${order.total_amount}
-  `.trim()
+  // Build Flex card for staff adjustment (NO button)
+  const flexCard = buildFlexOrderCard({
+    titleTH: '⚠️ แก้ไขออเดอร์',
+    titleEN: 'Adjustment Update',
+    fields: [
+      { label: 'เลขที่', value: `#${order.order_number}` },
+      { label: 'ชื่อ', value: order.customer_name },
+      { label: 'รับเมื่อ', value: pickupText },
+      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+    ],
+    noteLabel: 'การปรับเปลี่ยน',
+    noteValue: order.adjustment_note,
+    showButton: false,
+    footerText: 'ดูรายละเอียดใน Staff Board'
+  })
 
   // Get staff ID from DB/env
   const { staffId } = await getLineRecipients()
@@ -306,7 +540,11 @@ ${order.adjustment_note}
     body: JSON.stringify({
       to: staffId,
       messages: [
-        { type: 'text', text: message }
+        {
+          type: 'flex',
+          altText: `แก้ไขออเดอร์ #${order.order_number}`,
+          contents: flexCard
+        }
       ]
     })
   })
@@ -339,24 +577,20 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
 
   // Get LIFF ID for links
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
 
-  // Format message with LIFF links (bilingual)
-  const message = `
-🧾 ได้รับสลิปเรียบร้อยแล้ว
-We received your payment slip.
-
-📋 ออเดอร์ / Order: #${order.order_number}
-⏳ สถานะ: รอตรวจสอบ / Waiting for approval
-
-📱 ตรวจสอบสถานะออเดอร์:
-https://liff.line.me/${liffId}/order/status/${orderId}
-
-📋 ดูออเดอร์ทั้งหมด:
-https://liff.line.me/${liffId}/order/status
-
-ขอบคุณที่ใช้บริการ TENZAI
-Thank you for ordering with TENZAI!
-  `.trim()
+  // Build Flex card for customer (HAS button)
+  const flexCard = buildFlexOrderCard({
+    titleTH: '🧾 ได้รับสลิปแล้ว',
+    titleEN: 'We received your payment slip',
+    fields: [
+      { label: 'ออเดอร์', value: `#${order.order_number}` },
+      { label: 'สถานะ', value: 'รอตรวจสอบ' },
+      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+    ],
+    showButton: true,
+    actionUrl: statusUrl
+  })
 
   // Validate env vars
   if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
@@ -373,7 +607,11 @@ Thank you for ordering with TENZAI!
     body: JSON.stringify({
       to: order.customer_line_user_id,
       messages: [
-        { type: 'text', text: message }
+        {
+          type: 'flex',
+          altText: `ได้รับสลิปแล้ว #${order.order_number}`,
+          contents: flexCard
+        }
       ]
     })
   })
@@ -404,32 +642,41 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
     throw new Error('No customer LINE user ID')
   }
 
-  // Format message based on status
-  let message = ''
-
-  if (status === 'ready') {
-    message = `
-🍱 อาหารของคุณพร้อมแล้ว
-
-📋 เลขที่: ${order.order_number}
-✅ สถานะ: พร้อมรับได้เลย
-
-ขอบคุณที่ใช้บริการ TENZAI
-    `.trim()
-  } else if (status === 'picked_up') {
-    message = `
-✅ ได้รับอาหารเรียบร้อยแล้ว
-
-📋 เลขที่: ${order.order_number}
-🙏 ขอบคุณที่ใช้บริการ
-
-หวังว่าจะได้เจอกันใหม่!
-    `.trim()
-  }
-
   // Validate env vars
   if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
     throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
+  }
+
+  let message: object
+
+  if (status === 'ready') {
+    // Get LIFF ID for links
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+    const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
+
+    // Build Flex card for "ready" status (HAS button)
+    const flexCard = buildFlexOrderCard({
+      titleTH: '🍱 อาหารพร้อมแล้ว',
+      titleEN: 'Your order is ready!',
+      fields: [
+        { label: 'ออเดอร์', value: `#${order.order_number}` },
+        { label: 'สถานะ', value: 'พร้อมรับได้เลย' }
+      ],
+      showButton: true,
+      actionUrl: statusUrl
+    })
+
+    message = {
+      type: 'flex',
+      altText: `อาหารพร้อมแล้ว #${order.order_number}`,
+      contents: flexCard
+    }
+  } else {
+    // Keep "picked_up" as text message (simple thank you)
+    message = {
+      type: 'text',
+      text: `✅ ได้รับอาหารเรียบร้อยแล้ว\n\n📋 ออเดอร์: #${order.order_number}\n🙏 ขอบคุณที่ใช้บริการครับ\n\nหวังว่าจะได้เจอกันใหม่!`
+    }
   }
 
   // Send via LINE Messaging API
@@ -441,9 +688,7 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
     },
     body: JSON.stringify({
       to: order.customer_line_user_id,
-      messages: [
-        { type: 'text', text: message }
-      ]
+      messages: [message]
     })
   })
 
@@ -451,5 +696,6 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
     const errorText = await response.text()
     throw new Error(`LINE API error ${response.status}: ${errorText}`)
   }
-}
 
+  console.log('[LINE:CUSTOMER] Success:', orderId, status)
+}
