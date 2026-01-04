@@ -3,22 +3,27 @@ import OptionGroupsClient from './OptionGroupsClient'
 
 export const dynamic = 'force-dynamic'
 
-type OptionGroup = {
+type OptionGroupRow = {
   group_code: string
   group_name: string
   is_required: boolean
   max_select: number
   updated_at: string
+}
+
+type OptionGroup = OptionGroupRow & {
   menu_count: number
 }
 
-async function getOptionGroupsData() {
-  const { data: optionGroups } = await supabase
+async function getOptionGroupsData(): Promise<OptionGroup[]> {
+  const { data } = await supabase
     .from('option_groups')
     .select('group_code, group_name, is_required, max_select, updated_at')
     .order('group_name')
 
-  if (!optionGroups) {
+  const optionGroups = (data ?? []) as OptionGroupRow[]
+
+  if (optionGroups.length === 0) {
     return []
   }
 
