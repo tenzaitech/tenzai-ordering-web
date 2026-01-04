@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { useCustomerTheme } from '@/hooks/useCustomerTheme'
+import { useCustomerTheme } from '@/hooks/useTheme'
 import { useTextScale } from '@/hooks/useTextScale'
 import { triggerHaptic } from '@/utils/haptic'
 
