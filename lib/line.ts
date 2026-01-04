@@ -679,6 +679,84 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
   console.log('[LINE:CUSTOMER_SLIP] Success:', orderId)
 }
 
+export async function sendCustomerApprovedNotification(orderId: string): Promise<void> {
+  // Fetch order
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  if (orderError || !order) {
+    console.error('[LINE:CUSTOMER_APPROVED] Failed to fetch order:', orderError?.message || 'Not found')
+    throw new Error('Failed to fetch order')
+  }
+
+  if (!order.customer_line_user_id) {
+    console.error('[LINE:CUSTOMER_APPROVED] No customer LINE user ID')
+    throw new Error('No customer LINE user ID')
+  }
+
+  // Validate env vars
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
+  }
+
+  // Get LIFF ID for links
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
+  const statusUrl = `https://liff.line.me/${liffId}/order/status/${orderId}`
+
+  // Format pickup time
+  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
+
+  // Build fields
+  const fields: FlexField[] = [
+    { label: LINE_LABELS.order, value: `#${order.order_number}` },
+    { label: LINE_LABELS.status, value: 'ชำระเงินสำเร็จ' },
+    { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+  ]
+
+  // Add pickup time if available
+  if (pickupText) {
+    fields.push({ label: LINE_LABELS.pickupTime, value: pickupText })
+  }
+
+  // Build Flex card for customer (HAS button)
+  const flexCard = buildFlexOrderCard({
+    titleTH: '✅ ออเดอร์ได้รับการยืนยันแล้ว',
+    titleEN: 'กำลังเตรียมอาหารให้คุณ',
+    fields,
+    showButton: true,
+    actionUrl: statusUrl
+  })
+
+  // Send via LINE Messaging API
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      to: order.customer_line_user_id,
+      messages: [
+        {
+          type: 'flex',
+          altText: `ออเดอร์ได้รับการยืนยันแล้ว #${order.order_number}`,
+          contents: flexCard
+        }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`LINE API error ${response.status}: ${errorText}`)
+  }
+
+  console.log('[LINE:CUSTOMER_APPROVED] Success:', orderId)
+}
+
 export async function sendCustomerNotification(orderId: string, status: 'ready' | 'picked_up'): Promise<void> {
   // Fetch order
   const { data: order, error: orderError } = await supabase

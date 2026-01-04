@@ -100,6 +100,17 @@ export default function OrderDetailPage() {
     }
   }
 
+  const getStatusHint = (status: string | null) => {
+    switch (status) {
+      case 'pending': return t('statusHintPending')
+      case 'approved': return t('statusHintApproved')
+      case 'rejected': return t('statusHintRejected')
+      case 'ready': return t('statusHintReady')
+      case 'picked_up': return t('statusHintPickedUp')
+      default: return t('statusHintPending')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const day = String(date.getDate()).padStart(2, '0')
@@ -239,40 +250,46 @@ export default function OrderDetailPage() {
 
           {!loading && !error && !notFound && order && (
             <div className="space-y-4">
-              {/* Order Header Card */}
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-xs text-muted mb-1">{t('order')}</p>
-                    <p className="text-2xl font-bold text-text">#{order.order_number}</p>
-                  </div>
-                  <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+              {/* Section 1: Order Summary - Hero */}
+              <div className="bg-card border border-border rounded-lg p-5">
+                {/* Order Number - Primary Focus */}
+                <div className="text-center mb-4">
+                  <p className="text-xs text-muted uppercase tracking-wide mb-1">{t('order')}</p>
+                  <p className="text-3xl font-bold text-text">#{order.order_number}</p>
+                </div>
+
+                {/* Status Badge + Hint - Centered */}
+                <div className="text-center mb-5">
+                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(order.status)}`}>
                     {getStatusLabel(order.status)}
                   </span>
+                  <p className="text-xs text-muted mt-2">{getStatusHint(order.status)}</p>
                 </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted">{t('orderedAt')}</span>
-                    <span className="text-text">{formatDate(order.created_at)}</span>
+                {/* Secondary Info Row */}
+                <div className="flex justify-between items-center text-sm py-3 border-t border-border">
+                  <div className="text-center flex-1">
+                    <p className="text-xs text-muted mb-0.5">{t('orderedAt')}</p>
+                    <p className="text-text font-medium">{formatDate(order.created_at)}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">{t('pickupTime')}</span>
-                    <span className="text-text">{formatPickupTime(order.pickup_type, order.pickup_time)}</span>
+                  <div className="w-px h-8 bg-border"></div>
+                  <div className="text-center flex-1">
+                    <p className="text-xs text-muted mb-0.5">{t('pickupTime')}</p>
+                    <p className="text-text font-medium">{formatPickupTime(order.pickup_type, order.pickup_time)}</p>
                   </div>
                 </div>
 
-                {/* Total */}
-                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-lg font-semibold text-text">{t('total')}</span>
+                {/* Total - Bottom */}
+                <div className="flex items-center justify-between pt-4 mt-3 border-t border-border">
+                  <span className="text-base font-medium text-muted">{t('total')}</span>
                   <span className="text-2xl font-bold text-primary">฿{order.total_amount}</span>
                 </div>
               </div>
 
-              {/* Order Items */}
+              {/* Section 2: Order Items */}
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="px-4 py-3 border-b border-border">
-                  <h3 className="font-semibold text-text">{t('orderItems')}</h3>
+                  <h3 className="text-sm font-semibold text-text">{t('orderItems')}</h3>
                 </div>
                 <div className="divide-y divide-border">
                   {items.map((item) => {
@@ -310,57 +327,43 @@ export default function OrderDetailPage() {
                 </div>
               </div>
 
-              {/* Customer Note */}
+              {/* Section 3: Customer Note (if exists) */}
               {order.customer_note && (
                 <div className="bg-card border border-border rounded-lg p-4">
-                  <h3 className="font-semibold text-text mb-2">{t('noteToRestaurant')}</h3>
+                  <h3 className="text-sm font-semibold text-text mb-2">{t('noteToRestaurant')}</h3>
                   <p className="text-sm text-muted">{order.customer_note}</p>
                 </div>
               )}
 
-              {/* Contextual Actions */}
+              {/* Contextual Actions - Only show if user has actionable items */}
               {(() => {
                 const needsSlipUpload = !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
+
+                // Only render if there are real actions available
+                if (!needsSlipUpload) return null
+
                 return (
-                  <div className="space-y-3 pt-2">
-                    {/* Pay / Upload Slip - only if not uploaded */}
-                    {needsSlipUpload && (
-                      <button
-                        onClick={() => {
-                          triggerHaptic()
-                          router.push(`/order/payment?id=${order.id}&from=status`)
-                        }}
-                        className="w-full py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
-                      >
-                        {t('payUploadSlip')}
-                      </button>
-                    )}
-
-                    {/* Edit Order - only if not locked */}
-                    {needsSlipUpload && (
-                      <button
-                        onClick={() => {
-                          triggerHaptic()
-                          router.push(`/order/payment?id=${order.id}&from=status&edit=true`)
-                        }}
-                        className="w-full py-3 bg-card border border-border text-text font-medium rounded-lg hover:bg-border/50 active:bg-border transition-colors"
-                      >
-                        {t('editOrder')}
-                      </button>
-                    )}
-
-                    {/* Order More */}
+                  <div className="space-y-2">
+                    {/* Primary Action: Pay / Upload Slip */}
                     <button
                       onClick={() => {
                         triggerHaptic()
-                        router.push('/order')
+                        router.push(`/order/payment?id=${order.id}&from=status`)
                       }}
-                      className="w-full py-3 bg-card border border-border text-primary font-medium rounded-lg hover:bg-border/30 active:bg-border/50 transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      {t('orderMore')}
+                      {t('payUploadSlip')}
+                    </button>
+
+                    {/* Secondary Action: Edit Order */}
+                    <button
+                      onClick={() => {
+                        triggerHaptic()
+                        router.push(`/order/payment?id=${order.id}&from=status&edit=true`)
+                      }}
+                      className="w-full py-3 bg-transparent border border-border text-muted font-medium rounded-lg hover:bg-border/30 active:bg-border/50 transition-colors"
+                    >
+                      {t('editOrder')}
                     </button>
                   </div>
                 )

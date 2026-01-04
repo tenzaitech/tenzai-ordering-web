@@ -42,12 +42,14 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   const [searchQuery, setSearchQuery] = useState('')
   const [isRestoringScroll, setIsRestoringScroll] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [drawerItem, setDrawerItem] = useState<MenuItem | null>(null)
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({})
   const observerRef = useRef<IntersectionObserver | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
   const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Add-to-order mode: when adding items directly to an existing DB order
   const editOrderId = searchParams.get('editOrderId')
@@ -86,14 +88,12 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
 
   // Auto-scroll active tab into view when activeCategory changes
   useEffect(() => {
-    if (!searchQuery) {
-      tabButtonRefs.current[activeCategory]?.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'start',
-        block: 'nearest',
-      })
-    }
-  }, [activeCategory, searchQuery])
+    tabButtonRefs.current[activeCategory]?.scrollIntoView({
+      behavior: 'smooth',
+      inline: 'start',
+      block: 'nearest',
+    })
+  }, [activeCategory])
 
   // Restore scroll position after returning from detail page
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
 
   // Set up IntersectionObserver for scroll-based category detection
   useEffect(() => {
-    if (isRestoringScroll || searchQuery.trim()) return
+    if (isRestoringScroll) return
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -143,7 +143,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
     return () => {
       observerRef.current?.disconnect()
     }
-  }, [categories, searchQuery, isRestoringScroll])
+  }, [categories, isRestoringScroll])
 
   const handleCategoryClick = (category: Category) => {
     setActiveCategory(category)
@@ -165,6 +165,16 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   const handlePickerSelect = (category: Category) => {
     setIsPickerOpen(false)
     handleCategoryClick(category)
+  }
+
+  const handleOpenSearch = () => {
+    triggerHaptic()
+    setIsSearchOpen(true)
+  }
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false)
+    // Preserve searchQuery so reopening continues where user left off
   }
 
   const handleMenuItemTap = (item: MenuItem) => {
@@ -215,138 +225,88 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
       <div className="max-w-mobile mx-auto">
         <BrandHeader />
 
-        {/* Search Bar */}
-        <div className="px-5 py-3">
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Sticky Category/Search Bar - Primary control area */}
+        <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle shadow-sm shadow-black/20">
+          <div className="flex items-center gap-2">
+            {/* Search Button - Opens search overlay */}
+            <button
+              onClick={handleOpenSearch}
+              className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-text-secondary hover:text-accent active:text-accent/80 ml-2 transition-colors"
+              aria-label={language === 'th' ? 'ค้นหา' : 'Search'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+            </button>
+
+            {/* Category Picker Button */}
+            <button
+              onClick={() => setIsPickerOpen(true)}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center text-text-secondary hover:text-text-primary active:bg-bg-elevated rounded-lg transition-colors"
+              aria-label={language === 'th' ? 'หมวดหมู่' : 'Categories'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Scrollable Tabs */}
+            <div ref={tabsRef} className="flex-1 flex flex-nowrap overflow-x-auto scrollbar-hide py-2.5 pr-5 gap-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {categories.map(category => {
+                const sampleItem = menuItems.find(item => item.category === category)
+                const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
+                return (
+                  <button
+                    key={category}
+                    ref={(el) => {
+                      tabButtonRefs.current[category] = el
+                    }}
+                    data-category={category}
+                    onClick={() => handleCategoryClick(category)}
+                    className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm ${
+                      activeCategory === category
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-surface text-text-secondary border border-border-subtle'
+                    }`}
+                  >
+                    {categoryName || category}
+                  </button>
+                )
+              })}
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              className="w-full bg-bg-surface border border-border-subtle rounded-lg pl-9 pr-9 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Search Results */}
-        {searchQuery.trim() && (
-          <div className="px-5 py-4">
-            <h2 className="text-text-primary text-sm font-semibold mb-3">
-              {t('searchResults')} {filteredItems.length > 0 && `(${filteredItems.length} ${filteredItems.length === 1 ? t('item') : t('items')})`}
-            </h2>
-            {filteredItems.length > 0 ? (
-              <div className="bg-bg-surface rounded-lg overflow-hidden">
-                {filteredItems.map(item => (
-                  <MenuItemRow
-                    key={item.id}
-                    id={item.id}
-                    name_th={item.name_th}
-                    name_en={item.name_en}
-                    price_thb={item.price_thb}
-                    image={item.image}
-                    is_sold_out={item.is_sold_out}
-                    subtitle={item.subtitle}
-                    onTap={() => handleMenuItemTap(item)}
-                  />
-                ))}
+        {/* Recommended Section */}
+        <div className="px-5 pt-4 pb-6">
+          <h2 className="text-text-primary text-lg font-bold mb-3">Popular</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {recommendedItems.map((item, index) => (
+              <div
+                key={item.id}
+                className={`transition-all duration-[170ms] cursor-pointer active:scale-[0.98] active:bg-border rounded-lg ${
+                  mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1.5'
+                }`}
+                style={{
+                  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+                  transitionDelay: mounted ? `${index * 50}ms` : '0ms'
+                }}
+                onClick={() => handleRecommendedTap(item.id)}
+              >
+                <MenuCardLarge
+                  name_th={item.name_th}
+                  name_en={item.name_en}
+                  price_thb={item.price_thb}
+                  image={item.image}
+                  is_sold_out={item.is_sold_out}
+                />
               </div>
-            ) : (
-              <p className="text-text-muted text-sm text-center py-8">{t('noItemsFound')}</p>
-            )}
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Normal Menu View (when not searching) */}
-        {!searchQuery.trim() && (
-          <>
-            {/* Recommended Section */}
-            <div className="px-5 pt-4 pb-6">
-              <h2 className="text-text-primary text-lg font-bold mb-3">Popular</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {recommendedItems.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={`transition-all duration-[170ms] cursor-pointer active:scale-[0.98] active:bg-border rounded-lg ${
-                      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1.5'
-                    }`}
-                    style={{
-                      transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-                      transitionDelay: mounted ? `${index * 50}ms` : '0ms'
-                    }}
-                    onClick={() => handleRecommendedTap(item.id)}
-                  >
-                    <MenuCardLarge
-                      name_th={item.name_th}
-                      name_en={item.name_en}
-                      price_thb={item.price_thb}
-                      image={item.image}
-                      is_sold_out={item.is_sold_out}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Sticky Category Tabs */}
-            <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle shadow-sm shadow-black/20">
-              <div className="flex items-center gap-2">
-                {/* Hamburger Button */}
-                <button
-                  onClick={() => setIsPickerOpen(true)}
-                  className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-text-secondary ml-2"
-                  aria-label="Open category picker"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-
-                {/* Scrollable Tabs */}
-                <div ref={tabsRef} className="flex-1 flex flex-nowrap overflow-x-auto scrollbar-hide py-2.5 pr-5 gap-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-                  {categories.map(category => {
-                    const sampleItem = menuItems.find(item => item.category === category)
-                    const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
-                    return (
-                      <button
-                        key={category}
-                        ref={(el) => {
-                          tabButtonRefs.current[category] = el
-                        }}
-                        data-category={category}
-                        onClick={() => handleCategoryClick(category)}
-                        className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm ${
-                          activeCategory === category
-                            ? 'bg-accent text-white'
-                            : 'bg-bg-surface text-text-secondary border border-border-subtle'
-                        }`}
-                      >
-                        {categoryName || category}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Category Sections - Vertical List (only when not searching) */}
-        {!searchQuery.trim() && categories.map((category, index) => {
+        {/* Category Sections - Vertical List */}
+        {categories.map((category, index) => {
           const items = itemsByCategory[category]
           if (items.length === 0) return null
           const sampleItem = items[0]
@@ -379,6 +339,96 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
             </div>
           )
         })}
+
+        {/* Search Overlay */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-50 bg-bg-root">
+            {/* Search Header */}
+            <div className="sticky top-0 bg-bg-surface border-b border-border-subtle px-4 py-3">
+              <div className="flex items-center gap-3">
+                {/* Search Input */}
+                <div className="flex-1 relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('searchPlaceholder')}
+                    autoFocus
+                    className="w-full bg-bg-elevated border border-border-subtle rounded-lg pl-9 pr-9 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {/* Close Button */}
+                <button
+                  onClick={handleCloseSearch}
+                  className="flex-shrink-0 px-3 py-2 text-sm font-medium text-accent hover:text-accent/80 transition-colors"
+                >
+                  {language === 'th' ? 'ยกเลิก' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+
+            {/* Search Results */}
+            <div className="overflow-y-auto" style={{ height: 'calc(100vh - 65px)' }}>
+              {searchQuery.trim() ? (
+                <div className="px-4 py-4">
+                  <p className="text-text-muted text-xs mb-3">
+                    {filteredItems.length > 0
+                      ? `${filteredItems.length} ${filteredItems.length === 1 ? t('item') : t('items')}`
+                      : t('noItemsFound')
+                    }
+                  </p>
+                  {filteredItems.length > 0 && (
+                    <div className="bg-bg-surface rounded-lg overflow-hidden">
+                      {filteredItems.map(item => (
+                        <MenuItemRow
+                          key={item.id}
+                          id={item.id}
+                          name_th={item.name_th}
+                          name_en={item.name_en}
+                          price_thb={item.price_thb}
+                          image={item.image}
+                          is_sold_out={item.is_sold_out}
+                          subtitle={item.subtitle}
+                          onTap={() => {
+                            handleCloseSearch()
+                            handleMenuItemTap(item)
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="px-4 py-12 text-center">
+                  <div className="text-text-muted mb-2">
+                    <svg className="w-12 h-12 mx-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-text-muted text-sm">
+                    {language === 'th' ? 'พิมพ์ชื่อเมนูที่ต้องการค้นหา' : 'Type to search menu items'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Category Picker Modal */}
         {isPickerOpen && (

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { sendStaffNotification } from '@/lib/line'
+import { sendStaffNotification, sendCustomerApprovedNotification } from '@/lib/line'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,16 +44,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to approve order' }, { status: 500 })
     }
 
-    // Send staff notification (fire-and-forget)
+    // Send notifications (fire-and-forget)
     Promise.resolve().then(async () => {
+      const now = new Date().toISOString()
+
+      // Send staff notification
       try {
         await sendStaffNotification(orderId)
         await supabase
           .from('orders')
-          .update({ staff_notified_at: new Date().toISOString() })
+          .update({ staff_notified_at: now })
           .eq('id', orderId)
       } catch (err) {
         console.error('[API:APPROVE] Staff notification failed:', err)
+      }
+
+      // Send customer notification
+      try {
+        await sendCustomerApprovedNotification(orderId)
+        console.log('[API:APPROVE] Customer notification sent:', orderId)
+      } catch (err) {
+        console.error('[API:APPROVE] Customer notification failed:', err)
       }
     })
 

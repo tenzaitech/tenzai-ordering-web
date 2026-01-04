@@ -183,20 +183,6 @@ export default function OrderStatusPage() {
 
           {!loading && !error && orders.length > 0 && (
             <div className="space-y-4">
-              {/* Order More CTA */}
-              <button
-                onClick={() => {
-                  triggerHaptic()
-                  router.push('/order')
-                }}
-                className="w-full py-3 bg-card border border-border text-primary text-sm font-medium rounded-lg hover:bg-border/30 active:bg-border/50 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {t('orderMore')}
-              </button>
-
               {orders.map((order) => {
                 // Determine if slip is missing (use slip_notified_at as safe signal)
                 const needsSlipUpload = !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'

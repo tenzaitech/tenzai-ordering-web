@@ -66,8 +66,18 @@ export default function LiffBootstrapPage() {
           throw new Error(t('failedToCreateSession'))
         }
 
-        // Redirect to menu
-        router.replace('/order/menu')
+        // Determine redirect destination
+        // Check if LIFF was opened with a specific path (e.g., /order/status/[id])
+        const context = liff.getContext()
+        const liffPath = context?.path || ''
+
+        // Valid redirect paths (whitelist for security)
+        const validPaths = ['/order/status/', '/order/menu', '/order/cart', '/order/checkout', '/order/payment', '/order/confirmed']
+        const isValidPath = validPaths.some(p => liffPath.startsWith(p))
+
+        // Redirect to intended path or default to menu
+        const redirectPath = isValidPath ? liffPath : '/order/menu'
+        router.replace(redirectPath)
       } catch (error) {
         console.error('[LIFF] Initialization error:', error)
         setStatus('error')

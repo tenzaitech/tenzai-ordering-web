@@ -12,15 +12,20 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 bg-bg-surface z-10 px-5 py-4 border-b border-border-subtle">
       <div className="max-w-mobile mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-accent rounded flex items-center justify-center">
-            <span className="text-white font-bold text-lg">T</span>
+        <div className="flex items-center gap-3">
+          {/* Brand */}
+          <div className="w-9 h-9 bg-accent rounded flex items-center justify-center">
+            <span className="text-white font-bold text-base">T</span>
           </div>
+          {/* My Orders - Clear entry point */}
           <button
             onClick={() => router.push('/order/status')}
-            className="text-sm font-medium text-text-secondary hover:text-accent transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-bg-elevated border border-border-subtle text-sm font-medium text-text-primary hover:bg-bg-surface active:bg-bg-elevated transition-colors"
           >
-            {language === 'th' ? 'ออเดอร์' : 'Orders'}
+            <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            {language === 'th' ? 'ออเดอร์ของฉัน' : 'My Orders'}
           </button>
         </div>
 
