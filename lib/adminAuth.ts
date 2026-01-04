@@ -77,7 +77,7 @@ async function isValidAdminSessionCookie(cookieValue: string): Promise<boolean> 
 /**
  * Check if request has valid x-admin-key header
  */
-function hasValidAdminHeader(request: NextRequest | Request): boolean {
+export function hasValidAdminHeader(request: NextRequest | Request): boolean {
   const adminKey = process.env.ADMIN_API_KEY
   if (!adminKey) return false
 
@@ -88,7 +88,7 @@ function hasValidAdminHeader(request: NextRequest | Request): boolean {
 /**
  * Check if request has valid admin session cookie
  */
-async function hasValidAdminCookie(request: NextRequest | Request): Promise<boolean> {
+export async function hasValidAdminCookie(request: NextRequest | Request): Promise<boolean> {
   let cookieValue: string | undefined
 
   // Handle NextRequest (has cookies helper)
