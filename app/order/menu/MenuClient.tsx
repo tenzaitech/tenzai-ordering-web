@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import BrandHeader from '@/components/BrandHeader'
+import UnifiedOrderHeader, { UNIFIED_HEADER_HEIGHT } from '@/components/order/UnifiedOrderHeader'
 import MenuItemRow from '@/components/MenuItemRow'
 import MenuCardLarge from '@/components/MenuCardLarge'
 import BottomCTABar from '@/components/BottomCTABar'
@@ -149,11 +149,10 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
     setActiveCategory(category)
     const element = categoryRefs.current[category]
     if (element) {
-      const headerHeight = 73
-      const tabsHeight = 68
-      const offset = headerHeight + tabsHeight
+      // Total offset: unified header (56px) + category bar (56px)
+      const totalStickyHeight = UNIFIED_HEADER_HEIGHT + 56
       const elementPosition = element.getBoundingClientRect().top + window.scrollY
-      const offsetPosition = elementPosition - offset
+      const offsetPosition = elementPosition - totalStickyHeight
 
       window.scrollTo({
         top: offsetPosition,
@@ -220,13 +219,21 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   const totalItems = getTotalItems()
   const totalPrice = getTotalPrice()
 
+  // Category bar height for scroll calculations
+  const CATEGORY_BAR_HEIGHT = 56
+
   return (
     <div className="min-h-screen bg-bg-root pb-28">
-      <div className="max-w-mobile mx-auto">
-        <BrandHeader />
+      {/* Unified Header - fixed at top, consistent with other /order/* pages */}
+      <UnifiedOrderHeader
+        title={language === 'th' ? 'เมนู' : 'Menu'}
+        showBack={false}
+        showMenu={false}
+      />
 
-        {/* Sticky Category/Search Bar - Primary control area */}
-        <div className="sticky top-[73px] bg-bg-root z-40 border-b border-border-subtle shadow-sm shadow-black/20">
+      <div className="max-w-mobile mx-auto pt-14">
+        {/* Sticky Category/Search Bar - sits directly under unified header */}
+        <div className="sticky top-14 bg-bg-root z-40 border-b border-border-subtle shadow-sm shadow-black/20">
           <div className="flex items-center gap-2">
             {/* Search Button - Opens search overlay */}
             <button

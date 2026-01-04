@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
 
 export async function POST(request: NextRequest) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {

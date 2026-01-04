@@ -2,7 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useCustomerTheme } from '@/hooks/useCustomerTheme'
 import { triggerHaptic } from '@/utils/haptic'
+
+// Exported constant for consistent positioning of elements below the header
+export const UNIFIED_HEADER_HEIGHT = 56 // px (matches py-3 + content height)
 
 interface UnifiedOrderHeaderProps {
   title: string
@@ -23,6 +27,7 @@ export default function UnifiedOrderHeader({
 }: UnifiedOrderHeaderProps) {
   const router = useRouter()
   const { language, setLanguage } = useLanguage()
+  const { theme, toggleTheme, mounted } = useCustomerTheme()
 
   const handleBack = () => {
     triggerHaptic()
@@ -127,6 +132,23 @@ export default function UnifiedOrderHeader({
               EN
             </button>
           </div>
+
+          {/* Theme Toggle - rightmost */}
+          {mounted && (
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 ml-1 text-text-secondary hover:text-text-primary transition-colors"
+              aria-label={language === 'th' ? 'สลับธีม' : 'Toggle theme'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {theme === 'dark' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                )}
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </header>

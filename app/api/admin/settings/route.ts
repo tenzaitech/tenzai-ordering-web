@@ -20,7 +20,7 @@ async function verifyPin(storedHash: string, suppliedPin: string): Promise<boole
 
 // GET: Fetch current settings
 export async function GET(request: NextRequest) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
 // POST: Update settings (PATCH-style: only update fields present in body)
 export async function POST(request: NextRequest) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {

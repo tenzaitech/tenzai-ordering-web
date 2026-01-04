@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAdminAuthorized, unauthorized } from './adminAuth'
 
-export function checkAdminAuth(request: NextRequest): NextResponse | null {
+export async function checkAdminAuth(request: NextRequest): Promise<NextResponse | null> {
   const adminKey = process.env.ADMIN_API_KEY
 
   if (!adminKey) {
@@ -10,13 +11,9 @@ export function checkAdminAuth(request: NextRequest): NextResponse | null {
     )
   }
 
-  const providedKey = request.headers.get('x-admin-key')
-
-  if (!providedKey || providedKey !== adminKey) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    )
+  // Check both x-admin-key header AND httpOnly session cookie
+  if (!(await isAdminAuthorized(request))) {
+    return unauthorized()
   }
 
   return null

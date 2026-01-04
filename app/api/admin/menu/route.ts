@@ -4,7 +4,7 @@ import { generateCode, parseIntegerPrice, isValidIntegerPrice } from '@/lib/menu
 import { checkAdminAuth } from '@/lib/admin-gate'
 
 export async function GET(request: NextRequest) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {

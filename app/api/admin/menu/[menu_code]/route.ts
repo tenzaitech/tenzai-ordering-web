@@ -7,7 +7,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ menu_code: string }> }
 ) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {
@@ -60,7 +60,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ menu_code: string }> }
 ) {
-  const authError = checkAdminAuth(request)
+  const authError = await checkAdminAuth(request)
   if (authError) return authError
 
   try {

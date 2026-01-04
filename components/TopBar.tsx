@@ -4,14 +4,15 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useCustomerTheme } from '@/hooks/useCustomerTheme'
 
-// Routes that use UnifiedOrderHeader instead of TopBar
-const UNIFIED_HEADER_ROUTES = [
+// Routes that should NOT show TopBar (use their own headers)
+const HIDDEN_TOPBAR_ROUTES = [
   '/order/cart',
   '/order/checkout',
   '/order/payment',
   '/order/status',
   '/order/edit',
   '/order/confirmed',
+  '/order/menu',  // Menu page uses UnifiedOrderHeader + category bar
 ]
 
 export default function TopBar() {
@@ -20,8 +21,8 @@ export default function TopBar() {
   const { language, setLanguage } = useLanguage()
   const { theme, toggleTheme, mounted } = useCustomerTheme()
 
-  // Skip rendering on pages that use UnifiedOrderHeader
-  const shouldHide = UNIFIED_HEADER_ROUTES.some(route => pathname?.startsWith(route))
+  // Skip rendering on pages with custom headers
+  const shouldHide = HIDDEN_TOPBAR_ROUTES.some(route => pathname?.startsWith(route))
   if (shouldHide) {
     return null
   }
