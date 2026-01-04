@@ -3,19 +3,24 @@ import CategoriesClient from './CategoriesClient'
 
 export const dynamic = 'force-dynamic'
 
-type Category = {
+type CategoryRow = {
   category_code: string
   name: string
+}
+
+type Category = CategoryRow & {
   menu_items_count: number
 }
 
-async function getCategoriesData() {
-  const { data: categories } = await supabase
+async function getCategoriesData(): Promise<Category[]> {
+  const { data } = await supabase
     .from('categories')
     .select('category_code, name')
     .order('name')
 
-  if (!categories) {
+  const categories = (data ?? []) as CategoryRow[]
+
+  if (categories.length === 0) {
     return []
   }
 
