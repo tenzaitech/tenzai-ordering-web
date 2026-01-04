@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
 
     // Idempotency: exit if already rejected
     if (order.rejected_at) {
-      console.log('[API:REJECT] Already rejected:', orderId)
       return NextResponse.json({ status: 'already_rejected' })
     }
 
@@ -43,7 +42,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to reject order' }, { status: 500 })
     }
 
-    console.log('[API:REJECT] Success:', orderId)
     return NextResponse.json({ status: 'rejected' })
   } catch (error) {
     console.error('[API:REJECT] Unexpected error:', error)

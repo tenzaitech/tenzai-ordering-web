@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
 
     // Idempotency: exit if already approved
     if (order.approved_at) {
-      console.log('[API:APPROVE] Already approved:', orderId)
       return NextResponse.json({ status: 'already_approved' })
     }
 
@@ -62,13 +61,11 @@ export async function POST(request: NextRequest) {
       // Send customer notification
       try {
         await sendCustomerApprovedNotification(orderId)
-        console.log('[API:APPROVE] Customer notification sent:', orderId)
       } catch (err) {
         console.error('[API:APPROVE] Customer notification failed:', err)
       }
     })
 
-    console.log('[API:APPROVE] Success:', orderId)
     return NextResponse.json({ status: 'approved' })
   } catch (error) {
     console.error('[API:APPROVE] Unexpected error:', error)

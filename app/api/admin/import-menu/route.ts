@@ -227,7 +227,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[IMPORT] Success')
     return NextResponse.json({
       success: true,
       counts: {

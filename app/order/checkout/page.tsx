@@ -133,7 +133,6 @@ export default function CheckoutPage() {
 
       // === STEP A: Create order ===
       setProcessingState('CREATING_ORDER')
-      console.log('[PROCESSING] State: CREATING_ORDER')
       await new Promise(resolve => setTimeout(resolve, 500)) // Allow users to read status
 
       const orderNumber = generateOrderNumber()
@@ -190,11 +189,8 @@ export default function CheckoutPage() {
         return
       }
 
-      console.log('[SUCCESS:ORDER] Order created:', orderData.id, orderData.order_number)
-
       // === STEP B: Insert order items ===
       setProcessingState('SAVING_ITEMS')
-      console.log('[PROCESSING] State: SAVING_ITEMS')
       await new Promise(resolve => setTimeout(resolve, 300)) // Allow users to read status
 
       const orderItems = items.map((item) => {
@@ -237,8 +233,6 @@ export default function CheckoutPage() {
         setProcessingState('IDLE')
         return
       }
-
-      console.log('[SUCCESS:ITEMS] Order items inserted:', itemsData?.length || 0, 'items')
 
       // Set navigating flag to prevent cart-empty redirect
       setIsNavigatingToPayment(true)

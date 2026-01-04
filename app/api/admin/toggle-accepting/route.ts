@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update setting' }, { status: 500 })
     }
 
-    console.log('[API:TOGGLE] Success:', enabled ? 'OPEN' : 'CLOSED')
     return NextResponse.json({ enabled, message })
   } catch (error) {
     console.error('[API:TOGGLE] Unexpected error:', error)

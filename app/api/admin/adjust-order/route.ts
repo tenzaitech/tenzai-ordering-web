@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
 
     // Validate order is approved
     if (!order.approved_at) {
-      console.log('[API:ADJUST] Order not approved:', orderId)
       return NextResponse.json({ error: 'Order must be approved first' }, { status: 400 })
     }
 
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log('[API:ADJUST] Success:', orderId)
     return NextResponse.json({ status: 'adjusted' })
   } catch (error) {
     console.error('[API:ADJUST] Unexpected error:', error)

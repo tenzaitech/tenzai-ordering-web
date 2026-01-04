@@ -25,13 +25,11 @@ export async function POST(request: NextRequest) {
 
     // Idempotency: exit if already notified
     if (order.slip_notified_at) {
-      console.log('[API:LINE:NOTIFY] Already notified:', orderId)
       return NextResponse.json({ status: 'already_notified' })
     }
 
     // Exit if slip not uploaded yet
     if (!order.slip_url) {
-      console.log('[API:LINE:NOTIFY] Slip not uploaded yet:', orderId)
       return NextResponse.json({ status: 'slip_not_uploaded' })
     }
 
@@ -54,7 +52,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to mark as notified' }, { status: 500 })
     }
 
-    console.log('[API:LINE:NOTIFY] Success:', orderId)
     return NextResponse.json({ status: 'sent' })
   } catch (error) {
     console.error('[API:LINE:NOTIFY] Unexpected error:', error)

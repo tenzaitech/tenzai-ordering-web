@@ -136,7 +136,6 @@ export default function PaymentPage() {
         if (orderId === activeOrderId && lastSyncedCartFingerprint) {
           const currentFingerprint = getCartFingerprint(items)
           if (currentFingerprint !== lastSyncedCartFingerprint) {
-            console.log('[SYNC] Cart is dirty, auto-syncing silently')
             handleSyncOrder()
           }
         }
@@ -154,7 +153,6 @@ export default function PaymentPage() {
 
     try {
       setProcessingState('SYNCING_ORDER')
-      console.log('[PROCESSING] State: SYNCING_ORDER')
 
       // Update order total and note
       const { error: updateError } = await supabase
@@ -220,8 +218,6 @@ export default function PaymentPage() {
         setProcessingState('IDLE')
         return
       }
-
-      console.log('[SUCCESS:SYNC] Order synced')
 
       // Update fingerprint
       setLastSyncedCartFingerprint(getCartFingerprint(items))
@@ -295,7 +291,6 @@ export default function PaymentPage() {
     try {
       // Upload slip to Supabase Storage
       setProcessingState('UPLOADING_SLIP')
-      console.log('[PROCESSING] State: UPLOADING_SLIP')
 
       const fileExt = slipFile.name.split('.').pop()
       const fileName = `${Date.now()}.${fileExt}`
@@ -326,8 +321,6 @@ export default function PaymentPage() {
         setProcessingState('IDLE')
         return
       }
-
-      console.log('[SUCCESS:SLIP] Slip uploaded and order updated')
 
       // Fire-and-forget LINE notification
       fetch('/api/line/notify-slip', {
