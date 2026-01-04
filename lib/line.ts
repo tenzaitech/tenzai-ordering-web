@@ -47,6 +47,15 @@ const LINE_LABELS = {
   status: 'สถานะ'
 } as const
 
+// Brand styling constants
+const BRAND = {
+  name: 'TENZAI',
+  headerBg: '#2d2d2d',       // Premium dark charcoal
+  headerText: '#ffffff',     // White text on dark
+  headerSubtext: '#b0b0b0',  // Subtle gray for subtitle
+  accent: '#e8b923'          // Gold accent (optional future use)
+} as const
+
 interface FlexField {
   label: string
   value: string
@@ -79,14 +88,14 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
     footerText
   } = options
 
-  // Header contents
+  // Header contents with brand styling
   const headerContents: object[] = [
     {
       type: 'text',
       text: titleTH,
       weight: 'bold',
       size: 'lg',
-      color: '#1a1a1a',
+      color: BRAND.headerText,
       wrap: true
     }
   ]
@@ -96,7 +105,7 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
       type: 'text',
       text: titleEN,
       size: 'sm',
-      color: '#666666',
+      color: BRAND.headerSubtext,
       margin: 'xs',
       wrap: true
     })
@@ -280,7 +289,7 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
     }
   }
 
-  // Build bubble
+  // Build bubble with brand header
   const bubble: Record<string, unknown> = {
     type: 'bubble',
     size: 'mega',
@@ -288,7 +297,7 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
       type: 'box',
       layout: 'vertical',
       contents: headerContents,
-      backgroundColor: '#f5f5f5',
+      backgroundColor: BRAND.headerBg,
       paddingAll: 'lg'
     },
     body: {
@@ -301,6 +310,22 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
 
   if (footer) {
     bubble.footer = footer
+  } else {
+    // Default brand footer when no action button
+    bubble.footer = {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: BRAND.name,
+          size: 'xxs',
+          color: '#aaaaaa',
+          align: 'center'
+        }
+      ],
+      paddingAll: 'sm'
+    }
   }
 
   return bubble
@@ -342,7 +367,8 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
 
   // Build Flex card for approver (NO button)
   const flexCard = buildFlexOrderCard({
-    titleTH: '🔔 คำสั่งซื้อใหม่',
+    titleTH: '🔔 มีออเดอร์ใหม่รอตรวจสอบ',
+    titleEN: 'กรุณาตรวจสลิปและอนุมัติ',
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
       { label: LINE_LABELS.customerName, value: order.customer_name },
@@ -355,7 +381,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
     noteValue: order.customer_note || undefined,
     slipUrl: order.slip_url,
     showButton: false,
-    footerText: 'ดูรายละเอียดใน Admin Panel'
+    footerText: 'ตรวจสอบใน Admin Panel'
   })
 
   // Get approver ID from DB/env
@@ -382,7 +408,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
       messages: [
         {
           type: 'flex',
-          altText: `คำสั่งซื้อใหม่ #${order.order_number}`,
+          altText: `มีออเดอร์ใหม่รอตรวจสอบ #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -460,8 +486,8 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
 
   // Build Flex card for staff (NO button)
   const flexCard = buildFlexOrderCard({
-    titleTH: '✅ ออเดอร์อนุมัติแล้ว',
-    titleEN: 'เริ่มทำได้เลย',
+    titleTH: '✅ ชำระเงินเรียบร้อย',
+    titleEN: 'เริ่มเตรียมออเดอร์ได้เลย!',
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
       { label: LINE_LABELS.customerName, value: order.customer_name },
@@ -473,7 +499,7 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
     noteLabel: order.customer_note ? LINE_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     showButton: false,
-    footerText: 'ดูรายละเอียดใน Staff Board'
+    footerText: 'รายละเอียดเพิ่มเติมใน Staff Board'
   })
 
   // Get staff ID from DB/env
@@ -500,7 +526,7 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
       messages: [
         {
           type: 'flex',
-          altText: `ออเดอร์อนุมัติ #${order.order_number}`,
+          altText: `ชำระเงินเรียบร้อย #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -533,18 +559,18 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
 
   // Build Flex card for staff adjustment (NO button)
   const flexCard = buildFlexOrderCard({
-    titleTH: '⚠️ แก้ไขออเดอร์',
-    titleEN: 'Adjustment Update',
+    titleTH: '⚠️ มีการปรับเปลี่ยนออเดอร์',
+    titleEN: 'กรุณาตรวจสอบรายละเอียดใหม่',
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
       { label: LINE_LABELS.customerName, value: order.customer_name },
       { label: LINE_LABELS.pickupTime, value: pickupText },
       { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
-    noteLabel: 'การปรับเปลี่ยน',
+    noteLabel: 'รายละเอียดการปรับเปลี่ยน',
     noteValue: order.adjustment_note,
     showButton: false,
-    footerText: 'ดูรายละเอียดใน Staff Board'
+    footerText: 'ตรวจสอบใน Staff Board'
   })
 
   // Get staff ID from DB/env
@@ -571,7 +597,7 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
       messages: [
         {
           type: 'flex',
-          altText: `แก้ไขออเดอร์ #${order.order_number}`,
+          altText: `มีการปรับเปลี่ยนออเดอร์ #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -610,11 +636,11 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
 
   // Build Flex card for customer (HAS button)
   const flexCard = buildFlexOrderCard({
-    titleTH: '🧾 ได้รับสลิปแล้ว',
-    titleEN: 'We received your payment slip',
+    titleTH: '🧾 ได้รับหลักฐานการชำระเงินแล้ว',
+    titleEN: 'กำลังตรวจสอบ จะแจ้งผลให้ทราบเร็วๆ นี้',
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
-      { label: LINE_LABELS.status, value: 'รอตรวจสอบ' },
+      { label: LINE_LABELS.status, value: 'รอตรวจสอบการชำระเงิน' },
       { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
     showButton: true,
@@ -638,7 +664,7 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
       messages: [
         {
           type: 'flex',
-          altText: `ได้รับสลิปแล้ว #${order.order_number}`,
+          altText: `ได้รับหลักฐานการชำระเงินแล้ว #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -685,11 +711,11 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
 
     // Build Flex card for "ready" status (HAS button)
     const flexCard = buildFlexOrderCard({
-      titleTH: '🍱 อาหารพร้อมแล้ว',
-      titleEN: 'Your order is ready!',
+      titleTH: '🍱 ออเดอร์ของคุณพร้อมแล้ว!',
+      titleEN: 'มารับได้เลยค่ะ',
       fields: [
         { label: LINE_LABELS.order, value: `#${order.order_number}` },
-        { label: LINE_LABELS.status, value: 'พร้อมรับได้เลย' }
+        { label: LINE_LABELS.status, value: 'พร้อมรับ' }
       ],
       showButton: true,
       actionUrl: statusUrl
@@ -697,14 +723,14 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
 
     message = {
       type: 'flex',
-      altText: `อาหารพร้อมแล้ว #${order.order_number}`,
+      altText: `ออเดอร์พร้อมแล้ว #${order.order_number}`,
       contents: flexCard
     }
   } else {
     // Keep "picked_up" as text message (simple thank you)
     message = {
       type: 'text',
-      text: `✅ ได้รับอาหารเรียบร้อยแล้ว\n\n📋 ออเดอร์: #${order.order_number}\n🙏 ขอบคุณที่ใช้บริการครับ\n\nหวังว่าจะได้เจอกันใหม่!`
+      text: `✅ ขอบคุณที่มารับออเดอร์ค่ะ\n\n📋 ออเดอร์ #${order.order_number}\n\n🙏 ขอบคุณที่อุดหนุน TENZAI\nหวังว่าจะได้พบกันอีกนะคะ`
     }
   }
 
