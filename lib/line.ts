@@ -35,6 +35,18 @@ function formatPickupTime(pickupType: string, pickupTime: string | null): string
 // FLEX MESSAGE BUILDER
 // ============================================================
 
+// Standardized LINE Flex labels (Thai-first)
+const LINE_LABELS = {
+  order: 'ออเดอร์',
+  customerName: 'ชื่อลูกค้า',
+  phone: 'เบอร์โทร',
+  pickupTime: 'รับเมื่อ',
+  total: 'ยอดรวม',
+  items: 'รายการ',
+  note: 'หมายเหตุ',
+  status: 'สถานะ'
+} as const
+
 interface FlexField {
   label: string
   value: string
@@ -74,7 +86,8 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
       text: titleTH,
       weight: 'bold',
       size: 'lg',
-      color: '#1a1a1a'
+      color: '#1a1a1a',
+      wrap: true
     }
   ]
 
@@ -84,27 +97,29 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
       text: titleEN,
       size: 'sm',
       color: '#666666',
-      margin: 'xs'
+      margin: 'xs',
+      wrap: true
     })
   }
 
   // Body contents
   const bodyContents: object[] = []
 
-  // Add key-value fields
+  // Add key-value fields (baseline layout for proper alignment)
   for (const field of fields) {
     if (field.value) {
       bodyContents.push({
         type: 'box',
-        layout: 'horizontal',
+        layout: 'baseline',
         margin: 'md',
+        spacing: 'sm',
         contents: [
           {
             type: 'text',
             text: field.label,
             size: 'sm',
             color: '#666666',
-            flex: 0,
+            flex: 2,
             wrap: false
           },
           {
@@ -112,7 +127,7 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
             text: field.value,
             size: 'sm',
             color: '#1a1a1a',
-            flex: 1,
+            flex: 5,
             wrap: true,
             align: 'end'
           }
@@ -130,25 +145,40 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
 
     bodyContents.push({
       type: 'text',
-      text: 'รายการ',
+      text: LINE_LABELS.items,
       size: 'sm',
       color: '#666666',
       margin: 'lg',
       weight: 'bold'
     })
 
-    // Show up to 8 items
+    // Show up to 8 items with proper wrapping
     const displayItems = items.slice(0, 8)
     const remainingCount = items.length - 8
 
     for (const item of displayItems) {
       bodyContents.push({
-        type: 'text',
-        text: item,
-        size: 'sm',
-        color: '#1a1a1a',
+        type: 'box',
+        layout: 'horizontal',
         margin: 'sm',
-        wrap: true
+        contents: [
+          {
+            type: 'text',
+            text: '•',
+            size: 'sm',
+            color: '#888888',
+            flex: 0
+          },
+          {
+            type: 'text',
+            text: item,
+            size: 'sm',
+            color: '#1a1a1a',
+            flex: 1,
+            wrap: true,
+            margin: 'sm'
+          }
+        ]
       })
     }
 
@@ -156,10 +186,9 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
       bodyContents.push({
         type: 'text',
         text: `และอีก ${remainingCount} รายการ…`,
-        size: 'sm',
+        size: 'xs',
         color: '#888888',
-        margin: 'sm',
-        style: 'italic'
+        margin: 'md'
       })
     }
   }
@@ -315,14 +344,14 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
   const flexCard = buildFlexOrderCard({
     titleTH: '🔔 คำสั่งซื้อใหม่',
     fields: [
-      { label: 'เลขที่', value: `#${order.order_number}` },
-      { label: 'ชื่อ', value: order.customer_name },
-      { label: 'เบอร์', value: order.customer_phone },
-      { label: 'รับเมื่อ', value: pickupText },
-      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+      { label: LINE_LABELS.order, value: `#${order.order_number}` },
+      { label: LINE_LABELS.customerName, value: order.customer_name },
+      { label: LINE_LABELS.phone, value: order.customer_phone },
+      { label: LINE_LABELS.pickupTime, value: pickupText },
+      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
     items: itemsList,
-    noteLabel: order.customer_note ? 'หมายเหตุ' : undefined,
+    noteLabel: order.customer_note ? LINE_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     slipUrl: order.slip_url,
     showButton: false,
@@ -434,14 +463,14 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
     titleTH: '✅ ออเดอร์อนุมัติแล้ว',
     titleEN: 'เริ่มทำได้เลย',
     fields: [
-      { label: 'เลขที่', value: `#${order.order_number}` },
-      { label: 'ชื่อ', value: order.customer_name },
-      { label: 'เบอร์', value: order.customer_phone },
-      { label: 'รับเมื่อ', value: pickupText },
-      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+      { label: LINE_LABELS.order, value: `#${order.order_number}` },
+      { label: LINE_LABELS.customerName, value: order.customer_name },
+      { label: LINE_LABELS.phone, value: order.customer_phone },
+      { label: LINE_LABELS.pickupTime, value: pickupText },
+      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
     items: itemsList,
-    noteLabel: order.customer_note ? 'หมายเหตุจากลูกค้า' : undefined,
+    noteLabel: order.customer_note ? LINE_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     showButton: false,
     footerText: 'ดูรายละเอียดใน Staff Board'
@@ -507,10 +536,10 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
     titleTH: '⚠️ แก้ไขออเดอร์',
     titleEN: 'Adjustment Update',
     fields: [
-      { label: 'เลขที่', value: `#${order.order_number}` },
-      { label: 'ชื่อ', value: order.customer_name },
-      { label: 'รับเมื่อ', value: pickupText },
-      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+      { label: LINE_LABELS.order, value: `#${order.order_number}` },
+      { label: LINE_LABELS.customerName, value: order.customer_name },
+      { label: LINE_LABELS.pickupTime, value: pickupText },
+      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
     noteLabel: 'การปรับเปลี่ยน',
     noteValue: order.adjustment_note,
@@ -584,9 +613,9 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
     titleTH: '🧾 ได้รับสลิปแล้ว',
     titleEN: 'We received your payment slip',
     fields: [
-      { label: 'ออเดอร์', value: `#${order.order_number}` },
-      { label: 'สถานะ', value: 'รอตรวจสอบ' },
-      { label: 'ยอดรวม', value: `฿${order.total_amount}` }
+      { label: LINE_LABELS.order, value: `#${order.order_number}` },
+      { label: LINE_LABELS.status, value: 'รอตรวจสอบ' },
+      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
     showButton: true,
     actionUrl: statusUrl
@@ -659,8 +688,8 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
       titleTH: '🍱 อาหารพร้อมแล้ว',
       titleEN: 'Your order is ready!',
       fields: [
-        { label: 'ออเดอร์', value: `#${order.order_number}` },
-        { label: 'สถานะ', value: 'พร้อมรับได้เลย' }
+        { label: LINE_LABELS.order, value: `#${order.order_number}` },
+        { label: LINE_LABELS.status, value: 'พร้อมรับได้เลย' }
       ],
       showButton: true,
       actionUrl: statusUrl
