@@ -48,7 +48,11 @@ function getAppOrigin(): string {
 
 /**
  * Get the LIFF deep link URL for customer-facing pages.
- * Uses LIFF URL format: https://liff.line.me/{LIFF_ID}/{path}
+ * Uses liff.state query parameter to preserve target path through LIFF flow.
+ * Format: https://liff.line.me/{LIFF_ID}?liff.state={ENCODED_PATH}
+ *
+ * Note: LINE drops path segments from LIFF URLs, so we must use liff.state
+ * which LINE preserves and appends to the URL after LIFF initialization.
  */
 function getLiffDeepLink(path: string): string {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID || ''
@@ -56,7 +60,9 @@ function getLiffDeepLink(path: string): string {
     console.warn('[LINE:URL] NEXT_PUBLIC_LIFF_ID not set')
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return `https://liff.line.me/${liffId}${cleanPath}`
+  // Encode the path in liff.state to preserve it through LIFF flow
+  const encodedState = encodeURIComponent(cleanPath)
+  return `https://liff.line.me/${liffId}?liff.state=${encodedState}`
 }
 
 /**
@@ -745,10 +751,7 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
     throw new Error('No customer LINE user ID')
   }
 
-  // Build customer status URL via LIFF deep link
-  const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
-
-  // Build Flex card for customer (HAS button)
+  // Build Flex card for customer (NO button)
   const flexCard = buildFlexOrderCard({
     titleTH: '🧾 ได้รับหลักฐานการชำระเงินแล้ว',
     titleEN: 'กำลังตรวจสอบ จะแจ้งผลให้ทราบเร็วๆ นี้',
@@ -757,8 +760,7 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
       { label: LINE_LABELS.status, value: 'รอตรวจสอบการชำระเงิน' },
       { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
     ],
-    showButton: true,
-    actionUrl: statusUrl
+    showButton: false
   })
 
   // Validate env vars
@@ -817,9 +819,6 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
     throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
   }
 
-  // Build customer status URL via LIFF deep link
-  const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
-
   // Format pickup time
   const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
 
@@ -835,13 +834,12 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
     fields.push({ label: LINE_LABELS.pickupTime, value: pickupText })
   }
 
-  // Build Flex card for customer (HAS button)
+  // Build Flex card for customer (NO button)
   const flexCard = buildFlexOrderCard({
     titleTH: '✅ ออเดอร์ได้รับการยืนยันแล้ว',
     titleEN: 'กำลังเตรียมอาหารให้คุณ',
     fields,
-    showButton: true,
-    actionUrl: statusUrl
+    showButton: false
   })
 
   // Send via LINE Messaging API
@@ -898,10 +896,7 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
   let message: object
 
   if (status === 'ready') {
-    // Build customer status URL via LIFF deep link
-    const statusUrl = getLiffDeepLink(`/order/status/${orderId}`)
-
-    // Build Flex card for "ready" status (HAS button)
+    // Build Flex card for "ready" status (NO button)
     const flexCard = buildFlexOrderCard({
       titleTH: '🍱 ออเดอร์ของคุณพร้อมแล้ว!',
       titleEN: 'มารับได้เลยค่ะ',
@@ -909,8 +904,7 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
         { label: LINE_LABELS.order, value: `#${order.order_number}` },
         { label: LINE_LABELS.status, value: 'พร้อมรับ' }
       ],
-      showButton: true,
-      actionUrl: statusUrl
+      showButton: false
     })
 
     message = {
