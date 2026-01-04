@@ -14,7 +14,7 @@ async function getLineRecipients(): Promise<{ approverId: string; staffId: strin
   }
 }
 
-// Format pickup time to Bangkok timezone
+// Format pickup time to Bangkok timezone (Thai - for customers)
 function formatPickupTime(pickupType: string, pickupTime: string | null): string {
   if (pickupType === 'ASAP') {
     return 'ให้ร้านทำทันที'
@@ -31,11 +31,26 @@ function formatPickupTime(pickupType: string, pickupTime: string | null): string
   return ''
 }
 
+// Format pickup time EN-first for staff (Myanmar-friendly)
+function formatPickupTimeEN(pickupType: string, pickupTime: string | null): string {
+  if (pickupType === 'ASAP') {
+    return 'ASAP'
+  } else if (pickupTime) {
+    const date = new Date(pickupTime)
+    const bangkokOffsetMs = 7 * 60 * 60 * 1000
+    const bangkokTime = new Date(date.getTime() + bangkokOffsetMs)
+    const hours = String(bangkokTime.getUTCHours()).padStart(2, '0')
+    const minutes = String(bangkokTime.getUTCMinutes()).padStart(2, '0')
+    return `Scheduled ${hours}:${minutes}`
+  }
+  return ''
+}
+
 // ============================================================
 // FLEX MESSAGE BUILDER
 // ============================================================
 
-// Standardized LINE Flex labels (Thai-first)
+// Standardized LINE Flex labels (Thai-first for customers)
 const LINE_LABELS = {
   order: 'ออเดอร์',
   customerName: 'ชื่อลูกค้า',
@@ -45,6 +60,18 @@ const LINE_LABELS = {
   items: 'รายการ',
   note: 'หมายเหตุ',
   status: 'สถานะ'
+} as const
+
+// EN-first labels for staff/approver (Myanmar-friendly)
+const STAFF_LABELS = {
+  order: 'Order',
+  customerName: 'Name',
+  phone: 'Phone',
+  pickupTime: 'Pickup',
+  total: 'Total',
+  items: 'Items',
+  note: 'Note',
+  status: 'Status'
 } as const
 
 // Brand styling constants
@@ -359,29 +386,29 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
     throw new Error('Failed to fetch order items')
   }
 
-  // Format pickup time
-  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
+  // Format pickup time (EN-first for approver)
+  const pickupText = formatPickupTimeEN(order.pickup_type, order.pickup_time)
 
-  // Format items list
-  const itemsList = items?.map(item => `${item.qty}x ${item.name_th}`) || []
+  // Format items list (EN names with fallback to TH)
+  const itemsList = items?.map(item => `${item.qty}x ${item.name_en || item.name_th}`) || []
 
-  // Build Flex card for approver (NO button)
+  // Build Flex card for approver (NO button, EN-first)
   const flexCard = buildFlexOrderCard({
-    titleTH: '🔔 มีออเดอร์ใหม่รอตรวจสอบ',
-    titleEN: 'กรุณาตรวจสลิปและอนุมัติ',
+    titleTH: 'New paid order to verify',
+    titleEN: 'Check slip and approve',
     fields: [
-      { label: LINE_LABELS.order, value: `#${order.order_number}` },
-      { label: LINE_LABELS.customerName, value: order.customer_name },
-      { label: LINE_LABELS.phone, value: order.customer_phone },
-      { label: LINE_LABELS.pickupTime, value: pickupText },
-      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.order, value: `#${order.order_number}` },
+      { label: STAFF_LABELS.customerName, value: order.customer_name },
+      { label: STAFF_LABELS.phone, value: order.customer_phone },
+      { label: STAFF_LABELS.pickupTime, value: pickupText },
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
     ],
     items: itemsList,
-    noteLabel: order.customer_note ? LINE_LABELS.note : undefined,
+    noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     slipUrl: order.slip_url,
     showButton: false,
-    footerText: 'ตรวจสอบใน Admin Panel'
+    footerText: 'Check in Admin Panel'
   })
 
   // Get approver ID from DB/env
@@ -408,7 +435,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
       messages: [
         {
           type: 'flex',
-          altText: `มีออเดอร์ใหม่รอตรวจสอบ #${order.order_number}`,
+          altText: `New order to verify #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -447,21 +474,25 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
     throw new Error('Failed to fetch order items')
   }
 
-  // Format pickup time
-  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
+  // Format pickup time (EN-first for staff)
+  const pickupText = formatPickupTimeEN(order.pickup_type, order.pickup_time)
 
-  // Format items with options for staff (need full details)
+  // Format items with options for staff (EN names, need full details)
   const itemsList = items?.map(item => {
-    let itemText = `${item.qty}x ${item.name_th}`
+    let itemText = `${item.qty}x ${item.name_en || item.name_th}`
 
-    // Add selected options
+    // Add selected options (EN-first with fallback)
     if (item.selected_options_json) {
       try {
         const options = item.selected_options_json
         if (Array.isArray(options) && options.length > 0) {
-          const optionNames = options.flatMap((opt: { choice_names_th?: string[]; name_th?: string }) => {
-            if (opt.choice_names_th && Array.isArray(opt.choice_names_th)) {
+          const optionNames = options.flatMap((opt: { choice_names_en?: string[]; choice_names_th?: string[]; name_en?: string; name_th?: string }) => {
+            if (opt.choice_names_en && Array.isArray(opt.choice_names_en)) {
+              return opt.choice_names_en
+            } else if (opt.choice_names_th && Array.isArray(opt.choice_names_th)) {
               return opt.choice_names_th
+            } else if (opt.name_en) {
+              return [opt.name_en]
             } else if (opt.name_th) {
               return [opt.name_th]
             }
@@ -484,22 +515,22 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
     return itemText
   }) || []
 
-  // Build Flex card for staff (NO button)
+  // Build Flex card for staff (NO button, EN-first)
   const flexCard = buildFlexOrderCard({
-    titleTH: '✅ ชำระเงินเรียบร้อย',
-    titleEN: 'เริ่มเตรียมออเดอร์ได้เลย!',
+    titleTH: 'Order approved (paid)',
+    titleEN: 'Start preparing now',
     fields: [
-      { label: LINE_LABELS.order, value: `#${order.order_number}` },
-      { label: LINE_LABELS.customerName, value: order.customer_name },
-      { label: LINE_LABELS.phone, value: order.customer_phone },
-      { label: LINE_LABELS.pickupTime, value: pickupText },
-      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.order, value: `#${order.order_number}` },
+      { label: STAFF_LABELS.customerName, value: order.customer_name },
+      { label: STAFF_LABELS.phone, value: order.customer_phone },
+      { label: STAFF_LABELS.pickupTime, value: pickupText },
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
     ],
     items: itemsList,
-    noteLabel: order.customer_note ? LINE_LABELS.note : undefined,
+    noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
     noteValue: order.customer_note || undefined,
     showButton: false,
-    footerText: 'รายละเอียดเพิ่มเติมใน Staff Board'
+    footerText: 'Details in Staff Board'
   })
 
   // Get staff ID from DB/env
@@ -526,7 +557,7 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
       messages: [
         {
           type: 'flex',
-          altText: `ชำระเงินเรียบร้อย #${order.order_number}`,
+          altText: `Order approved #${order.order_number}`,
           contents: flexCard
         }
       ]
@@ -554,23 +585,23 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
     throw new Error('Failed to fetch order')
   }
 
-  // Format pickup time
-  const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
+  // Format pickup time (EN-first for staff)
+  const pickupText = formatPickupTimeEN(order.pickup_type, order.pickup_time)
 
-  // Build Flex card for staff adjustment (NO button)
+  // Build Flex card for staff adjustment (NO button, EN-first)
   const flexCard = buildFlexOrderCard({
-    titleTH: '⚠️ มีการปรับเปลี่ยนออเดอร์',
-    titleEN: 'กรุณาตรวจสอบรายละเอียดใหม่',
+    titleTH: 'Order updated',
+    titleEN: 'Check new details',
     fields: [
-      { label: LINE_LABELS.order, value: `#${order.order_number}` },
-      { label: LINE_LABELS.customerName, value: order.customer_name },
-      { label: LINE_LABELS.pickupTime, value: pickupText },
-      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.order, value: `#${order.order_number}` },
+      { label: STAFF_LABELS.customerName, value: order.customer_name },
+      { label: STAFF_LABELS.pickupTime, value: pickupText },
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
     ],
-    noteLabel: 'รายละเอียดการปรับเปลี่ยน',
+    noteLabel: 'Changes',
     noteValue: order.adjustment_note,
     showButton: false,
-    footerText: 'ตรวจสอบใน Staff Board'
+    footerText: 'Check in Staff Board'
   })
 
   // Get staff ID from DB/env
@@ -597,7 +628,7 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
       messages: [
         {
           type: 'flex',
-          altText: `มีการปรับเปลี่ยนออเดอร์ #${order.order_number}`,
+          altText: `Order updated #${order.order_number}`,
           contents: flexCard
         }
       ]

@@ -9,6 +9,7 @@ import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
 import { generateOrderNumber, generatePickupTimes, getCartFingerprint } from '@/lib/orderUtils'
 import ErrorModal from '@/components/ErrorModal'
+import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 type ProcessingState = 'IDLE' | 'CREATING_ORDER' | 'SAVING_ITEMS'
 
@@ -297,24 +298,10 @@ export default function CheckoutPage() {
         />
       )}
 
-      <div className="max-w-mobile mx-auto">
-        {/* Header */}
-        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
-          <button
-            onClick={() => {
-              triggerHaptic()
-              router.back()
-            }}
-            className="text-muted hover:text-text active:text-text transition-colors"
-            disabled={isProcessing}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">{t('checkout')}</h1>
-        </header>
+      {/* Unified Header */}
+      <UnifiedOrderHeader title={t('checkout')} backHref="/order/cart" />
 
+      <div className="max-w-mobile mx-auto pt-14">
         <form onSubmit={handleSubmit} className="pb-32">
           {/* Customer Info Section */}
           <div className="px-5 py-6 border-b border-border">

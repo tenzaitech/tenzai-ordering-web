@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { triggerHaptic } from '@/utils/haptic'
+import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 type OrderItem = {
   id: string
@@ -199,19 +200,13 @@ export default function OrderEditPage() {
   if (items.length === 0 && order) {
     return (
       <div className="min-h-screen bg-bg">
-        <div className="max-w-mobile mx-auto">
-          {/* Header */}
-          <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
-            <button onClick={handleCancel} className="text-muted hover:text-text transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">
-              {language === 'th' ? 'แก้ไขออเดอร์' : 'Edit Order'}
-            </h1>
-          </header>
+        {/* Unified Header */}
+        <UnifiedOrderHeader
+          title={language === 'th' ? 'แก้ไขออเดอร์' : 'Edit Order'}
+          backHref="/order/status"
+        />
 
+        <div className="max-w-mobile mx-auto pt-14">
           <div className="flex flex-col items-center justify-center py-20 px-5">
             <svg className="w-16 h-16 text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -236,23 +231,13 @@ export default function OrderEditPage() {
 
   return (
     <div className="min-h-screen bg-bg pb-32">
-      <div className="max-w-mobile mx-auto">
-        {/* Header */}
-        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
-          <button
-            onClick={handleCancel}
-            className="text-muted hover:text-text transition-colors"
-            disabled={processingState === 'SAVING'}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">
-            {language === 'th' ? 'แก้ไขออเดอร์' : 'Edit Order'} #{order?.order_number}
-          </h1>
-        </header>
+      {/* Unified Header */}
+      <UnifiedOrderHeader
+        title={`${language === 'th' ? 'แก้ไขออเดอร์' : 'Edit Order'} #${order?.order_number}`}
+        backHref="/order/status"
+      />
 
+      <div className="max-w-mobile mx-auto pt-14">
         {/* Add More Items Button */}
         <div className="px-5 py-3 border-b border-border flex justify-center">
           <button

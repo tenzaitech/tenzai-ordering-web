@@ -69,14 +69,33 @@ export default function LiffBootstrapPage() {
         // Determine redirect destination
         // Check if LIFF was opened with a specific path (e.g., /order/status/[id])
         const context = liff.getContext()
-        const liffPath = context?.path || ''
+        const rawPath = context?.path || ''
+
+        // Normalize path: trim whitespace, ensure leading slash, preserve query/hash
+        let normalizedPath = rawPath.trim()
+        if (normalizedPath && !normalizedPath.startsWith('/')) {
+          normalizedPath = '/' + normalizedPath
+        }
 
         // Valid redirect paths (whitelist for security)
-        const validPaths = ['/order/status/', '/order/menu', '/order/cart', '/order/checkout', '/order/payment', '/order/confirmed']
-        const isValidPath = validPaths.some(p => liffPath.startsWith(p))
+        // Using startsWith to allow /order/status/<id> and /order/status/<id>/
+        const validPaths = ['/order/status/', '/order/status', '/order/menu', '/order/cart', '/order/checkout', '/order/payment', '/order/confirmed']
+        const isValidPath = validPaths.some(p => {
+          // Exact match or startsWith for paths that can have params
+          if (p === '/order/status/') {
+            return normalizedPath.startsWith(p)
+          }
+          // For other paths, match exactly or with trailing slash
+          return normalizedPath === p || normalizedPath.startsWith(p + '/')  || normalizedPath.startsWith(p + '?')
+        })
+
+        // DEV-only logging for debugging deep links
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[LIFF:REDIRECT] rawPath:', rawPath, '| normalized:', normalizedPath, '| isValid:', isValidPath)
+        }
 
         // Redirect to intended path or default to menu
-        const redirectPath = isValidPath ? liffPath : '/order/menu'
+        const redirectPath = isValidPath ? normalizedPath : '/order/menu'
         router.replace(redirectPath)
       } catch (error) {
         console.error('[LIFF] Initialization error:', error)

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/utils/haptic'
 import { useLanguage } from '@/contexts/LanguageContext'
+import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 type Order = {
   id: string
@@ -108,40 +109,24 @@ export default function OrderStatusPage() {
     return `${day}/${month}/${year} ${hours}:${minutes}`
   }
 
+  const getPickupLabel = (pickupType: string, pickupTime: string | null) => {
+    if (pickupType === 'ASAP') {
+      return language === 'th' ? 'รับทันที' : 'ASAP'
+    } else if (pickupTime) {
+      const date = new Date(pickupTime)
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return language === 'th' ? `นัดรับ ${hours}:${minutes}` : `Scheduled ${hours}:${minutes}`
+    }
+    return ''
+  }
+
   return (
     <div className="min-h-screen bg-bg pb-20">
-      <div className="max-w-mobile mx-auto">
-        {/* Header */}
-        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-text">{t('myOrders')}</h1>
+      {/* Unified Header */}
+      <UnifiedOrderHeader title={t('myOrders')} showMyOrders={false} />
 
-            {/* Language Toggle */}
-            <div className="flex gap-1 bg-bg border border-border rounded-lg p-1">
-              <button
-                onClick={() => setLanguage('th')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  language === 'th'
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-text'
-                }`}
-              >
-                TH
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  language === 'en'
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-text'
-                }`}
-              >
-                EN
-              </button>
-            </div>
-          </div>
-        </header>
-
+      <div className="max-w-mobile mx-auto pt-14">
         {/* Content */}
         <div className="p-5">
           {loading && (
@@ -215,9 +200,18 @@ export default function OrderStatusPage() {
                       </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="mb-3 pb-3 border-b border-border">
+                    {/* Date + Pickup Type */}
+                    <div className="mb-3 pb-3 border-b border-border flex items-center justify-between">
                       <p className="text-sm text-muted">{formatDate(order.created_at)}</p>
+                      {getPickupLabel(order.pickup_type, order.pickup_time) && (
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          order.pickup_type === 'ASAP'
+                            ? 'bg-orange-500/20 text-orange-500'
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {getPickupLabel(order.pickup_type, order.pickup_time)}
+                        </span>
+                      )}
                     </div>
 
                     {/* Total */}

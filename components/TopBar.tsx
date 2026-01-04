@@ -1,13 +1,30 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useCustomerTheme } from '@/hooks/useCustomerTheme'
 
+// Routes that use UnifiedOrderHeader instead of TopBar
+const UNIFIED_HEADER_ROUTES = [
+  '/order/cart',
+  '/order/checkout',
+  '/order/payment',
+  '/order/status',
+  '/order/edit',
+  '/order/confirmed',
+]
+
 export default function TopBar() {
   const router = useRouter()
+  const pathname = usePathname()
   const { language, setLanguage } = useLanguage()
   const { theme, toggleTheme, mounted } = useCustomerTheme()
+
+  // Skip rendering on pages that use UnifiedOrderHeader
+  const shouldHide = UNIFIED_HEADER_ROUTES.some(route => pathname?.startsWith(route))
+  if (shouldHide) {
+    return null
+  }
 
   return (
     <header className="sticky top-0 bg-bg-surface z-10 px-5 py-4 border-b border-border-subtle">

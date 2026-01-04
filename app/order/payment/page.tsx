@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { getCartFingerprint } from '@/lib/orderUtils'
 import { generatePromptPayPayload } from '@/lib/promptpay'
 import ErrorModal from '@/components/ErrorModal'
+import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 // Fallback PromptPay ID (used only if DB has no promptpay_id configured)
 const FALLBACK_PROMPTPAY_ID = '0988799990'
@@ -38,6 +39,45 @@ export default function PaymentPage() {
 
   const orderId = searchParams.get('id')
   const fromPage = searchParams.get('from')
+
+  // Get pickup badge for display
+  const getPickupBadge = (pickupType: string | undefined, pickupTime: string | null | undefined) => {
+    if (pickupType === 'ASAP') {
+      return {
+        label: language === 'th' ? 'รับทันที' : 'ASAP',
+        className: 'bg-orange-500/20 text-orange-500'
+      }
+    } else if (pickupTime) {
+      const date = new Date(pickupTime)
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return {
+        label: language === 'th' ? `นัดรับ ${hours}:${minutes}` : `Scheduled ${hours}:${minutes}`,
+        className: 'bg-blue-500/20 text-blue-400'
+      }
+    }
+    return null
+  }
+
+  // Format options for display (same pattern as Order Detail)
+  const formatOptions = (optionsJson: any) => {
+    if (!optionsJson || !Array.isArray(optionsJson)) return null
+
+    const optionStrings: string[] = []
+    optionsJson.forEach((opt: any) => {
+      if (opt.choice_names_th && Array.isArray(opt.choice_names_th) && language === 'th') {
+        optionStrings.push(...opt.choice_names_th)
+      } else if (opt.choice_names_en && Array.isArray(opt.choice_names_en) && language === 'en') {
+        optionStrings.push(...opt.choice_names_en)
+      } else if (opt.name_th && language === 'th') {
+        optionStrings.push(opt.name_th)
+      } else if (opt.name_en && language === 'en') {
+        optionStrings.push(opt.name_en)
+      }
+    })
+
+    return optionStrings.length > 0 ? optionStrings : null
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -379,32 +419,13 @@ export default function PaymentPage() {
         />
       )}
 
-      <div className="max-w-mobile mx-auto">
-        {/* Header */}
-        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border flex items-center">
-          <button
-            onClick={() => {
-              triggerHaptic()
-              // Smart back navigation based on where user came from
-              if (fromPage === 'status') {
-                router.push('/order/status')
-              } else if (items.length === 0 && orderId) {
-                // Fallback: if cart is empty, go to status (not checkout)
-                router.push('/order/status')
-              } else {
-                router.back()
-              }
-            }}
-            className="text-muted hover:text-text active:text-text transition-colors"
-            disabled={isProcessing}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-medium flex-1 text-center mr-6 text-text">{t('payment')}</h1>
-        </header>
+      {/* Unified Header */}
+      <UnifiedOrderHeader
+        title={t('payment')}
+        backHref={fromPage === 'status' ? '/order/status' : '/order/checkout'}
+      />
 
+      <div className="max-w-mobile mx-auto pt-14">
         {/* Edit Actions (for unpaid orders) */}
         {(() => {
           const isEditable = order && !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
@@ -451,18 +472,37 @@ export default function PaymentPage() {
         <form onSubmit={handleSubmit} className="pb-32">
           {/* Order Summary */}
           <div className="px-5 py-6 border-b border-border">
-            <h2 className="text-text text-lg font-semibold mb-4">{t('orderSummary')}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-text text-lg font-semibold">{t('orderSummary')}</h2>
+              {(() => {
+                const badge = getPickupBadge(order?.pickup_type, order?.pickup_time)
+                return badge ? (
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+                    {badge.label}
+                  </span>
+                ) : null
+              })()}
+            </div>
 
             <div className="bg-card border border-border rounded-lg p-4 mb-4">
               {/* Item List (collapsible) */}
               <div className="space-y-3 mb-3">
                 {orderItems.slice(0, isExpanded ? orderItems.length : 3).map((item) => {
                   const itemName = language === 'th' ? item.name_th : item.name_en
+                  const options = formatOptions(item.selected_options_json)
                   return (
                     <div key={item.id} className="flex justify-between items-start">
                       <div className="flex-1">
                         <p className="text-text text-sm font-medium">{itemName}</p>
                         <p className="text-xs text-muted">x{item.qty}</p>
+                        {/* Selected Options */}
+                        {options && options.length > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {options.map((opt, idx) => (
+                              <p key={idx} className="text-xs text-muted">• {opt}</p>
+                            ))}
+                          </div>
+                        )}
                         {item.note && (
                           <p className="text-xs text-muted italic mt-1">{t('note')}: {item.note}</p>
                         )}

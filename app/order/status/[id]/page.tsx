@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { triggerHaptic } from '@/utils/haptic'
 import { useLanguage } from '@/contexts/LanguageContext'
+import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 type OrderItem = {
   id: string
@@ -134,6 +135,24 @@ export default function OrderDetailPage() {
     return '-'
   }
 
+  const getPickupBadge = (pickupType: string, pickupTime: string | null) => {
+    if (pickupType === 'ASAP') {
+      return {
+        label: language === 'th' ? 'รับทันที' : 'ASAP',
+        className: 'bg-orange-500/20 text-orange-500'
+      }
+    } else if (pickupTime) {
+      const date = new Date(pickupTime)
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return {
+        label: language === 'th' ? `นัดรับ ${hours}:${minutes}` : `Scheduled ${hours}:${minutes}`,
+        className: 'bg-blue-500/20 text-blue-400'
+      }
+    }
+    return null
+  }
+
   const formatOptions = (optionsJson: any) => {
     if (!optionsJson || !Array.isArray(optionsJson)) return null
 
@@ -155,51 +174,10 @@ export default function OrderDetailPage() {
 
   return (
     <div className="min-h-screen bg-bg pb-20">
-      <div className="max-w-mobile mx-auto">
-        {/* Header */}
-        <header className="sticky top-0 bg-card z-10 px-5 py-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  triggerHaptic()
-                  router.push('/order/status')
-                }}
-                className="text-muted hover:text-text active:text-text transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h1 className="text-xl font-semibold text-text">{t('orderDetails')}</h1>
-            </div>
+      {/* Unified Header */}
+      <UnifiedOrderHeader title={t('orderDetails')} backHref="/order/status" />
 
-            {/* Language Toggle */}
-            <div className="flex gap-1 bg-bg border border-border rounded-lg p-1">
-              <button
-                onClick={() => setLanguage('th')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  language === 'th'
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-text'
-                }`}
-              >
-                TH
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  language === 'en'
-                    ? 'bg-primary text-white'
-                    : 'text-muted hover:text-text'
-                }`}
-              >
-                EN
-              </button>
-            </div>
-          </div>
-        </header>
-
+      <div className="max-w-mobile mx-auto pt-14">
         {/* Content */}
         <div className="p-5">
           {loading && (
@@ -275,7 +253,16 @@ export default function OrderDetailPage() {
                   <div className="w-px h-8 bg-border"></div>
                   <div className="text-center flex-1">
                     <p className="text-xs text-muted mb-0.5">{t('pickupTime')}</p>
-                    <p className="text-text font-medium">{formatPickupTime(order.pickup_type, order.pickup_time)}</p>
+                    {(() => {
+                      const badge = getPickupBadge(order.pickup_type, order.pickup_time)
+                      return badge ? (
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      ) : (
+                        <p className="text-text font-medium">-</p>
+                      )
+                    })()}
                   </div>
                 </div>
 
