@@ -25,7 +25,8 @@ type Order = {
   pickup_time: string | null
   total_amount: number
   customer_note: string | null
-  status: 'pending' | 'approved' | 'rejected' | null
+  slip_notified_at: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'ready' | 'picked_up' | null
   created_at: string
 }
 
@@ -48,7 +49,7 @@ export default function OrderDetailPage() {
 
     try {
       // Fetch via server-side API (userId verified server-side, slip_url excluded)
-      const response = await fetch(`/api/order/status/${orderId}`)
+      const response = await fetch(`/api/order/status/${orderId}`, { cache: 'no-store' })
 
       if (response.status === 404) {
         setNotFound(true)
@@ -82,6 +83,8 @@ export default function OrderDetailPage() {
       case 'pending': return 'bg-primary/20 text-primary'
       case 'approved': return 'bg-green-500/20 text-green-500'
       case 'rejected': return 'bg-red-500/20 text-red-500'
+      case 'ready': return 'bg-blue-500/20 text-blue-500'
+      case 'picked_up': return 'bg-gray-500/20 text-gray-400'
       default: return 'bg-muted/20 text-muted'
     }
   }
@@ -91,6 +94,8 @@ export default function OrderDetailPage() {
       case 'pending': return t('statusPending')
       case 'approved': return t('statusApproved')
       case 'rejected': return t('statusRejected')
+      case 'ready': return t('statusReady')
+      case 'picked_up': return t('statusPickedUp')
       default: return t('statusPending')
     }
   }
@@ -312,6 +317,54 @@ export default function OrderDetailPage() {
                   <p className="text-sm text-muted">{order.customer_note}</p>
                 </div>
               )}
+
+              {/* Contextual Actions */}
+              {(() => {
+                const needsSlipUpload = !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
+                return (
+                  <div className="space-y-3 pt-2">
+                    {/* Pay / Upload Slip - only if not uploaded */}
+                    {needsSlipUpload && (
+                      <button
+                        onClick={() => {
+                          triggerHaptic()
+                          router.push(`/order/payment?id=${order.id}&from=status`)
+                        }}
+                        className="w-full py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+                      >
+                        {t('payUploadSlip')}
+                      </button>
+                    )}
+
+                    {/* Edit Order - only if not locked */}
+                    {needsSlipUpload && (
+                      <button
+                        onClick={() => {
+                          triggerHaptic()
+                          router.push(`/order/payment?id=${order.id}&from=status&edit=true`)
+                        }}
+                        className="w-full py-3 bg-card border border-border text-text font-medium rounded-lg hover:bg-border/50 active:bg-border transition-colors"
+                      >
+                        {t('editOrder')}
+                      </button>
+                    )}
+
+                    {/* Order More */}
+                    <button
+                      onClick={() => {
+                        triggerHaptic()
+                        router.push('/order')
+                      }}
+                      className="w-full py-3 bg-card border border-border text-primary font-medium rounded-lg hover:bg-border/30 active:bg-border/50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      {t('orderMore')}
+                    </button>
+                  </div>
+                )
+              })()}
             </div>
           )}
         </div>

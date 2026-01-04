@@ -14,7 +14,7 @@ type Order = {
   total_amount: number
   customer_note: string | null
   slip_notified_at: string | null
-  status: 'pending' | 'approved' | 'rejected' | null
+  status: 'pending' | 'approved' | 'rejected' | 'ready' | 'picked_up' | null
   created_at: string
 }
 
@@ -33,8 +33,8 @@ export default function OrderStatusPage() {
     setError(false)
 
     try {
-      // Get LINE userId from existing session
-      const userResponse = await fetch('/api/liff/user')
+      // Get LINE userId from existing session (no-store to ensure fresh data)
+      const userResponse = await fetch('/api/liff/user', { cache: 'no-store' })
       if (!userResponse.ok) {
         throw new Error('No LIFF session')
       }
@@ -81,6 +81,8 @@ export default function OrderStatusPage() {
       case 'pending': return 'bg-primary/20 text-primary'
       case 'approved': return 'bg-green-500/20 text-green-500'
       case 'rejected': return 'bg-red-500/20 text-red-500'
+      case 'ready': return 'bg-blue-500/20 text-blue-500'
+      case 'picked_up': return 'bg-gray-500/20 text-gray-400'
       default: return 'bg-muted/20 text-muted'
     }
   }
@@ -90,6 +92,8 @@ export default function OrderStatusPage() {
       case 'pending': return t('statusPending')
       case 'approved': return t('statusApproved')
       case 'rejected': return t('statusRejected')
+      case 'ready': return t('statusReady')
+      case 'picked_up': return t('statusPickedUp')
       default: return t('statusPending')
     }
   }
@@ -179,6 +183,20 @@ export default function OrderStatusPage() {
 
           {!loading && !error && orders.length > 0 && (
             <div className="space-y-4">
+              {/* Order More CTA */}
+              <button
+                onClick={() => {
+                  triggerHaptic()
+                  router.push('/order')
+                }}
+                className="w-full py-3 bg-card border border-border text-primary text-sm font-medium rounded-lg hover:bg-border/30 active:bg-border/50 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {t('orderMore')}
+              </button>
+
               {orders.map((order) => {
                 // Determine if slip is missing (use slip_notified_at as safe signal)
                 const needsSlipUpload = !order.slip_notified_at && order.status !== 'approved' && order.status !== 'rejected'
@@ -216,30 +234,49 @@ export default function OrderStatusPage() {
                       <p className="text-sm text-muted">{formatDate(order.created_at)}</p>
                     </div>
 
-                    {/* Total + Chevron */}
-                    <div className="flex items-center justify-between">
+                    {/* Total */}
+                    <div className="flex items-center justify-between mb-3">
                       <span className="text-sm text-muted">{t('total')}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
-                        <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+                      <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
                     </div>
 
-                    {/* Upload Slip CTA */}
-                    {needsSlipUpload && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          triggerHaptic()
-                          router.push(`/order/payment?id=${order.id}&from=status`)
-                        }}
-                        className="mt-3 w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
-                      >
-                        {t('uploadSlip')}
-                      </button>
-                    )}
+                    {/* View Details indicator */}
+                    <div className="flex items-center justify-center gap-1 text-muted text-sm">
+                      <span>{t('viewDetails')}</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-3 flex gap-2">
+                      {/* Upload Slip CTA - only if not uploaded */}
+                      {needsSlipUpload && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            triggerHaptic()
+                            router.push(`/order/payment?id=${order.id}&from=status`)
+                          }}
+                          className="flex-1 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
+                        >
+                          {t('payUploadSlip')}
+                        </button>
+                      )}
+                      {/* Edit Order - only if not locked (slip not uploaded) */}
+                      {needsSlipUpload && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            triggerHaptic()
+                            router.push(`/order/payment?id=${order.id}&from=status&edit=true`)
+                          }}
+                          className="flex-1 py-2.5 bg-card border border-border text-text text-sm font-medium rounded-lg hover:bg-border/50 active:bg-border transition-colors"
+                        >
+                          {t('editOrder')}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )
               })}

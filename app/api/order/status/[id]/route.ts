@@ -22,7 +22,7 @@ export async function GET(
     // Secure query: explicit SELECT (slip_url excluded) + ownership check
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, order_number, status, created_at, pickup_type, pickup_time, total_amount, customer_note')
+      .select('id, order_number, status, created_at, pickup_type, pickup_time, total_amount, customer_note, slip_notified_at')
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
       .single()

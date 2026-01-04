@@ -164,6 +164,11 @@ const translations = {
     goBack: 'กลับไปหน้าออเดอร์',
     unableToLoadOrders: 'ไม่สามารถโหลดออเดอร์ได้',
     unableToLoadData: 'ไม่สามารถโหลดข้อมูลได้',
+    viewDetails: 'ดูรายละเอียด',
+    editOrder: 'แก้ไขออเดอร์',
+    orderMore: 'สั่งเพิ่มจากเมนู',
+    payUploadSlip: 'ชำระเงิน / อัปโหลดสลิป',
+    backToOrders: 'กลับไปหน้าออเดอร์',
 
     // ============================================
     // LIFF PAGE
@@ -526,6 +531,11 @@ const translations = {
     goBack: 'Go Back',
     unableToLoadOrders: 'Unable to load orders',
     unableToLoadData: 'Unable to load data',
+    viewDetails: 'View Details',
+    editOrder: 'Edit Order',
+    orderMore: 'Order More',
+    payUploadSlip: 'Pay / Upload Slip',
+    backToOrders: 'Back to Orders',
 
     // ============================================
     // LIFF PAGE
