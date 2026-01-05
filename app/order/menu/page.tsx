@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getMenuDataCached } from '@/lib/cache/menuCache'
 import menuData from '@/data/menu.json'
 import MenuClient from './MenuClient'
 
@@ -35,45 +36,69 @@ type MenuItemRow = {
   description: string | null
 }
 
-async function getMenuData() {
-  try {
-    const { data: dbCategoriesData } = await supabase
+/**
+ * Fetch menu data from Supabase with parallel queries.
+ * This is the raw fetch function; caching is handled by getMenuDataCached.
+ * Only returns data when BOTH queries succeed - ensures cache stores complete data.
+ */
+async function fetchMenuDataFromDB() {
+  // Run both queries in parallel (saves ~200-300ms)
+  const [categoriesResult, menuItemsResult] = await Promise.all([
+    supabase
       .from('categories')
       .select('category_code, name')
-      .order('category_code')
-
-    const { data: dbMenuItemsData } = await supabase
+      .order('category_code'),
+    supabase
       .from('menu_items')
       .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description')
       .eq('is_active', true)
       .order('menu_code')
+  ])
 
-    const dbCategories = (dbCategoriesData ?? []) as CategoryRow[]
-    const dbMenuItems = (dbMenuItemsData ?? []) as MenuItemRow[]
+  // Explicit error handling: fail if either query has an error
+  if (categoriesResult.error) {
+    throw new Error(`Categories query failed: ${categoriesResult.error.message}`)
+  }
+  if (menuItemsResult.error) {
+    throw new Error(`Menu items query failed: ${menuItemsResult.error.message}`)
+  }
 
-    if (dbCategories.length > 0 && dbMenuItems.length > 0) {
-      const categoryMap = new Map(dbCategories.map(cat => [cat.category_code, cat.name]))
+  const dbCategories = (categoriesResult.data ?? []) as CategoryRow[]
+  const dbMenuItems = (menuItemsResult.data ?? []) as MenuItemRow[]
 
-      const transformedItems: MenuItem[] = dbMenuItems.map(item => ({
-        id: item.menu_code,
-        name_th: item.name_th,
-        name_en: item.name_en || item.name_th,
-        category: categoryMap.get(item.category_code) || 'Other',
-        category_th: categoryMap.get(item.category_code) || 'อื่นๆ',
-        category_en: categoryMap.get(item.category_code) || 'Other',
-        price_thb: item.price,
-        image: item.image_url || '/images/placeholder.jpg',
-        is_sold_out: false,
-        description: item.description || undefined,
-      }))
+  // Only cache when both queries return data
+  if (dbCategories.length > 0 && dbMenuItems.length > 0) {
+    const categoryMap = new Map(dbCategories.map(cat => [cat.category_code, cat.name]))
 
-      const uniqueCategories = Array.from(new Set(transformedItems.map(item => item.category)))
+    const transformedItems: MenuItem[] = dbMenuItems.map(item => ({
+      id: item.menu_code,
+      name_th: item.name_th,
+      name_en: item.name_en || item.name_th,
+      category: categoryMap.get(item.category_code) || 'Other',
+      category_th: categoryMap.get(item.category_code) || 'อื่นๆ',
+      category_en: categoryMap.get(item.category_code) || 'Other',
+      price_thb: item.price,
+      image: item.image_url || '/images/placeholder.jpg',
+      is_sold_out: false,
+      description: item.description || undefined,
+    }))
 
-      return {
-        menuItems: transformedItems,
-        categories: uniqueCategories
-      }
+    const uniqueCategories = Array.from(new Set(transformedItems.map(item => item.category)))
+
+    return {
+      menuItems: transformedItems,
+      categories: uniqueCategories
     }
+  }
+
+  // No data from DB - throw to trigger fallback (will NOT be cached)
+  throw new Error('No menu data in DB')
+}
+
+async function getMenuData() {
+  try {
+    // Use cached data with 60s TTL + inflight deduplication
+    return await getMenuDataCached(fetchMenuDataFromDB)
   } catch (error) {
     console.error('[MENU] Failed to fetch from DB, using mock data:', error)
   }
