@@ -15,6 +15,7 @@ type MenuItem = {
   description?: string
   subtitle?: string
   option_group_ids?: string[]
+  image_focus_y_4x3?: number
 }
 
 type OptionGroup = {
@@ -46,6 +47,7 @@ type MenuItemRow = {
   image_url: string | null
   is_active: boolean
   description: string | null
+  image_focus_y_4x3: number | null
 }
 
 type OptionGroupRow = {
@@ -66,7 +68,7 @@ async function getMenuItem(menuCode: string) {
   try {
     const { data: dbItemData } = await supabase
       .from('menu_items')
-      .select('menu_code, name_th, name_en, price, image_url, is_active, description')
+      .select('menu_code, name_th, name_en, price, image_url, is_active, description, image_focus_y_4x3')
       .eq('menu_code', menuCode)
       .eq('is_active', true)
       .single()
@@ -91,7 +93,8 @@ async function getMenuItem(menuCode: string) {
         image: dbItem.image_url || '/images/placeholder.jpg',
         is_sold_out: false,
         description: dbItem.description || undefined,
-        option_group_ids: optionGroupIds
+        option_group_ids: optionGroupIds,
+        image_focus_y_4x3: dbItem.image_focus_y_4x3 ?? undefined,
       }
     }
   } catch (error) {

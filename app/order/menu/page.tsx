@@ -18,6 +18,7 @@ type MenuItem = {
   description?: string
   subtitle?: string
   options?: any[]
+  image_focus_y_1x1?: number
 }
 
 type CategoryRow = {
@@ -34,6 +35,7 @@ type MenuItemRow = {
   image_url: string | null
   is_active: boolean
   description: string | null
+  image_focus_y_1x1: number | null
 }
 
 /**
@@ -50,7 +52,7 @@ async function fetchMenuDataFromDB() {
       .order('category_code'),
     supabase
       .from('menu_items')
-      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description')
+      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description, image_focus_y_1x1')
       .eq('is_active', true)
       .order('menu_code')
   ])
@@ -81,6 +83,7 @@ async function fetchMenuDataFromDB() {
       image: item.image_url || '/images/placeholder.jpg',
       is_sold_out: false,
       description: item.description || undefined,
+      image_focus_y_1x1: item.image_focus_y_1x1 ?? undefined,
     }))
 
     const uniqueCategories = Array.from(new Set(transformedItems.map(item => item.category)))

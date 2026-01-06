@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useCart } from '@/contexts/CartContext'
+import { useCart, CartItem } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { triggerHaptic } from '@/utils/haptic'
 import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
@@ -13,6 +13,25 @@ export default function CartPage() {
   const { language, t } = useLanguage()
   const [mounted, setMounted] = useState(false)
   const [navDirection, setNavDirection] = useState<'forward' | 'backward'>('forward')
+
+  // Inline quantity change handler - updates immediately by item.id
+  const handleInlineQuantityChange = (itemId: string, currentQty: number, delta: number) => {
+    triggerHaptic()
+    const newQty = currentQty + delta
+    if (newQty <= 0) {
+      // Confirm removal when decrementing to 0
+      const confirmRemove = window.confirm(
+        language === 'th'
+          ? 'ต้องการลบรายการนี้หรือไม่?'
+          : 'Remove this item?'
+      )
+      if (confirmRemove) {
+        removeItem(itemId)
+      }
+    } else {
+      updateQuantity(itemId, newQty)
+    }
+  }
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -83,8 +102,17 @@ export default function CartPage() {
             {items.map((item) => {
               const itemName = language === 'th' ? item.name_th : item.name_en
 
+              // Build concise options summary (one line)
+              const optionsSummary = item.options && item.options.length > 0
+                ? item.options.map(opt => {
+                    const choices = language === 'th' ? opt.choice_names_th : opt.choice_names_en
+                    return choices.join(', ')
+                  }).join(' • ')
+                : null
+
               return (
-                <div key={item.id} className="bg-card border border-border rounded-lg p-4 shadow-lg shadow-black/20">
+                <div key={item.id} className="bg-card border border-border rounded-lg shadow-lg shadow-black/20 overflow-hidden">
+                  {/* Top section - tap to edit options/notes */}
                   <div
                     onClick={() => {
                       sessionStorage.setItem('cartScrollPosition', window.scrollY.toString())
@@ -96,80 +124,60 @@ export default function CartPage() {
                         router.push(`/order/menu/${item.menuId}?edit=${item.id}`)
                       }, 120)
                     }}
-                    className="block hover:bg-border/50 active:bg-border/80 transition-colors -m-4 p-4 rounded-lg mb-3 cursor-pointer"
+                    className="flex justify-between items-start p-4 hover:bg-border/30 active:bg-border/50 transition-colors cursor-pointer"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-text">{itemName}</h3>
-                        {item.options && item.options.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {item.options.map((option, idx) => {
-                              const groupName = language === 'th' ? option.group_name_th : option.group_name_en
-                              const choiceNames = language === 'th' ? option.choice_names_th : option.choice_names_en
-
-                              return (
-                                <p key={idx} className="text-sm text-muted">
-                                  {groupName}: {choiceNames.join(', ')}
-                                  {option.price_delta_thb > 0 && (
-                                    <span className="text-primary ml-1">+฿{option.price_delta_thb}</span>
-                                  )}
-                                </p>
-                              )
-                            })}
-                          </div>
-                        )}
-                        {item.note && (
-                          <p className="text-sm text-muted mt-2 italic">
-                            {t('note')}: {item.note}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            triggerHaptic()
-                            removeItem(item.id)
-                          }}
-                          className="text-muted hover:text-primary transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-medium text-text">{itemName}</h3>
+                      {/* Options summary - one line, concise */}
+                      {optionsSummary && (
+                        <p className="text-sm text-muted mt-1 truncate">
+                          {optionsSummary}
+                        </p>
+                      )}
+                      {/* Note - one line, muted italic */}
+                      {item.note && (
+                        <p className="text-sm text-muted/70 mt-1 truncate italic">
+                          "{item.note}"
+                        </p>
+                      )}
+                    </div>
+                    {/* Edit chevron */}
+                    <div className="flex items-center ml-3 text-muted">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+                  {/* Bottom section - inline quantity controls */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-bg/50 border-t border-border">
+                    {/* Inline +/- controls */}
+                    <div className="flex items-center gap-3">
                       <button
-                        onClick={() => {
-                          triggerHaptic()
-                          updateQuantity(item.id, item.quantity - 1)
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleInlineQuantityChange(item.id, item.quantity, -1)
                         }}
-                        className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:border-primary transition-colors text-text"
+                        className="w-9 h-9 flex items-center justify-center bg-card border border-border rounded-full text-text text-lg font-medium hover:border-primary/50 active:bg-border transition-colors"
+                        aria-label={language === 'th' ? 'ลดจำนวน' : 'Decrease quantity'}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                        </svg>
+                        −
                       </button>
-                      <span className="font-medium w-8 text-center text-text">{item.quantity}</span>
+                      <span className="text-text font-semibold text-lg w-8 text-center">
+                        {item.quantity}
+                      </span>
                       <button
-                        onClick={() => {
-                          triggerHaptic()
-                          updateQuantity(item.id, item.quantity + 1)
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleInlineQuantityChange(item.id, item.quantity, 1)
                         }}
-                        className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:border-primary transition-colors text-text"
+                        className="w-9 h-9 flex items-center justify-center bg-card border border-border rounded-full text-text text-lg font-medium hover:border-primary/50 active:bg-border transition-colors"
+                        aria-label={language === 'th' ? 'เพิ่มจำนวน' : 'Increase quantity'}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
+                        +
                       </button>
                     </div>
+                    {/* Subtotal */}
                     <p className="text-lg font-medium text-primary">฿{item.final_price_thb * item.quantity}</p>
                   </div>
                 </div>
@@ -212,6 +220,7 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
     </div>
   )
 }

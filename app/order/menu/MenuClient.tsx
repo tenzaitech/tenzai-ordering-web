@@ -26,6 +26,7 @@ type MenuItem = {
   is_sold_out: boolean
   subtitle?: string
   options?: any[]
+  image_focus_y_1x1?: number
 }
 
 interface MenuClientProps {
@@ -306,6 +307,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                   price_thb={item.price_thb}
                   image={item.image}
                   is_sold_out={item.is_sold_out}
+                  focusY={item.image_focus_y_1x1}
                 />
               </div>
             ))}
@@ -341,6 +343,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                   is_sold_out={item.is_sold_out}
                   subtitle={item.subtitle}
                   onTap={() => handleMenuItemTap(item)}
+                  focusY={item.image_focus_y_1x1}
                 />
               ))}
             </div>
@@ -416,6 +419,7 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                             handleCloseSearch()
                             handleMenuItemTap(item)
                           }}
+                          focusY={item.image_focus_y_1x1}
                         />
                       ))}
                     </div>

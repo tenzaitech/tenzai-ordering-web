@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import ImageUploader from '@/components/ImageUploader'
+import ImageUploaderWithCrop from '@/components/ImageUploaderWithCrop'
 import Toast from '@/components/Toast'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { generateCode } from '@/lib/menu-import-validator'
@@ -395,7 +395,8 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
             <label className="block text-sm font-medium text-text mb-2">
               Image
             </label>
-            <ImageUploader
+            <ImageUploaderWithCrop
+              menuCode={menuItem?.menu_code || formData.menu_code || ''}
               currentImageUrl={formData.image_url || null}
               onImageChange={handleImageChange}
             />

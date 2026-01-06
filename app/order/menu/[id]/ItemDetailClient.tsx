@@ -27,6 +27,9 @@ type OptionGroup = {
   default_choice_ids?: string[]
 }
 
+// Default focus for 4:3 hero images (food plating typically lower in frame)
+const DEFAULT_FOCUS_Y_4X3 = 65
+
 type MenuItem = {
   id: string
   name_th: string
@@ -38,6 +41,7 @@ type MenuItem = {
   description?: string
   subtitle?: string
   option_group_ids?: string[]
+  image_focus_y_4x3?: number
 }
 
 interface ItemDetailClientProps {
@@ -373,6 +377,9 @@ export default function ItemDetailClient({ menuItem, optionGroups: propOptionGro
                 src={menuItem.image}
                 alt={menuItem.name_en}
                 className="w-full h-full object-cover"
+                style={{
+                  objectPosition: `50% ${menuItem.image_focus_y_4x3 ?? DEFAULT_FOCUS_Y_4X3}%`
+                }}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-muted">

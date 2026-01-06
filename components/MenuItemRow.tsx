@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { triggerHaptic } from '@/utils/haptic'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { toSquareUrl } from '@/lib/menuImages'
+import MenuThumb from '@/components/MenuThumb'
 
 interface MenuItemRowProps {
   id: string
@@ -15,6 +16,7 @@ interface MenuItemRowProps {
   description?: string
   subtitle?: string
   onTap?: () => void // Custom tap handler (for drawer support)
+  focusY?: number    // Vertical focus 0-100 for thumbnail
 }
 
 export default function MenuItemRow({
@@ -27,6 +29,7 @@ export default function MenuItemRow({
   description,
   subtitle,
   onTap,
+  focusY,
 }: MenuItemRowProps) {
   const router = useRouter()
   const { language, t } = useLanguage()
@@ -66,17 +69,16 @@ export default function MenuItemRow({
           is_sold_out ? 'opacity-40' : 'active:bg-bg-surface'
         }`}
       >
-        {/* Image */}
-        <div className="relative w-28 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-bg-elevated">
-          <Image
-            src={image}
+        {/* Thumbnail - premium styling with MenuThumb */}
+        <div className="relative w-28 h-28 flex-shrink-0">
+          <MenuThumb
+            src={toSquareUrl(image)}
             alt={name_en}
-            fill
-            className="object-cover"
             sizes="112px"
+            focusY={focusY}
           />
           {is_sold_out && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <div className="absolute inset-0 z-10 bg-black/60 flex items-center justify-center rounded-lg">
               <span className="text-white text-xs font-medium px-2.5 py-1 bg-black/70 rounded">
                 {t('soldOut')}
               </span>
