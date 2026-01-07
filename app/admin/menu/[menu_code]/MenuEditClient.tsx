@@ -16,6 +16,9 @@ type MenuItem = {
   barcode: string | null
   description: string | null
   price: number
+  promo_price: number | null
+  promo_label: string | null
+  promo_percent: number | null
   image_url: string | null
   is_active: boolean
 }
@@ -35,9 +38,10 @@ interface MenuEditClientProps {
   categories: Category[]
   optionGroups: OptionGroup[]
   selectedOptionGroups: string[]
+  selectedCategories: string[]
 }
 
-export default function MenuEditClient({ menuItem, categories, optionGroups, selectedOptionGroups }: MenuEditClientProps) {
+export default function MenuEditClient({ menuItem, categories, optionGroups, selectedOptionGroups, selectedCategories: initialSelectedCategories }: MenuEditClientProps) {
   const router = useRouter()
   const isCreateMode = !menuItem
 
@@ -45,14 +49,19 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
     menu_code: menuItem?.menu_code || '',
     name_th: menuItem?.name_th || '',
     name_en: menuItem?.name_en || '',
-    category_code: menuItem?.category_code || (categories[0]?.category_code || ''),
     price: menuItem?.price?.toString() || '',
+    promo_price: menuItem?.promo_price?.toString() || '',
+    promo_label: menuItem?.promo_label || '',
+    promo_percent: menuItem?.promo_percent?.toString() || '',
     barcode: menuItem?.barcode || '',
     description: menuItem?.description || '',
     image_url: menuItem?.image_url || '',
     is_active: menuItem?.is_active ?? true
   })
 
+  const [selectedCategoryCodes, setSelectedCategoryCodes] = useState<string[]>(
+    initialSelectedCategories.length > 0 ? initialSelectedCategories : (categories[0]?.category_code ? [categories[0].category_code] : [])
+  )
   const [optionGroupIds, setOptionGroupIds] = useState<string[]>(selectedOptionGroups)
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -127,8 +136,8 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
       return
     }
 
-    if (!formData.category_code) {
-      showToast('Category is required', 'error')
+    if (selectedCategoryCodes.length === 0) {
+      showToast('At least one category is required', 'error')
       return
     }
 
@@ -136,6 +145,34 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
     if (isNaN(priceNum) || priceNum < 0 || !/^[0-9]+$/.test(formData.price.trim())) {
       showToast('Price must be a valid integer (no decimals)', 'error')
       return
+    }
+
+    // Validate promo_price if provided
+    let promoPriceNum: number | null = null
+    if (formData.promo_price.trim()) {
+      promoPriceNum = parseInt(formData.promo_price, 10)
+      if (isNaN(promoPriceNum) || promoPriceNum < 0 || !/^[0-9]+$/.test(formData.promo_price.trim())) {
+        showToast('Promo price must be a valid integer (no decimals)', 'error')
+        return
+      }
+      if (promoPriceNum >= priceNum) {
+        showToast('Promo price must be less than regular price', 'error')
+        return
+      }
+    }
+
+    // Validate promo_percent if provided
+    let promoPercentNum: number | null = null
+    if (formData.promo_percent.trim()) {
+      promoPercentNum = parseInt(formData.promo_percent, 10)
+      if (isNaN(promoPercentNum) || !/^[0-9]+$/.test(formData.promo_percent.trim())) {
+        showToast('Promo percent must be a valid integer', 'error')
+        return
+      }
+      if (promoPercentNum < 0 || promoPercentNum > 100) {
+        showToast('Promo percent must be between 0 and 100', 'error')
+        return
+      }
     }
 
     setIsSaving(true)
@@ -149,12 +186,15 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             menu_code: menuCode,
-            category_code: formData.category_code,
+            category_code: selectedCategoryCodes[0], // Primary category for backward compatibility
             name_th: formData.name_th.trim(),
             name_en: formData.name_en.trim() || null,
             barcode: formData.barcode.trim() || null,
             description: formData.description.trim() || null,
             price: priceNum,
+            promo_price: promoPriceNum,
+            promo_label: formData.promo_label.trim() || null,
+            promo_percent: promoPercentNum,
             image_url: formData.image_url.trim() || null,
             is_active: formData.is_active
           })
@@ -179,6 +219,20 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
         const createData = await res.json()
         const createdMenuCode = createData.menu_code
 
+        // Save multi-category assignments
+        if (selectedCategoryCodes.length > 0) {
+          await adminFetch(`/api/admin/menu/${createdMenuCode}/categories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              categories: selectedCategoryCodes.map((code, index) => ({
+                category_code: code,
+                sort_order: index
+              }))
+            })
+          })
+        }
+
         if (optionGroupIds.length > 0) {
           await adminFetch(`/api/admin/menu/${createdMenuCode}/option-groups`, {
             method: 'POST',
@@ -196,12 +250,15 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            category_code: formData.category_code,
+            category_code: selectedCategoryCodes[0], // Primary category for backward compatibility
             name_th: formData.name_th.trim(),
             name_en: formData.name_en.trim() || null,
             barcode: formData.barcode.trim() || null,
             description: formData.description.trim() || null,
             price: priceNum,
+            promo_price: promoPriceNum,
+            promo_label: formData.promo_label.trim() || null,
+            promo_percent: promoPercentNum,
             image_url: formData.image_url.trim() || null,
             is_active: formData.is_active
           })
@@ -217,6 +274,18 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
           showToast(errorData.error || 'Failed to update menu item', 'error')
           return
         }
+
+        // Save multi-category assignments
+        await adminFetch(`/api/admin/menu/${menuItem.menu_code}/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            categories: selectedCategoryCodes.map((code, index) => ({
+              category_code: code,
+              sort_order: index
+            }))
+          })
+        })
 
         await adminFetch(`/api/admin/menu/${menuItem.menu_code}/option-groups`, {
           method: 'POST',
@@ -325,44 +394,148 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                Category <span className="text-primary">*</span>
-              </label>
-              <select
-                name="category_code"
-                value={formData.category_code}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {categories.length === 0 ? (
-                  <option value="">No categories available</option>
-                ) : (
-                  categories.map(cat => (
-                    <option key={cat.category_code} value={cat.category_code}>
-                      {cat.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Categories <span className="text-primary">*</span>
+              <span className="text-muted text-xs ml-2">(select one or more)</span>
+            </label>
+            {/* Selected categories badges */}
+            {selectedCategoryCodes.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {selectedCategoryCodes.map((code, index) => (
+                  <span
+                    key={code}
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+                      index === 0
+                        ? 'bg-primary/20 text-primary border-primary/30'
+                        : 'bg-border text-text border-border'
+                    }`}
+                  >
+                    {index === 0 && <span className="mr-1 text-xs">★</span>}
+                    {categories.find(c => c.category_code === code)?.name || code}
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Category checkbox list */}
+            {categories.length === 0 ? (
+              <div className="p-4 bg-bg border border-border rounded-lg text-muted text-sm">
+                No categories available. <a href="/admin/categories" className="text-primary hover:underline">Create one first</a>.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {[...categories].sort((a, b) => {
+                  const aSelected = selectedCategoryCodes.includes(a.category_code)
+                  const bSelected = selectedCategoryCodes.includes(b.category_code)
+                  if (aSelected === bSelected) return a.name.localeCompare(b.name)
+                  return aSelected ? -1 : 1
+                }).map(cat => (
+                  <label
+                    key={cat.category_code}
+                    className="flex items-center p-2 bg-bg border border-border rounded-lg cursor-pointer hover:border-primary/30 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCategoryCodes.includes(cat.category_code)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCategoryCodes(prev => [...prev, cat.category_code])
+                        } else {
+                          setSelectedCategoryCodes(prev => prev.filter(c => c !== cat.category_code))
+                        }
+                      }}
+                      className="w-4 h-4 accent-primary focus:ring-primary mr-2"
+                    />
+                    <span className="text-sm text-text truncate">{cat.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted mt-1">First selected category (★) is the primary category</p>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                Price (THB) <span className="text-primary">*</span>
-              </label>
-              <input
-                type="text"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                required
-                placeholder="e.g., 120"
-                className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Price (THB) <span className="text-primary">*</span>
+            </label>
+            <input
+              type="text"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              required
+              placeholder="e.g., 120"
+              className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          {/* Promotion Section */}
+          <div className="border border-orange-500/30 rounded-lg p-4 bg-orange-500/5">
+            <h3 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+              </svg>
+              Promotion
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Promo Price (THB)
+                </label>
+                <input
+                  type="text"
+                  name="promo_price"
+                  value={formData.promo_price}
+                  onChange={handleChange}
+                  placeholder="e.g., 99 (leave empty for no promo)"
+                  className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                {formData.promo_price && Number(formData.promo_price) >= Number(formData.price) && (
+                  <p className="text-xs text-red-400 mt-1">Promo price should be less than regular price</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Promo Label
+                </label>
+                <input
+                  type="text"
+                  name="promo_label"
+                  value={formData.promo_label}
+                  onChange={handleChange}
+                  placeholder="e.g., ลด 20%, Hot Deal"
+                  className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Discount % Badge
+                </label>
+                <input
+                  type="text"
+                  name="promo_percent"
+                  value={formData.promo_percent}
+                  onChange={handleChange}
+                  placeholder="e.g., 20 (leave empty for no badge)"
+                  className="w-full px-4 py-2 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                {formData.promo_percent && (Number(formData.promo_percent) < 0 || Number(formData.promo_percent) > 100) && (
+                  <p className="text-xs text-red-400 mt-1">Must be 0-100</p>
+                )}
+              </div>
             </div>
+            {formData.promo_price && Number(formData.promo_price) < Number(formData.price) && (
+              <div className="mt-3 p-2 bg-green-500/10 border border-green-500/30 rounded text-sm text-green-400 flex items-center flex-wrap gap-2">
+                <span>Preview:</span>
+                <span className="line-through text-muted">฿{formData.price}</span>
+                <span>→</span>
+                <span className="font-bold">฿{formData.promo_price}</span>
+                {formData.promo_label && <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded">{formData.promo_label}</span>}
+                {formData.promo_percent && Number(formData.promo_percent) >= 0 && Number(formData.promo_percent) <= 100 && (
+                  <span className="px-2 py-0.5 bg-red-600 text-white text-xs rounded font-bold">-{formData.promo_percent}%</span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

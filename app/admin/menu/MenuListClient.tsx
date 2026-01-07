@@ -14,6 +14,8 @@ type MenuItem = {
   name_th: string
   name_en: string | null
   price: number
+  promo_price: number | null
+  promo_label: string | null
   image_url: string | null
   is_active: boolean
   updated_at: string
@@ -27,9 +29,11 @@ type Category = {
 interface MenuListClientProps {
   categories: Category[]
   menuItems: MenuItem[]
+  popularMenus: string[]
+  menuCategoryMap: Record<string, string[]>
 }
 
-export default function MenuListClient({ categories, menuItems }: MenuListClientProps) {
+export default function MenuListClient({ categories, menuItems, popularMenus: initialPopular, menuCategoryMap }: MenuListClientProps) {
   const router = useRouter()
   const { t } = useLanguage()
   const [searchQuery, setSearchQuery] = useState('')
@@ -43,8 +47,10 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
     onConfirm: () => void
   } | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [openCategoryDropdown, setOpenCategoryDropdown] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 50
+  const [popularMenus, setPopularMenus] = useState<string[]>(initialPopular)
 
   const categoryMap = new Map(categories.map(cat => [cat.category_code, cat.name]))
 
@@ -144,6 +150,71 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
     })
   }
 
+  const handleTogglePopular = async (menuCode: string) => {
+    const isCurrentlyPopular = popularMenus.includes(menuCode)
+    const newPopular = isCurrentlyPopular
+      ? popularMenus.filter(code => code !== menuCode)
+      : [...popularMenus, menuCode]
+
+    // Optimistic update
+    setPopularMenus(newPopular)
+    setLoadingAction(`popular-${menuCode}`)
+
+    try {
+      const res = await adminFetch('/api/admin/menu/popular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ menu_codes: newPopular })
+      })
+
+      if (!res.ok) {
+        // Revert on failure
+        setPopularMenus(popularMenus)
+        showToast('Failed to update popular status', 'error')
+        return
+      }
+
+      showToast(isCurrentlyPopular ? t('removedFromPopular') : t('addedToPopular'), 'success')
+    } catch {
+      setPopularMenus(popularMenus)
+      showToast('Failed to update popular status', 'error')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleChangeCategory = async (menuCode: string, newCategoryCode: string) => {
+    setLoadingAction(`category-${menuCode}`)
+    setOpenDropdown(null)
+    setOpenCategoryDropdown(null)
+
+    try {
+      const res = await adminFetch(`/api/admin/menu/${menuCode}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_code: newCategoryCode })
+      })
+
+      if (res.status === 401) {
+        showToast('Unauthorized (admin key missing/invalid)', 'error')
+        return
+      }
+
+      if (!res.ok) {
+        const error = await res.json()
+        showToast(error.error || 'Failed to change category', 'error')
+        return
+      }
+
+      showToast(t('categoryChanged'), 'success')
+      router.refresh()
+    } catch {
+      showToast('Failed to change category', 'error')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-bg pb-20">
       {toast && (
@@ -234,49 +305,147 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
               <table className="w-full">
                 <thead className="bg-border/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('image')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('code')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('nameTh')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('nameEn')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('category')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('price')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('status')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-text">{t('updated')}</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold text-text w-16 sticky right-0 bg-border/50"></th>
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-text w-10" title={t('popular')}>
+                      <svg className="w-4 h-4 mx-auto text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </th>
+                    <th className="px-3 py-3 text-left text-sm font-semibold text-text">{t('image')}</th>
+                    <th className="px-3 py-3 text-left text-sm font-semibold text-text">{t('nameTh')}</th>
+                    <th className="px-3 py-3 text-left text-sm font-semibold text-text">{t('category')}</th>
+                    <th className="px-3 py-3 text-left text-sm font-semibold text-text">{t('price')}</th>
+                    <th className="px-3 py-3 text-center text-sm font-semibold text-text">{t('status')}</th>
+                    <th className="px-3 py-3 text-center text-sm font-semibold text-text w-12 sticky right-0 bg-border/50"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {paginatedItems.map(item => (
+                  {paginatedItems.map((item, rowIndex) => {
+                    const isPopular = popularMenus.includes(item.menu_code)
+                    // Open dropdown downward for first 2 rows, upward for rest
+                    const openDownward = rowIndex < 2
+                    return (
                     <tr key={item.menu_code} className="hover:bg-border/20 transition-colors">
-                      <td className="px-4 py-3">
+                      {/* Popular star */}
+                      <td className="px-2 py-3 text-center">
+                        <button
+                          onClick={() => handleTogglePopular(item.menu_code)}
+                          disabled={loadingAction === `popular-${item.menu_code}`}
+                          className={`p-1 rounded transition-colors disabled:opacity-50 ${
+                            isPopular ? 'text-yellow-500 hover:text-yellow-400' : 'text-muted hover:text-yellow-500'
+                          }`}
+                          title={isPopular ? t('removedFromPopular') : t('addedToPopular')}
+                        >
+                          <svg className="w-5 h-5" fill={isPopular ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </button>
+                      </td>
+                      {/* Image */}
+                      <td className="px-3 py-3">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name_th} className="w-12 h-12 object-cover rounded" />
+                          <img src={item.image_url} alt={item.name_th} className="w-10 h-10 object-cover rounded" />
                         ) : (
-                          <div className="w-12 h-12 bg-border rounded flex items-center justify-center text-muted text-xs">
-                            {t('noImage')}
+                          <div className="w-10 h-10 bg-border rounded flex items-center justify-center text-muted text-xs">
+                            -
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted">{item.menu_code}</td>
-                      <td className="px-4 py-3 text-sm text-text font-medium">{item.name_th}</td>
-                      <td className="px-4 py-3 text-sm text-muted">{item.name_en || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-muted">{categoryMap.get(item.category_code) || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-text font-medium">฿{item.price}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            item.is_active
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-red-500/20 text-red-400'
+                      {/* Name */}
+                      <td className="px-3 py-3">
+                        <div className="text-sm text-text font-medium">{item.name_th}</div>
+                        <div className="text-xs text-muted">{item.menu_code}</div>
+                      </td>
+                      {/* Category badges - clickable dropdown */}
+                      <td className="px-3 py-3 relative">
+                        <button
+                          onClick={() => setOpenCategoryDropdown(openCategoryDropdown === item.menu_code ? null : item.menu_code)}
+                          disabled={loadingAction === `category-${item.menu_code}`}
+                          className="flex items-center gap-1 group cursor-pointer disabled:opacity-50"
+                        >
+                          <div className="flex flex-wrap gap-1">
+                            {(menuCategoryMap[item.menu_code]?.length > 0
+                              ? menuCategoryMap[item.menu_code]
+                              : [item.category_code]
+                            ).map((catCode, idx) => (
+                              <span
+                                key={catCode}
+                                className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                  idx === 0
+                                    ? 'bg-primary/10 text-primary border border-primary/20'
+                                    : 'bg-border text-muted'
+                                }`}
+                              >
+                                {categoryMap.get(catCode) || catCode}
+                              </span>
+                            ))}
+                          </div>
+                          <svg className="w-3 h-3 text-muted group-hover:text-text transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Inline category dropdown */}
+                        {openCategoryDropdown === item.menu_code && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setOpenCategoryDropdown(null)} />
+                            <div className="absolute left-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden">
+                              <div className="px-3 py-2 text-xs text-muted border-b border-border">{t('changeCategory')}</div>
+                              <div className="max-h-48 overflow-y-auto">
+                                {categories.map(cat => {
+                                  const isCurrentPrimary = item.category_code === cat.category_code
+                                  return (
+                                    <button
+                                      key={cat.category_code}
+                                      onClick={() => handleChangeCategory(item.menu_code, cat.category_code)}
+                                      disabled={loadingAction === `category-${item.menu_code}` || isCurrentPrimary}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                                        isCurrentPrimary
+                                          ? 'bg-primary/10 text-primary'
+                                          : 'text-text hover:bg-border'
+                                      }`}
+                                    >
+                                      {cat.name}
+                                      {isCurrentPrimary && <span className="ml-2 text-xs text-muted">(current)</span>}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </td>
+                      {/* Price */}
+                      <td className="px-3 py-3 text-sm">
+                        {item.promo_price && item.promo_price < item.price ? (
+                          <div className="flex flex-col">
+                            <span className="text-muted line-through text-xs">฿{item.price}</span>
+                            <span className="text-orange-400 font-bold">฿{item.promo_price}</span>
+                            {item.promo_label && (
+                              <span className="text-xs text-orange-500 bg-orange-500/10 px-1 rounded mt-0.5 inline-block w-fit">{item.promo_label}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-text font-medium">฿{item.price}</span>
+                        )}
+                      </td>
+                      {/* Active toggle */}
+                      <td className="px-3 py-3 text-center">
+                        <button
+                          onClick={() => handleToggleActive(item.menu_code, item.is_active)}
+                          disabled={loadingAction === `toggle-${item.menu_code}`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                            item.is_active ? 'bg-green-500' : 'bg-gray-600'
                           }`}
                         >
-                          {item.is_active ? t('active') : t('inactive')}
-                        </span>
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              item.is_active ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted">
-                        {new Date(item.updated_at).toLocaleDateString('en-GB')}
-                      </td>
-                      <td className="px-4 py-3 text-center relative sticky right-0 bg-card">
+                      {/* Actions dropdown */}
+                      <td className="px-3 py-3 text-center relative">
                         <button
                           onClick={() => setOpenDropdown(openDropdown === item.menu_code ? null : item.menu_code)}
                           disabled={loadingAction !== null}
@@ -289,37 +458,32 @@ export default function MenuListClient({ categories, menuItems }: MenuListClient
 
                         {openDropdown === item.menu_code && (
                           <>
-                            <div className="fixed inset-0 z-10" onClick={() => setOpenDropdown(null)} />
-                            <div className="absolute right-0 mt-1 w-40 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden">
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenDropdown(null)} />
+                            <div className={`absolute right-0 w-40 bg-card border border-border rounded-lg shadow-lg z-40 overflow-hidden ${
+                              openDownward ? 'top-full mt-1' : 'bottom-full mb-1'
+                            }`}>
                               <Link
                                 href={`/admin/menu/${item.menu_code}`}
-                                className="block px-4 py-2 text-sm text-text hover:bg-border transition-colors"
+                                className="block px-4 py-2.5 text-sm text-text hover:bg-border transition-colors"
                                 onClick={() => setOpenDropdown(null)}
                               >
                                 {t('edit')}
                               </Link>
-                              <button
-                                onClick={() => handleToggleActive(item.menu_code, item.is_active)}
-                                disabled={loadingAction === `toggle-${item.menu_code}`}
-                                className="w-full text-left px-4 py-2 text-sm text-text hover:bg-border transition-colors disabled:opacity-50"
-                              >
-                                {loadingAction === `toggle-${item.menu_code}`
-                                  ? t('updating')
-                                  : item.is_active ? t('setInactive') : t('setActive')}
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item.menu_code, item.name_th)}
-                                disabled={loadingAction === `delete-${item.menu_code}`}
-                                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-border transition-colors disabled:opacity-50"
-                              >
-                                {loadingAction === `delete-${item.menu_code}` ? t('deleting') : t('delete')}
-                              </button>
+                              <div className="border-t border-border">
+                                <button
+                                  onClick={() => handleDelete(item.menu_code, item.name_th)}
+                                  disabled={loadingAction === `delete-${item.menu_code}`}
+                                  className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-border transition-colors disabled:opacity-50"
+                                >
+                                  {loadingAction === `delete-${item.menu_code}` ? t('deleting') : t('delete')}
+                                </button>
+                              </div>
                             </div>
                           </>
                         )}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

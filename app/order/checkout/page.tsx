@@ -121,7 +121,24 @@ export default function CheckoutPage() {
     triggerHaptic()
 
     try {
-      // === STEP 0: Get LINE userId ===
+      // === STEP 0a: Validate cart against category schedules ===
+      const validateRes = await fetch('/api/order/validate-cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items.map(item => ({ menuId: item.menuId })) })
+      })
+
+      if (!validateRes.ok) {
+        const validateData = await validateRes.json()
+        const errorMsg = language === 'th'
+          ? (validateData.error_th || 'บางรายการไม่อยู่ในช่วงเวลาที่เปิดให้บริการ')
+          : (validateData.error || 'Some items are outside their category schedule')
+        const details = validateData.details?.join('\n') || ''
+        alert(`${errorMsg}\n\n${details}`)
+        return
+      }
+
+      // === STEP 0b: Get LINE userId ===
       const userResponse = await fetch('/api/liff/user')
       if (!userResponse.ok) {
         console.error('[ERROR] No LIFF session, redirecting to /liff')

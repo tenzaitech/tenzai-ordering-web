@@ -226,6 +226,7 @@ const translations = {
     category: 'หมวดหมู่',
     options: 'ตัวเลือก',
     importExport: 'นำเข้า/ส่งออก',
+    imageImport: 'นำเข้ารูปภาพ',
     settings: 'ตั้งค่า',
 
     // ============================================
@@ -238,6 +239,7 @@ const translations = {
     categoriesDesc: 'จัดระเบียบโครงสร้างเมนู',
     optionsDesc: 'การปรับแต่งและส่วนเสริม',
     importExportDesc: 'การจัดการข้อมูลจำนวนมาก',
+    imageImportDesc: 'นำเข้ารูปภาพอาหารอัตโนมัติ',
 
     // ============================================
     // ADMIN ORDERS PAGE
@@ -373,6 +375,20 @@ const translations = {
     rename: 'เปลี่ยนชื่อ',
     cannotDeleteCategory: 'ไม่สามารถลบหมวดหมู่: มีรายการเมนู',
     deleteCategory: 'ลบหมวดหมู่',
+
+    // ============================================
+    // STAGE 1 NEW FEATURES
+    // ============================================
+    popular: 'ยอดนิยม',
+    addedToPopular: 'เพิ่มในเมนูยอดนิยมแล้ว',
+    removedFromPopular: 'นำออกจากเมนูยอดนิยมแล้ว',
+    changeCategory: 'เปลี่ยนหมวดหมู่',
+    categoryChanged: 'เปลี่ยนหมวดหมู่แล้ว',
+    visible: 'แสดง',
+    hidden: 'ซ่อน',
+    saveVisibility: 'บันทึกการแสดงผล',
+    visibilitySaved: 'บันทึกการแสดงผลแล้ว',
+    changesSaved: 'บันทึกการเปลี่ยนแปลงแล้ว',
   },
   en: {
     // ============================================
@@ -597,6 +613,7 @@ const translations = {
     category: 'Category',
     options: 'Options',
     importExport: 'Import/Export',
+    imageImport: 'Image Import',
     settings: 'Settings',
 
     // ============================================
@@ -609,6 +626,7 @@ const translations = {
     categoriesDesc: 'Organize menu structure',
     optionsDesc: 'Customizations and add-ons',
     importExportDesc: 'Bulk data operations',
+    imageImportDesc: 'Auto-import menu item images',
 
     // ============================================
     // ADMIN ORDERS PAGE
@@ -744,6 +762,20 @@ const translations = {
     rename: 'Rename',
     cannotDeleteCategory: 'Cannot delete category: menu items are using this category',
     deleteCategory: 'Delete Category',
+
+    // ============================================
+    // STAGE 1 NEW FEATURES
+    // ============================================
+    popular: 'Popular',
+    addedToPopular: 'Added to popular',
+    removedFromPopular: 'Removed from popular',
+    changeCategory: 'Change category',
+    categoryChanged: 'Category changed',
+    visible: 'Visible',
+    hidden: 'Hidden',
+    saveVisibility: 'Save Visibility',
+    visibilitySaved: 'Visibility saved',
+    changesSaved: 'Changes saved',
   },
 }
 

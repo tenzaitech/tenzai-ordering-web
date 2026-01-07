@@ -39,8 +39,17 @@ type MenuOptionGroupRow = {
   group_code: string
 }
 
+type MenuItemCategoryRow = {
+  category_code: string
+}
+
+type CategoryOptionGroupRow = {
+  group_code: string
+}
+
 type MenuItemRow = {
   menu_code: string
+  category_code: string
   name_th: string
   name_en: string | null
   price: number
@@ -68,7 +77,7 @@ async function getMenuItem(menuCode: string) {
   try {
     const { data: dbItemData } = await supabase
       .from('menu_items')
-      .select('menu_code, name_th, name_en, price, image_url, is_active, description, image_focus_y_4x3')
+      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, description, image_focus_y_4x3')
       .eq('menu_code', menuCode)
       .eq('is_active', true)
       .single()
@@ -76,13 +85,41 @@ async function getMenuItem(menuCode: string) {
     const dbItem = dbItemData as MenuItemRow | null
 
     if (dbItem) {
+      // Fetch menu-level option groups
       const { data: menuOptionGroupsData } = await supabase
         .from('menu_option_groups')
         .select('group_code')
         .eq('menu_code', menuCode)
 
       const menuOptionGroups = (menuOptionGroupsData ?? []) as MenuOptionGroupRow[]
-      const optionGroupIds = menuOptionGroups.map(m => m.group_code)
+      const menuOptionGroupIds = menuOptionGroups.map(m => m.group_code)
+
+      // Fetch category codes for this menu item (multi-category support)
+      const { data: menuCategoriesData } = await supabase
+        .from('menu_item_categories')
+        .select('category_code')
+        .eq('menu_code', menuCode)
+
+      const menuCategories = (menuCategoriesData ?? []) as MenuItemCategoryRow[]
+      // Use multi-category assignments if present, else fallback to legacy category_code
+      const categoryCodes = menuCategories.length > 0
+        ? menuCategories.map(mc => mc.category_code)
+        : [dbItem.category_code]
+
+      // Fetch category-level option groups for all categories
+      let categoryOptionGroupIds: string[] = []
+      if (categoryCodes.length > 0) {
+        const { data: categoryOptionGroupsData } = await supabase
+          .from('category_option_groups')
+          .select('group_code')
+          .in('category_code', categoryCodes)
+
+        const categoryOptionGroups = (categoryOptionGroupsData ?? []) as CategoryOptionGroupRow[]
+        categoryOptionGroupIds = categoryOptionGroups.map(cog => cog.group_code)
+      }
+
+      // Merge and deduplicate option group IDs (menu-level first, then category-level)
+      const allOptionGroupIds = [...new Set([...menuOptionGroupIds, ...categoryOptionGroupIds])]
 
       return {
         id: dbItem.menu_code,
@@ -93,7 +130,7 @@ async function getMenuItem(menuCode: string) {
         image: dbItem.image_url || '/images/placeholder.jpg',
         is_sold_out: false,
         description: dbItem.description || undefined,
-        option_group_ids: optionGroupIds,
+        option_group_ids: allOptionGroupIds,
         image_focus_y_4x3: dbItem.image_focus_y_4x3 ?? undefined,
       }
     }

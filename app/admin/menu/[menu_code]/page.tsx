@@ -11,6 +11,9 @@ type MenuItem = {
   barcode: string | null
   description: string | null
   price: number
+  promo_price: number | null
+  promo_label: string | null
+  promo_percent: number | null
   image_url: string | null
   is_active: boolean
 }
@@ -29,6 +32,11 @@ type MenuOptionGroupRow = {
   group_code: string
 }
 
+type MenuCategoryRow = {
+  category_code: string
+  sort_order: number
+}
+
 async function getMenuEditData(menuCode: string) {
   const { data: categories } = await supabase
     .from('categories')
@@ -45,34 +53,48 @@ async function getMenuEditData(menuCode: string) {
       menuItem: null,
       categories: (categories ?? []) as Category[],
       optionGroups: (optionGroups ?? []) as OptionGroup[],
-      selectedOptionGroups: []
+      selectedOptionGroups: [],
+      selectedCategories: []
     }
   }
 
-  const { data: menuItem } = await supabase
-    .from('menu_items')
-    .select('menu_code, category_code, name_th, name_en, barcode, description, price, image_url, is_active')
-    .eq('menu_code', menuCode)
-    .single()
+  const [menuItemResult, menuOptionGroupsResult, menuCategoriesResult] = await Promise.all([
+    supabase
+      .from('menu_items')
+      .select('menu_code, category_code, name_th, name_en, barcode, description, price, promo_price, promo_label, promo_percent, image_url, is_active')
+      .eq('menu_code', menuCode)
+      .single(),
+    supabase
+      .from('menu_option_groups')
+      .select('group_code')
+      .eq('menu_code', menuCode),
+    supabase
+      .from('menu_item_categories')
+      .select('category_code, sort_order')
+      .eq('menu_code', menuCode)
+      .order('sort_order')
+  ])
 
-  const { data: menuOptionGroupsData } = await supabase
-    .from('menu_option_groups')
-    .select('group_code')
-    .eq('menu_code', menuCode)
+  const menuOptionGroups = (menuOptionGroupsResult.data ?? []) as MenuOptionGroupRow[]
+  const menuCategories = (menuCategoriesResult.data ?? []) as MenuCategoryRow[]
 
-  const menuOptionGroups = (menuOptionGroupsData ?? []) as MenuOptionGroupRow[]
+  // Fallback: if no multi-category data, use legacy category_code
+  const selectedCats = menuCategories.length > 0
+    ? menuCategories.map(m => m.category_code)
+    : (menuItemResult.data?.category_code ? [menuItemResult.data.category_code] : [])
 
   return {
-    menuItem: menuItem as MenuItem | null,
+    menuItem: menuItemResult.data as MenuItem | null,
     categories: (categories ?? []) as Category[],
     optionGroups: (optionGroups ?? []) as OptionGroup[],
-    selectedOptionGroups: menuOptionGroups.map(m => m.group_code)
+    selectedOptionGroups: menuOptionGroups.map(m => m.group_code),
+    selectedCategories: selectedCats
   }
 }
 
 export default async function AdminMenuEditPage({ params }: { params: Promise<{ menu_code: string }> }) {
   const { menu_code } = await params
-  const { menuItem, categories, optionGroups, selectedOptionGroups } = await getMenuEditData(menu_code)
+  const { menuItem, categories, optionGroups, selectedOptionGroups, selectedCategories } = await getMenuEditData(menu_code)
 
   if (menu_code !== 'new' && !menuItem) {
     return (
@@ -93,6 +115,7 @@ export default async function AdminMenuEditPage({ params }: { params: Promise<{ 
       categories={categories}
       optionGroups={optionGroups}
       selectedOptionGroups={selectedOptionGroups}
+      selectedCategories={selectedCategories}
     />
   )
 }

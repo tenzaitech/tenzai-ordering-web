@@ -36,6 +36,28 @@ export async function PATCH(
     if (body.barcode !== undefined) updateData.barcode = body.barcode?.trim() || null
     if (body.description !== undefined) updateData.description = body.description?.trim() || null
     if (body.price !== undefined) updateData.price = parseIntegerPrice(body.price)
+    if (body.promo_price !== undefined) {
+      if (body.promo_price === null) {
+        updateData.promo_price = null
+      } else {
+        if (!isValidIntegerPrice(body.promo_price)) {
+          return NextResponse.json({ error: 'promo_price must be a valid integer' }, { status: 400 })
+        }
+        updateData.promo_price = parseIntegerPrice(body.promo_price)
+      }
+    }
+    if (body.promo_label !== undefined) updateData.promo_label = body.promo_label?.trim() || null
+    if (body.promo_percent !== undefined) {
+      if (body.promo_percent === null) {
+        updateData.promo_percent = null
+      } else {
+        const pct = parseInt(body.promo_percent, 10)
+        if (isNaN(pct) || pct < 0 || pct > 100) {
+          return NextResponse.json({ error: 'promo_percent must be 0-100' }, { status: 400 })
+        }
+        updateData.promo_percent = pct
+      }
+    }
     if (body.image_url !== undefined) updateData.image_url = body.image_url?.trim() || null
     if (body.is_active !== undefined) updateData.is_active = body.is_active
 

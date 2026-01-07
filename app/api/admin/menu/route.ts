@@ -11,6 +11,9 @@ type MenuItemInsert = {
   barcode: string | null
   description: string | null
   price: number
+  promo_price: number | null
+  promo_label: string | null
+  promo_percent: number | null
   image_url: string | null
   is_active: boolean
   updated_at: string
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: menuItems, error } = await supabase
       .from('menu_items')
-      .select('menu_code, category_code, name_th, name_en, price, image_url, is_active, updated_at')
+      .select('menu_code, category_code, name_th, name_en, price, promo_price, promo_label, image_url, is_active, updated_at')
       .order('updated_at', { ascending: false })
 
     if (error) {
@@ -60,6 +63,28 @@ export async function POST(request: NextRequest) {
     const menuCode = body.menu_code?.trim() || generateCode(body.name_th)
     const price = parseIntegerPrice(body.price)
 
+    // Validate promo_price if provided
+    let promoPrice: number | null = null
+    if (body.promo_price !== undefined && body.promo_price !== null) {
+      if (!isValidIntegerPrice(body.promo_price)) {
+        return NextResponse.json({ error: 'promo_price must be a valid integer' }, { status: 400 })
+      }
+      promoPrice = parseIntegerPrice(body.promo_price)
+      if (promoPrice >= price) {
+        return NextResponse.json({ error: 'promo_price must be less than price' }, { status: 400 })
+      }
+    }
+
+    // Validate promo_percent if provided (0-100 or null)
+    let promoPercent: number | null = null
+    if (body.promo_percent !== undefined && body.promo_percent !== null) {
+      const pct = parseInt(body.promo_percent, 10)
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        return NextResponse.json({ error: 'promo_percent must be 0-100' }, { status: 400 })
+      }
+      promoPercent = pct
+    }
+
     const insertPayload: MenuItemInsert = {
       menu_code: menuCode,
       category_code: body.category_code.trim(),
@@ -68,6 +93,9 @@ export async function POST(request: NextRequest) {
       barcode: body.barcode?.trim() || null,
       description: body.description?.trim() || null,
       price: price,
+      promo_price: promoPrice,
+      promo_label: body.promo_label?.trim() || null,
+      promo_percent: promoPercent,
       image_url: body.image_url?.trim() || null,
       is_active: body.is_active ?? true,
       updated_at: new Date().toISOString()

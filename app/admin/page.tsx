@@ -29,6 +29,11 @@ const adminSections = [
     href: '/admin/menu-data',
     titleKey: 'importExport',
     descKey: 'importExportDesc'
+  },
+  {
+    href: '/admin/image-import',
+    titleKey: 'imageImport',
+    descKey: 'imageImportDesc'
   }
 ]
 

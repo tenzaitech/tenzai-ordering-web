@@ -22,19 +22,41 @@ type MenuItem = {
   category_th: string
   category_en: string
   price_thb: number
+  promo_price?: number
+  promo_label?: string
+  promo_percent?: number | null  // Manual percent badge (0-100), null = no badge
   image: string
   is_sold_out: boolean
+  description?: string
   subtitle?: string
   options?: any[]
   image_focus_y_1x1?: number
 }
 
+type CategoryAvailability = {
+  available: boolean
+  nextWindow?: { start: string; end: string }
+  scheduledDays?: number[]
+  notAvailableToday?: boolean
+}
+
 interface MenuClientProps {
   initialMenuItems: MenuItem[]
   initialCategories: Category[]
+  popularMenus?: string[]
+  categoryAvailability?: Record<string, CategoryAvailability>
+  categoryCodeToName?: Record<string, string>
+  loadError?: boolean
 }
 
-export default function MenuClient({ initialMenuItems, initialCategories }: MenuClientProps) {
+export default function MenuClient({
+  initialMenuItems,
+  initialCategories,
+  popularMenus = [],
+  categoryAvailability = {},
+  categoryCodeToName = {},
+  loadError
+}: MenuClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { language, t } = useLanguage()
@@ -66,10 +88,84 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
     return acc
   }, {} as Record<Category, MenuItem[]>)
 
-  // Get recommended items (6 non-sold-out items from all categories)
-  const recommendedItems = menuItems
-    .filter(item => !item.is_sold_out)
-    .slice(0, 6)
+  // Build reverse map: category name → category code (for availability lookup)
+  const nameToCode: Record<string, string> = {}
+  for (const [code, name] of Object.entries(categoryCodeToName)) {
+    nameToCode[name] = code
+  }
+
+  // Helper to check if a category (by name) is available
+  const isCategoryAvailableByName = (categoryName: string): CategoryAvailability => {
+    const code = nameToCode[categoryName]
+    if (!code) return { available: true } // No code mapping = allow
+    return categoryAvailability[code] ?? { available: true }
+  }
+
+  // Day name abbreviations
+  const DAY_NAMES_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+  const DAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  // Format days as range (e.g., "Mon–Fri" or "จ–ศ")
+  const formatDays = (days: number[]) => {
+    if (!days || days.length === 0) return ''
+    if (days.length === 7) return language === 'th' ? 'ทุกวัน' : 'Daily'
+
+    const dayNames = language === 'th' ? DAY_NAMES_TH : DAY_NAMES_EN
+
+    // Check if consecutive (Mon-Fri = [1,2,3,4,5])
+    const sorted = [...days].sort((a, b) => a - b)
+    const isConsecutive = sorted.every((d, i) => i === 0 || d === sorted[i - 1] + 1)
+
+    if (isConsecutive && sorted.length > 2) {
+      return `${dayNames[sorted[0]]}–${dayNames[sorted[sorted.length - 1]]}`
+    }
+    return sorted.map(d => dayNames[d]).join(', ')
+  }
+
+  // Format schedule window for display with days
+  const formatScheduleNote = (availability: CategoryAvailability) => {
+    const { nextWindow, scheduledDays, notAvailableToday } = availability
+
+    if (!nextWindow && !scheduledDays) {
+      return language === 'th' ? 'ไม่เปิดให้บริการ' : 'Unavailable'
+    }
+
+    const daysStr = scheduledDays ? formatDays(scheduledDays) : ''
+    const timeStr = nextWindow ? `${nextWindow.start}–${nextWindow.end}` : ''
+
+    // Build the schedule note
+    let note = ''
+    if (daysStr && timeStr) {
+      note = language === 'th' ? `${daysStr} ${timeStr}` : `${daysStr} ${timeStr}`
+    } else if (daysStr) {
+      note = daysStr
+    } else if (timeStr) {
+      note = language === 'th' ? `เปิด ${timeStr}` : `Available ${timeStr}`
+    }
+
+    // Add "not today" indicator if today isn't scheduled
+    if (notAvailableToday) {
+      const todayNote = language === 'th' ? 'วันนี้ไม่เปิด' : 'Not today'
+      return note ? `${note} · ${todayNote}` : todayNote
+    }
+
+    return note
+  }
+
+  // Get recommended/popular items (up to 10, using admin-set popular list or fallback to first items)
+  const recommendedItems = (() => {
+    // If popular menus are set, use them (in order)
+    if (popularMenus.length > 0) {
+      const popularItems = popularMenus
+        .map(code => menuItems.find(item => item.id === code))
+        .filter((item): item is MenuItem => item !== undefined && !item.is_sold_out)
+      if (popularItems.length > 0) {
+        return popularItems.slice(0, 10)
+      }
+    }
+    // Fallback: first 6 non-sold-out items
+    return menuItems.filter(item => !item.is_sold_out).slice(0, 6)
+  })()
 
   // Filter items based on search query
   const filteredItems = searchQuery.trim()
@@ -180,6 +276,17 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   const handleMenuItemTap = (item: MenuItem) => {
     triggerHaptic()
 
+    // Check if item's category is available
+    const availability = isCategoryAvailableByName(item.category)
+    if (!availability.available) {
+      // Show toast/alert for unavailable category
+      const message = formatScheduleNote(availability)
+      alert(language === 'th'
+        ? `หมวดหมู่นี้: ${message}`
+        : `This category: ${message}`)
+      return
+    }
+
     // In add-to-order mode, navigate directly to item detail with order params
     if (isAddToOrderMode) {
       if (typeof window !== 'undefined') {
@@ -223,6 +330,40 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
   // Category bar height for scroll calculations
   const CATEGORY_BAR_HEIGHT = 56
 
+  // Error state: show retry UI when menu failed to load
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-bg-root">
+        <UnifiedOrderHeader
+          title={language === 'th' ? 'เมนู' : 'Menu'}
+          showBack={false}
+          showMenu={false}
+        />
+        <div className="max-w-mobile mx-auto pt-14 px-4">
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="w-16 h-16 mb-4 text-text-tertiary">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-text-primary mb-2">
+              {language === 'th' ? 'ไม่สามารถโหลดเมนูได้' : 'Unable to load menu'}
+            </h2>
+            <p className="text-sm text-text-secondary mb-6">
+              {language === 'th' ? 'กรุณาลองใหม่อีกครั้ง' : 'Please try again'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-accent text-white font-medium rounded-lg hover:bg-accent/90 active:bg-accent/80 transition-colors"
+            >
+              {language === 'th' ? 'ลองใหม่' : 'Retry'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-bg-root pb-28">
       {/* Unified Header - fixed at top, consistent with other /order/* pages */}
@@ -263,6 +404,9 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
               {categories.map(category => {
                 const sampleItem = menuItems.find(item => item.category === category)
                 const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
+                const availability = isCategoryAvailableByName(category)
+                const isUnavailable = !availability.available
+
                 return (
                   <button
                     key={category}
@@ -272,12 +416,19 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                     data-category={category}
                     onClick={() => handleCategoryClick(category)}
                     className={`flex-none px-4 py-2 min-h-[40px] rounded-full whitespace-nowrap font-medium text-sm scale-text ${
-                      activeCategory === category
-                        ? 'bg-accent text-white'
-                        : 'bg-bg-surface text-text-secondary border border-border-subtle'
+                      isUnavailable
+                        ? 'bg-bg-elevated text-text-muted border border-border-subtle opacity-60'
+                        : activeCategory === category
+                          ? 'bg-accent text-white'
+                          : 'bg-bg-surface text-text-secondary border border-border-subtle'
                     }`}
                   >
-                    {categoryName || category}
+                    <span className="flex flex-col items-center gap-0.5">
+                      <span>{categoryName || category}</span>
+                      {isUnavailable && (
+                        <span className="text-[10px] opacity-80">{formatScheduleNote(availability)}</span>
+                      )}
+                    </span>
                   </button>
                 )
               })}
@@ -289,28 +440,36 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
         <div className="px-5 pt-4 pb-6">
           <h2 className="text-text-primary text-lg font-bold mb-3">Popular</h2>
           <div className="grid grid-cols-2 gap-4">
-            {recommendedItems.map((item, index) => (
-              <div
-                key={item.id}
-                className={`transition-all duration-[170ms] cursor-pointer active:scale-[0.98] active:bg-border rounded-lg ${
-                  mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1.5'
-                }`}
-                style={{
-                  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-                  transitionDelay: mounted ? `${index * 50}ms` : '0ms'
-                }}
-                onClick={() => handleRecommendedTap(item.id)}
-              >
-                <MenuCardLarge
-                  name_th={item.name_th}
-                  name_en={item.name_en}
-                  price_thb={item.price_thb}
-                  image={item.image}
-                  is_sold_out={item.is_sold_out}
-                  focusY={item.image_focus_y_1x1}
-                />
-              </div>
-            ))}
+            {recommendedItems.map((item, index) => {
+              const availability = isCategoryAvailableByName(item.category)
+              const isUnavailable = !availability.available
+
+              return (
+                <div
+                  key={item.id}
+                  className={`transition-all duration-[170ms] cursor-pointer active:scale-[0.98] active:bg-border rounded-lg ${
+                    mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1.5'
+                  } ${isUnavailable ? 'opacity-50' : ''}`}
+                  style={{
+                    transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+                    transitionDelay: mounted ? `${index * 50}ms` : '0ms'
+                  }}
+                  onClick={() => handleRecommendedTap(item.id)}
+                >
+                  <MenuCardLarge
+                    name_th={item.name_th}
+                    name_en={item.name_en}
+                    price_thb={item.price_thb}
+                    promo_price={item.promo_price}
+                    promo_label={item.promo_label}
+                    promo_percent={item.promo_percent}
+                    image={item.image}
+                    is_sold_out={isUnavailable || item.is_sold_out}
+                    focusY={item.image_focus_y_1x1}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -320,6 +479,8 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
           if (items.length === 0) return null
           const sampleItem = items[0]
           const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
+          const availability = isCategoryAvailableByName(category)
+          const isUnavailable = !availability.available
 
           return (
             <div
@@ -328,10 +489,18 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                 categoryRefs.current[category] = el
               }}
               data-category={category}
+              className={isUnavailable ? 'opacity-50' : ''}
             >
               {/* Category Label - LINE MAN style: divider bar + inline label */}
               {index > 0 && <div className="h-2 bg-bg-elevated" />}
-              <p className="px-5 py-2 text-text-primary font-bold text-base scale-text">{categoryName || category}</p>
+              <div className="px-5 py-2 flex items-center justify-between">
+                <p className="text-text-primary font-bold text-base scale-text">{categoryName || category}</p>
+                {isUnavailable && (
+                  <span className="text-xs text-text-muted bg-bg-elevated px-2 py-1 rounded">
+                    {formatScheduleNote(availability)}
+                  </span>
+                )}
+              </div>
               {items.map(item => (
                 <MenuItemRow
                   key={item.id}
@@ -339,8 +508,12 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                   name_th={item.name_th}
                   name_en={item.name_en}
                   price_thb={item.price_thb}
+                  promo_price={item.promo_price}
+                  promo_label={item.promo_label}
+                  promo_percent={item.promo_percent}
                   image={item.image}
-                  is_sold_out={item.is_sold_out}
+                  is_sold_out={isUnavailable || item.is_sold_out}
+                  description={item.description}
                   subtitle={item.subtitle}
                   onTap={() => handleMenuItemTap(item)}
                   focusY={item.image_focus_y_1x1}
@@ -405,23 +578,32 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                   </p>
                   {filteredItems.length > 0 && (
                     <div className="bg-bg-surface rounded-lg overflow-hidden">
-                      {filteredItems.map(item => (
-                        <MenuItemRow
-                          key={item.id}
-                          id={item.id}
-                          name_th={item.name_th}
-                          name_en={item.name_en}
-                          price_thb={item.price_thb}
-                          image={item.image}
-                          is_sold_out={item.is_sold_out}
-                          subtitle={item.subtitle}
-                          onTap={() => {
-                            handleCloseSearch()
-                            handleMenuItemTap(item)
-                          }}
-                          focusY={item.image_focus_y_1x1}
-                        />
-                      ))}
+                      {filteredItems.map(item => {
+                        const availability = isCategoryAvailableByName(item.category)
+                        const isUnavailable = !availability.available
+
+                        return (
+                          <MenuItemRow
+                            key={item.id}
+                            id={item.id}
+                            name_th={item.name_th}
+                            name_en={item.name_en}
+                            price_thb={item.price_thb}
+                            promo_price={item.promo_price}
+                            promo_label={item.promo_label}
+                            promo_percent={item.promo_percent}
+                            image={item.image}
+                            is_sold_out={isUnavailable || item.is_sold_out}
+                            description={item.description}
+                            subtitle={item.subtitle}
+                            onTap={() => {
+                              handleCloseSearch()
+                              handleMenuItemTap(item)
+                            }}
+                            focusY={item.image_focus_y_1x1}
+                          />
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -475,17 +657,27 @@ export default function MenuClient({ initialMenuItems, initialCategories }: Menu
                   const itemCount = itemsByCategory[category]?.length || 0
                   const sampleItem = menuItems.find(item => item.category === category)
                   const categoryName = language === 'th' ? sampleItem?.category_th : sampleItem?.category_en
+                  const availability = isCategoryAvailableByName(category)
+                  const isUnavailable = !availability.available
+
                   return (
                     <button
                       key={category}
                       onClick={() => handlePickerSelect(category)}
                       className={`w-full px-5 py-4 flex items-center justify-between min-h-[48px] transition-colors ${
-                        activeCategory === category
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-text hover:bg-border active:bg-border'
+                        isUnavailable
+                          ? 'text-text-muted opacity-60'
+                          : activeCategory === category
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-text hover:bg-border active:bg-border'
                       }`}
                     >
-                      <span className="text-lg font-medium scale-text">{categoryName || category}</span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-lg font-medium scale-text">{categoryName || category}</span>
+                        {isUnavailable && (
+                          <span className="text-xs text-text-muted">{formatScheduleNote(availability)}</span>
+                        )}
+                      </div>
                       <span className="text-sm text-muted">
                         {itemCount} {itemCount === 1 ? t('item') : t('items')}
                       </span>
