@@ -6,6 +6,7 @@ interface CheckoutDraft {
   customerName: string
   customerPhone: string
   pickupType: 'ASAP' | 'SCHEDULED'
+  pickupDate: string // YYYY-MM-DD format
   pickupTime: string
   note: string
   customerNote: string
@@ -25,6 +26,7 @@ const defaultDraft: CheckoutDraft = {
   customerName: '',
   customerPhone: '',
   pickupType: 'ASAP',
+  pickupDate: '',
   pickupTime: '',
   note: '',
   customerNote: '',

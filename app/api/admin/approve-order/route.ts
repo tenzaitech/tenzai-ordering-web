@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       // Fetch full order with invoice fields
       const { data: fullOrderData, error: fullOrderError } = await supabase
         .from('orders')
-        .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, customer_line_user_id')
+        .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone, customer_line_user_id')
         .eq('id', orderId)
         .single()
 
@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
           invoice_company_name: fullOrderData.invoice_company_name,
           invoice_tax_id: fullOrderData.invoice_tax_id,
           invoice_address: fullOrderData.invoice_address,
+          invoice_buyer_phone: fullOrderData.invoice_buyer_phone || undefined,
           items
         }
 

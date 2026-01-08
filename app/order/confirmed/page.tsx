@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
+import { clearCheckoutDraft } from '@/lib/checkoutDraft'
 
 function OrderConfirmedContent() {
   const router = useRouter()
@@ -15,6 +16,11 @@ function OrderConfirmedContent() {
   const [orderItems, setOrderItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
+
+  // Clear checkout draft on confirmed page mount (order complete)
+  useEffect(() => {
+    clearCheckoutDraft()
+  }, [])
 
   useEffect(() => {
     const fetchOrder = async () => {

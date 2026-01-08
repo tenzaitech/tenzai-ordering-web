@@ -7,15 +7,15 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
-import { getCartFingerprint } from '@/lib/orderUtils'
 import { generatePromptPayPayload } from '@/lib/promptpay'
+import { clearCheckoutDraft } from '@/lib/checkoutDraft'
 import ErrorModal from '@/components/ErrorModal'
 import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 // Fallback PromptPay ID (used only if DB has no promptpay_id configured)
 const FALLBACK_PROMPTPAY_ID = '0988799990'
 
-type ProcessingState = 'IDLE' | 'UPLOADING_SLIP' | 'SYNCING_ORDER'
+type ProcessingState = 'IDLE' | 'UPLOADING_SLIP'
 
 type AdminSettingsRow = {
   promptpay_id: string | null
@@ -25,14 +25,34 @@ type OrderRow = {
   [key: string]: unknown
   id: string
   total_amount: number
+  // Decimal columns (preferred if present)
+  subtotal_amount_dec?: number | null
+  vat_amount_dec?: number | null
+  total_amount_dec?: number | null
+  // Legacy columns (fallback)
+  subtotal_amount?: number | null
+  vat_amount?: number | null
+  vat_rate?: number | null
+}
+
+// Helper: Get decimal amount with fallback to legacy column
+function getDecimalAmount(dec: number | null | undefined, legacy: number | null | undefined): number {
+  if (dec != null) return dec
+  if (legacy != null) return legacy
+  return 0
+}
+
+// Helper: Format amount with 2 decimals
+function formatAmount(amount: number): string {
+  return amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function PaymentPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { items, getTotalPrice, clearCart } = useCart()
+  const { clearCart } = useCart()
   const { language, t } = useLanguage()
-  const { draft, clearDraft, activeOrderId, lastSyncedCartFingerprint, setLastSyncedCartFingerprint } = useCheckout()
+  const { clearDraft } = useCheckout()
 
   const [order, setOrder] = useState<any>(null)
   const [orderItems, setOrderItems] = useState<any[]>([])
@@ -140,19 +160,13 @@ function PaymentPageContent() {
         setLoading(false)
 
         // Generate PromptPay QR code with locked amount using DB promptpay_id
-        if (data.total_amount) {
-          const payload = generatePromptPayPayload(dbPromptPayId, data.total_amount)
+        // Prefer total_amount_dec (2 decimals), fallback to total_amount (int)
+        const qrAmount = getDecimalAmount(data.total_amount_dec, data.total_amount)
+        if (qrAmount > 0) {
+          const payload = generatePromptPayPayload(dbPromptPayId, qrAmount)
           const encodedPayload = encodeURIComponent(payload)
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedPayload}&format=png&margin=10`
           setQrCodeUrl(qrUrl)
-        }
-
-        // Check if cart is dirty (changed since order creation) - auto-sync silently
-        if (orderId === activeOrderId && lastSyncedCartFingerprint) {
-          const currentFingerprint = getCartFingerprint(items)
-          if (currentFingerprint !== lastSyncedCartFingerprint) {
-            handleSyncOrder()
-          }
         }
       } catch (error) {
         console.error('[ERROR] Unexpected error fetching order:', error)
@@ -161,101 +175,7 @@ function PaymentPageContent() {
     }
 
     fetchOrder()
-  }, [orderId, activeOrderId, lastSyncedCartFingerprint, items])
-
-  const handleSyncOrder = async () => {
-    if (!orderId) return
-
-    try {
-      setProcessingState('SYNCING_ORDER')
-
-      // Update order total and note
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({
-          total_amount: getTotalPrice(),
-          customer_note: draft.customerNote.trim() || null,
-        } as never)
-        .eq('id', orderId)
-
-      if (updateError) {
-        console.error('[ERROR:SYNC] Failed to update order:', updateError)
-        setShowError(true)
-        setProcessingState('IDLE')
-        return
-      }
-
-      // Delete existing order items
-      const { error: deleteError } = await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', orderId)
-
-      if (deleteError) {
-        console.error('[ERROR:SYNC] Failed to delete order items:', deleteError)
-        setShowError(true)
-        setProcessingState('IDLE')
-        return
-      }
-
-      // Insert new order items
-      const orderItems = items.map((item) => {
-        const basePrice = item.base_price_thb
-        const finalPrice = item.final_price_thb
-
-        if (basePrice == null || typeof basePrice !== 'number' || isNaN(basePrice)) {
-          throw new Error(`[VALIDATION] Invalid base_price for menu item ${item.menuId} (${item.name_en}): ${basePrice}`)
-        }
-        if (finalPrice == null || typeof finalPrice !== 'number' || isNaN(finalPrice)) {
-          throw new Error(`[VALIDATION] Invalid final_price for menu item ${item.menuId} (${item.name_en}): ${finalPrice}`)
-        }
-
-        return {
-          order_id: orderId,
-          menu_item_id: item.menuId,
-          name_th: item.name_th,
-          name_en: item.name_en,
-          qty: item.quantity,
-          base_price: basePrice,
-          final_price: finalPrice,
-          note: item.note || null,
-          selected_options_json: item.options || null,
-        }
-      })
-
-      const { error: insertError } = await supabase
-        .from('order_items')
-        .insert(orderItems as never)
-
-      if (insertError) {
-        console.error('[ERROR:SYNC] Failed to insert order items:', insertError)
-        setShowError(true)
-        setProcessingState('IDLE')
-        return
-      }
-
-      // Update fingerprint
-      setLastSyncedCartFingerprint(getCartFingerprint(items))
-
-      // Refetch order to update display
-      const { data: refreshedOrderData } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single()
-
-      const refreshedOrder = refreshedOrderData as OrderRow | null
-      if (refreshedOrder) {
-        setOrder(refreshedOrder)
-      }
-
-      setProcessingState('IDLE')
-    } catch (error) {
-      console.error('[ERROR:SYNC]', error)
-      setShowError(true)
-      setProcessingState('IDLE')
-    }
-  }
+  }, [orderId])
 
   const handleSaveQR = async () => {
     if (!qrImageRef.current) return
@@ -413,10 +333,11 @@ function PaymentPageContent() {
       // Navigate to confirmation page
       router.replace(`/order/confirmed?id=${orderId}`)
 
-      // Clear cart, checkout draft, and reset processing state after navigation starts
+      // Clear cart, checkout draft, localStorage draft, and reset processing state after navigation starts
       setTimeout(() => {
         clearCart()
         clearDraft()
+        clearCheckoutDraft() // Clear localStorage draft - order is complete
         setProcessingState('IDLE')
       }, 100)
     } catch (error) {
@@ -581,7 +502,7 @@ function PaymentPageContent() {
                           <p className="text-xs text-muted italic mt-1">{t('note')}: {item.note}</p>
                         )}
                       </div>
-                      <p className="text-text text-sm font-semibold ml-3">฿{item.final_price * item.qty}</p>
+                      <p className="text-text text-sm font-semibold ml-3">฿{formatAmount(item.final_price * item.qty)}</p>
                     </div>
                   )
                 })}
@@ -620,17 +541,27 @@ function PaymentPageContent() {
               )}
             </div>
 
-            {/* Total */}
+            {/* VAT Breakdown + Total */}
             <div className="bg-card border border-primary/30 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-text">{t('total')}</span>
-                <span className="text-2xl font-bold text-primary">฿{order?.total_amount}</span>
+              {/* Subtotal */}
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="text-muted">{language === 'th' ? 'ราคาสินค้า (ก่อน VAT)' : 'Subtotal (before VAT)'}</span>
+                <span className="text-text">฿{formatAmount(getDecimalAmount(order?.subtotal_amount_dec, order?.subtotal_amount))}</span>
               </div>
-              {processingState === 'SYNCING_ORDER' && (
-                <p className="text-xs text-muted mt-2 text-center">
-                  {language === 'th' ? 'กำลังอัปเดตยอดรวม…' : 'Updating total…'}
-                </p>
-              )}
+              {/* VAT */}
+              <div className="flex justify-between items-center text-sm mb-3">
+                <span className="text-muted">
+                  {language === 'th' ? `VAT ${order?.vat_rate ?? 7}%` : `VAT ${order?.vat_rate ?? 7}%`}
+                </span>
+                <span className="text-text">฿{formatAmount(getDecimalAmount(order?.vat_amount_dec, order?.vat_amount))}</span>
+              </div>
+              {/* Divider */}
+              <div className="border-t border-border pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-text">{t('total')}</span>
+                  <span className="text-2xl font-bold text-primary">฿{formatAmount(getDecimalAmount(order?.total_amount_dec, order?.total_amount))}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -657,7 +588,7 @@ function PaymentPageContent() {
                   {/* Amount Display */}
                   <div className="text-center mb-3">
                     <p className="text-xs text-muted mb-1">{language === 'th' ? 'ยอดชำระ' : 'Amount'}</p>
-                    <p className="text-2xl font-bold text-primary">฿{order?.total_amount}</p>
+                    <p className="text-2xl font-bold text-primary">฿{formatAmount(getDecimalAmount(order?.total_amount_dec, order?.total_amount))}</p>
                   </div>
 
                   {/* Recipient Info */}
@@ -752,7 +683,6 @@ function PaymentPageContent() {
             {isProcessing && (
               <div className="mb-3 text-center">
                 <p className="text-sm text-muted">
-                  {processingState === 'SYNCING_ORDER' && (language === 'th' ? 'กำลังอัปเดตยอดรวม…' : 'Updating total…')}
                   {processingState === 'UPLOADING_SLIP' && t('processingUploadingSlip')}
                 </p>
               </div>

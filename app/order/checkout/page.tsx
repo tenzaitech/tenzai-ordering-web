@@ -7,7 +7,8 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
 import { supabase } from '@/lib/supabase'
-import { generateOrderNumber, generatePickupTimes, getCartFingerprint } from '@/lib/orderUtils'
+import { generateOrderNumber, generatePickupTimes, generatePickupDates, getCartFingerprint } from '@/lib/orderUtils'
+import { saveCheckoutDraft, loadCheckoutDraft, clearCheckoutDraft } from '@/lib/checkoutDraft'
 import ErrorModal from '@/components/ErrorModal'
 import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
@@ -34,6 +35,7 @@ export default function CheckoutPage() {
   const { draft, updateDraft, clearDraft, activeOrderId, setActiveOrderId, setLastSyncedCartFingerprint } = useCheckout()
 
   const [pickupType, setPickupType] = useState<'ASAP' | 'SCHEDULED'>(() => draft.pickupType)
+  const [pickupDate, setPickupDate] = useState(() => draft.pickupDate)
   const [pickupTime, setPickupTime] = useState(() => draft.pickupTime)
   const [customerName, setCustomerName] = useState(() => draft.customerName)
   const [customerPhone, setCustomerPhone] = useState(() => draft.customerPhone)
@@ -43,19 +45,42 @@ export default function CheckoutPage() {
   const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // Invoice request state
-  const [invoiceRequested, setInvoiceRequested] = useState(false)
-  const [invoiceCompanyName, setInvoiceCompanyName] = useState('')
-  const [invoiceTaxId, setInvoiceTaxId] = useState('')
-  const [invoiceAddress, setInvoiceAddress] = useState('')
+  // Invoice request state (initialized from draft if available)
+  const [invoiceRequested, setInvoiceRequested] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const draft = loadCheckoutDraft()
+    return draft?.invoiceRequested ?? false
+  })
+  const [invoiceCompanyName, setInvoiceCompanyName] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const draft = loadCheckoutDraft()
+    return draft?.invoiceCompanyName ?? ''
+  })
+  const [invoiceTaxId, setInvoiceTaxId] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const draft = loadCheckoutDraft()
+    return draft?.invoiceTaxId ?? ''
+  })
+  const [invoiceAddress, setInvoiceAddress] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const draft = loadCheckoutDraft()
+    return draft?.invoiceAddress ?? ''
+  })
+  const [invoiceBuyerPhone, setInvoiceBuyerPhone] = useState('')
 
   // VAT Calculation (order-level only, menu prices are NET)
-  const subtotalAmount = getTotalPrice() // NET (before VAT) - INTEGER THB
-  const vatAmount = Math.round(subtotalAmount * VAT_RATE / 100 * 100) / 100 // Round to 2 decimals
-  const totalAmountRaw = subtotalAmount + vatAmount // GROSS with decimals (for display)
-  const totalAmountInt = Math.round(totalAmountRaw) // Rounded for INTEGER DB column
+  // All values are exact decimals - NO ROUNDING
+  const subtotalAmount = getTotalPrice() // NET (before VAT) - exact decimal
+  const vatAmount = subtotalAmount * VAT_RATE / 100 // Exact VAT (e.g., 125 * 7 / 100 = 8.75)
+  const totalAmount = subtotalAmount + vatAmount // GROSS - exact decimal
+
+  // Helper: Format amount with 2 decimals (DISPLAY ONLY)
+  const formatAmount = (amount: number): string => {
+    return amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
 
   const pickupTimes = generatePickupTimes()
+  const pickupDates = generatePickupDates()
 
   useEffect(() => {
     setMounted(true)
@@ -70,9 +95,15 @@ export default function CheckoutPage() {
     setPickupType(type)
     updateDraft({ pickupType: type })
     if (type === 'ASAP') {
+      setPickupDate('')
       setPickupTime('')
-      updateDraft({ pickupTime: '' })
+      updateDraft({ pickupDate: '', pickupTime: '' })
     }
+  }
+
+  const handlePickupDateChange = (date: string) => {
+    setPickupDate(date)
+    updateDraft({ pickupDate: date })
   }
 
   const handlePickupTimeChange = (time: string) => {
@@ -104,8 +135,8 @@ export default function CheckoutPage() {
       return
     }
 
-    if (pickupType === 'SCHEDULED' && !pickupTime) {
-      alert(language === 'th' ? 'กรุณาเลือกเวลารับอาหาร' : 'Please select pickup time')
+    if (pickupType === 'SCHEDULED' && (!pickupDate || !pickupTime)) {
+      alert(language === 'th' ? 'กรุณาเลือกวันและเวลารับอาหาร' : 'Please select pickup date and time')
       return
     }
 
@@ -121,6 +152,21 @@ export default function CheckoutPage() {
     if (activeOrderId) {
       triggerHaptic()
       setIsNavigatingToPayment(true)
+      // Save draft for Back navigation restoration
+      saveCheckoutDraft({
+        cartItems: items,
+        customerName,
+        customerPhone,
+        pickupType,
+        pickupDate,
+        pickupTime,
+        customerNote,
+        invoiceRequested,
+        invoiceCompanyName,
+        invoiceTaxId,
+        invoiceAddress,
+        activeOrderId
+      })
       router.replace(`/order/payment?id=${activeOrderId}`)
       return
     }
@@ -182,33 +228,15 @@ export default function CheckoutPage() {
 
       const orderNumber = generateOrderNumber()
 
-      // Convert pickup time string (HH:MM) to timestamptz for Asia/Bangkok (+07:00)
+      // Convert pickup date + time to timestamptz for Asia/Bangkok (+07:00)
       let pickupTimeISO: string | null = null
-      if (pickupType === 'SCHEDULED' && pickupTime) {
+      if (pickupType === 'SCHEDULED' && pickupDate && pickupTime) {
+        // pickupDate is YYYY-MM-DD, pickupTime is HH:MM
         const [selectedHours, selectedMinutes] = pickupTime.split(':').map(Number)
-
-        const nowUTC = new Date()
-        const bangkokOffsetMs = 7 * 60 * 60 * 1000
-        const nowBangkok = new Date(nowUTC.getTime() + bangkokOffsetMs)
-
-        const currentBangkokHours = nowBangkok.getUTCHours()
-        const currentBangkokMinutes = nowBangkok.getUTCMinutes()
-
-        let pickupDate = new Date(nowBangkok)
-        const selectedTimeInMinutes = selectedHours * 60 + selectedMinutes
-        const currentTimeInMinutes = currentBangkokHours * 60 + currentBangkokMinutes
-
-        if (selectedTimeInMinutes <= currentTimeInMinutes) {
-          pickupDate = new Date(pickupDate.getTime() + 24 * 60 * 60 * 1000)
-        }
-
-        const year = pickupDate.getUTCFullYear()
-        const month = String(pickupDate.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(pickupDate.getUTCDate()).padStart(2, '0')
         const hours = String(selectedHours).padStart(2, '0')
         const minutes = String(selectedMinutes).padStart(2, '0')
 
-        pickupTimeISO = `${year}-${month}-${day}T${hours}:${minutes}:00+07:00`
+        pickupTimeISO = `${pickupDate}T${hours}:${minutes}:00+07:00`
       }
 
       const { data: orderInsertData, error: orderError } = await supabase
@@ -220,16 +248,21 @@ export default function CheckoutPage() {
           customer_line_user_id: userId,
           pickup_type: pickupType,
           pickup_time: pickupTimeISO,
-          // VAT fields (persisted, never recomputed)
-          subtotal_amount: subtotalAmount,
+          // VAT fields - DECIMAL SOURCE OF TRUTH (never rounded)
+          subtotal_amount_dec: Number(subtotalAmount),
           vat_rate: VAT_RATE,
-          vat_amount: vatAmount,
-          total_amount: totalAmountInt, // Rounded for INTEGER column
+          vat_amount_dec: Number(vatAmount),
+          total_amount_dec: Number(totalAmount),
+          // Legacy integer fields (for backward compatibility only)
+          subtotal_amount: Math.round(subtotalAmount),
+          vat_amount: vatAmount, // float column, no rounding needed
+          total_amount: Math.round(totalAmount),
           // Invoice fields (immutable after creation)
           invoice_requested: invoiceRequested,
           invoice_company_name: invoiceRequested ? invoiceCompanyName.trim() : null,
           invoice_tax_id: invoiceRequested ? invoiceTaxId.trim() : null,
           invoice_address: invoiceRequested ? invoiceAddress.trim() : null,
+          invoice_buyer_phone: invoiceRequested && invoiceBuyerPhone.trim() ? invoiceBuyerPhone.trim() : null,
           customer_note: customerNote.trim() || null,
           slip_url: null,
         } as never)
@@ -296,6 +329,22 @@ export default function CheckoutPage() {
       // Store active order ID and cart fingerprint
       setActiveOrderId(orderData.id)
       setLastSyncedCartFingerprint(getCartFingerprint(items))
+
+      // Save draft for Back navigation restoration (before clearing cart)
+      saveCheckoutDraft({
+        cartItems: items,
+        customerName,
+        customerPhone,
+        pickupType,
+        pickupDate,
+        pickupTime,
+        customerNote,
+        invoiceRequested,
+        invoiceCompanyName,
+        invoiceTaxId,
+        invoiceAddress,
+        activeOrderId: orderData.id
+      })
 
       // Clear cart immediately after successful order creation
       clearCart()
@@ -440,20 +489,38 @@ export default function CheckoutPage() {
               </button>
 
               {pickupType === 'SCHEDULED' && (
-                <select
-                  value={pickupTime}
-                  onChange={(e) => handlePickupTimeChange(e.target.value)}
-                  disabled={isProcessing}
-                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  required
-                >
-                  <option value="">{t('selectTime')}</option>
-                  {pickupTimes.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-3">
+                  {/* Date Picker */}
+                  <select
+                    value={pickupDate}
+                    onChange={(e) => handlePickupDateChange(e.target.value)}
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="">{language === 'th' ? 'เลือกวัน' : 'Select date'}</option>
+                    {pickupDates.map((date) => (
+                      <option key={date.value} value={date.value}>
+                        {language === 'th' ? date.label_th : date.label_en}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Time Picker */}
+                  <select
+                    value={pickupTime}
+                    onChange={(e) => handlePickupTimeChange(e.target.value)}
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="">{t('selectTime')}</option>
+                    {pickupTimes.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           </div>
@@ -472,7 +539,7 @@ export default function CheckoutPage() {
                         <p className="text-text font-medium">{itemName}</p>
                         <p className="text-sm text-muted">x{item.quantity}</p>
                       </div>
-                      <p className="text-primary font-semibold">฿{item.final_price_thb * item.quantity}</p>
+                      <p className="text-primary font-semibold">฿{formatAmount(item.final_price_thb * item.quantity)}</p>
                     </div>
                     {item.options && item.options.length > 0 && (
                       <div className="text-xs text-muted space-y-1">
@@ -499,15 +566,15 @@ export default function CheckoutPage() {
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center text-text">
                 <span>{language === 'th' ? 'ยอดรวมสินค้า (ก่อน VAT)' : 'Subtotal (before VAT)'}</span>
-                <span>฿{subtotalAmount.toLocaleString()}</span>
+                <span>฿{formatAmount(subtotalAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-text">
                 <span>{language === 'th' ? 'VAT 7%' : 'VAT 7%'}</span>
-                <span>฿{vatAmount.toFixed(2)}</span>
+                <span>฿{formatAmount(vatAmount)}</span>
               </div>
               <div className="border-t border-border pt-3 flex justify-between items-center">
                 <span className="text-lg font-semibold text-text">{t('total')}</span>
-                <span className="text-2xl font-bold text-primary">฿{totalAmountRaw.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-primary">฿{formatAmount(totalAmount)}</span>
               </div>
             </div>
           </div>
@@ -584,6 +651,20 @@ export default function CheckoutPage() {
                     disabled={isProcessing}
                     className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none"
                     rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-2">
+                    {language === 'th' ? 'เบอร์โทรผู้ซื้อ' : 'Buyer Phone'}
+                    <span className="text-muted/60 ml-1">({language === 'th' ? 'ไม่บังคับ' : 'Optional'})</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={invoiceBuyerPhone}
+                    onChange={(e) => setInvoiceBuyerPhone(e.target.value)}
+                    placeholder={language === 'th' ? '02-XXX-XXXX' : '02-XXX-XXXX'}
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>

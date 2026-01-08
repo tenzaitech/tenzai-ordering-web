@@ -814,6 +814,18 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
     throw new Error('No customer LINE user ID')
   }
 
+  // Fetch order items for summary
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('order_items')
+    .select('*')
+    .eq('order_id', orderId)
+
+  const items = (itemsData ?? []) as OrderItemRow[]
+  if (itemsError) {
+    console.error('[LINE:CUSTOMER_APPROVED] Failed to fetch order items:', itemsError)
+    // Continue without items - don't fail the notification
+  }
+
   // Validate env vars
   if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
     throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
@@ -821,6 +833,9 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
 
   // Format pickup time
   const pickupText = formatPickupTime(order.pickup_type, order.pickup_time)
+
+  // Format items list (TH names for customer)
+  const itemsList = items?.map(item => `${item.qty}x ${item.name_th}`) || []
 
   // Build fields
   const fields: FlexField[] = [
@@ -834,11 +849,12 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
     fields.push({ label: LINE_LABELS.pickupTime, value: pickupText })
   }
 
-  // Build Flex card for customer (NO button)
+  // Build Flex card for customer with items summary
   const flexCard = buildFlexOrderCard({
     titleTH: '✅ ออเดอร์ได้รับการยืนยันแล้ว',
     titleEN: 'กำลังเตรียมอาหารให้คุณ',
     fields,
+    items: itemsList.length > 0 ? itemsList : undefined,
     showButton: false
   })
 

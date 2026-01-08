@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart, CartItem } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
+import { loadCheckoutDraft, clearCheckoutDraft } from '@/lib/checkoutDraft'
 import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
 
 export default function CartPage() {
   const router = useRouter()
-  const { items, updateQuantity, removeItem, getTotalPrice } = useCart()
+  const { items, updateQuantity, removeItem, getTotalPrice, setItems } = useCart()
   const { language, t } = useLanguage()
+  const { updateDraft, setActiveOrderId } = useCheckout()
   const [mounted, setMounted] = useState(false)
   const [navDirection, setNavDirection] = useState<'forward' | 'backward'>('forward')
+  const [draftRestored, setDraftRestored] = useState(false)
 
   // Inline quantity change handler - updates immediately by item.id
   const handleInlineQuantityChange = (itemId: string, currentQty: number, delta: number) => {
@@ -33,7 +37,7 @@ export default function CartPage() {
     }
   }
 
-  // Restore scroll position on mount
+  // Restore scroll position on mount + restore from draft if cart empty
   useEffect(() => {
     const savedScrollPosition = sessionStorage.getItem('cartScrollPosition')
     if (savedScrollPosition) {
@@ -43,8 +47,37 @@ export default function CartPage() {
     const direction = sessionStorage.getItem('navigationDirection') as 'forward' | 'backward' || 'forward'
     sessionStorage.removeItem('navigationDirection')
     setNavDirection(direction)
+
+    // Restore from draft if cart is empty (e.g., Back from payment)
+    if (items.length === 0 && !draftRestored) {
+      const draft = loadCheckoutDraft()
+      if (draft && draft.cartItems.length > 0) {
+        // Restore cart items
+        setItems(draft.cartItems)
+        // Restore checkout context
+        updateDraft({
+          customerName: draft.customerName,
+          customerPhone: draft.customerPhone,
+          pickupType: draft.pickupType,
+          pickupDate: draft.pickupDate || '',
+          pickupTime: draft.pickupTime,
+          customerNote: draft.customerNote
+        })
+        if (draft.activeOrderId) {
+          setActiveOrderId(draft.activeOrderId)
+        }
+        setDraftRestored(true)
+        console.log('[CART] Restored from checkout draft')
+      }
+    }
+
     setMounted(true)
-  }, [])
+  }, [items.length, draftRestored, setItems, updateDraft, setActiveOrderId])
+
+  // Wait for mount before showing empty state (to allow draft restoration)
+  if (!mounted) {
+    return null
+  }
 
   if (items.length === 0) {
     return (

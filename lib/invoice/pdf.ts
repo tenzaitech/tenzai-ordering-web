@@ -165,6 +165,7 @@ export interface InvoiceOrderData {
   invoice_company_name: string
   invoice_tax_id: string
   invoice_address: string
+  invoice_buyer_phone?: string
   items?: InvoiceLineItem[]
 }
 
@@ -886,6 +887,12 @@ export async function renderInvoicePdf(order: InvoiceOrderData): Promise<Uint8Ar
   const buyerAddressLines = wrapText(order.invoice_address, 70)
   for (const line of buyerAddressLines) {
     drawTextSmart(currentPage, line, MARGIN_LEFT, y, { size: FONT_SIZE_SMALL })
+    y -= 12
+  }
+
+  // Buyer phone (optional)
+  if (order.invoice_buyer_phone) {
+    drawTextSmart(currentPage, `Tel: ${order.invoice_buyer_phone}`, MARGIN_LEFT, y, { size: FONT_SIZE_SMALL, color: COLOR_GRAY })
     y -= 12
   }
 

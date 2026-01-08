@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     // Build query
     let query = supabase
       .from('orders')
-      .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address')
+      .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone')
 
     if (orderId) {
       query = query.eq('id', orderId)
@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
       invoice_company_name: orderData.invoice_company_name,
       invoice_tax_id: orderData.invoice_tax_id,
       invoice_address: orderData.invoice_address,
+      invoice_buyer_phone: orderData.invoice_buyer_phone || undefined,
       items
     }
 
