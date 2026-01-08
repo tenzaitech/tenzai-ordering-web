@@ -24,6 +24,9 @@ type OrderInsertResult = {
   order_number: string
 }
 
+// VAT Constants (calculated at checkout only)
+const VAT_RATE = 7 // 7%
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, getTotalPrice, clearCart } = useCart()
@@ -39,6 +42,18 @@ export default function CheckoutPage() {
   const [errorState, setErrorState] = useState<ErrorState>(null)
   const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // Invoice request state
+  const [invoiceRequested, setInvoiceRequested] = useState(false)
+  const [invoiceCompanyName, setInvoiceCompanyName] = useState('')
+  const [invoiceTaxId, setInvoiceTaxId] = useState('')
+  const [invoiceAddress, setInvoiceAddress] = useState('')
+
+  // VAT Calculation (order-level only, menu prices are NET)
+  const subtotalAmount = getTotalPrice() // NET (before VAT) - INTEGER THB
+  const vatAmount = Math.round(subtotalAmount * VAT_RATE / 100 * 100) / 100 // Round to 2 decimals
+  const totalAmountRaw = subtotalAmount + vatAmount // GROSS with decimals (for display)
+  const totalAmountInt = Math.round(totalAmountRaw) // Rounded for INTEGER DB column
 
   const pickupTimes = generatePickupTimes()
 
@@ -92,6 +107,14 @@ export default function CheckoutPage() {
     if (pickupType === 'SCHEDULED' && !pickupTime) {
       alert(language === 'th' ? 'กรุณาเลือกเวลารับอาหาร' : 'Please select pickup time')
       return
+    }
+
+    // Validate invoice fields if requested
+    if (invoiceRequested) {
+      if (!invoiceCompanyName.trim() || !invoiceTaxId.trim() || !invoiceAddress.trim()) {
+        alert(language === 'th' ? 'กรุณากรอกข้อมูลใบกำกับภาษีให้ครบถ้วน' : 'Please fill in all invoice fields')
+        return
+      }
     }
 
     // If activeOrderId exists, navigate to payment instead of creating duplicate order
@@ -197,7 +220,16 @@ export default function CheckoutPage() {
           customer_line_user_id: userId,
           pickup_type: pickupType,
           pickup_time: pickupTimeISO,
-          total_amount: getTotalPrice(),
+          // VAT fields (persisted, never recomputed)
+          subtotal_amount: subtotalAmount,
+          vat_rate: VAT_RATE,
+          vat_amount: vatAmount,
+          total_amount: totalAmountInt, // Rounded for INTEGER column
+          // Invoice fields (immutable after creation)
+          invoice_requested: invoiceRequested,
+          invoice_company_name: invoiceRequested ? invoiceCompanyName.trim() : null,
+          invoice_tax_id: invoiceRequested ? invoiceTaxId.trim() : null,
+          invoice_address: invoiceRequested ? invoiceAddress.trim() : null,
           customer_note: customerNote.trim() || null,
           slip_url: null,
         } as never)
@@ -463,10 +495,19 @@ export default function CheckoutPage() {
               })}
             </div>
 
-            <div className="bg-card border border-primary/30 rounded-lg p-4">
-              <div className="flex justify-between items-center">
+            {/* VAT Breakdown - shown only at checkout */}
+            <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center text-text">
+                <span>{language === 'th' ? 'ยอดรวมสินค้า (ก่อน VAT)' : 'Subtotal (before VAT)'}</span>
+                <span>฿{subtotalAmount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-text">
+                <span>{language === 'th' ? 'VAT 7%' : 'VAT 7%'}</span>
+                <span>฿{vatAmount.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-border pt-3 flex justify-between items-center">
                 <span className="text-lg font-semibold text-text">{t('total')}</span>
-                <span className="text-2xl font-bold text-primary">฿{getTotalPrice()}</span>
+                <span className="text-2xl font-bold text-primary">฿{totalAmountRaw.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -487,6 +528,66 @@ export default function CheckoutPage() {
               className="w-full p-3 bg-card border border-border text-text placeholder:text-muted rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               rows={3}
             />
+          </div>
+
+          {/* VAT Invoice Request Section */}
+          <div className="px-5 py-6 border-b border-border">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={invoiceRequested}
+                onChange={(e) => setInvoiceRequested(e.target.checked)}
+                disabled={isProcessing}
+                className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-0 bg-card disabled:opacity-50"
+              />
+              <span className="text-text font-medium">
+                {language === 'th' ? 'ต้องการใบกำกับภาษี' : 'Request VAT Invoice'}
+              </span>
+            </label>
+
+            {invoiceRequested && (
+              <div className="mt-4 space-y-4 pl-8">
+                <div>
+                  <label className="block text-sm text-muted mb-2">
+                    {language === 'th' ? 'ชื่อบริษัท / ชื่อผู้เสียภาษี' : 'Company Name'} <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceCompanyName}
+                    onChange={(e) => setInvoiceCompanyName(e.target.value)}
+                    placeholder={language === 'th' ? 'บริษัท ABC จำกัด' : 'ABC Company Ltd.'}
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-2">
+                    {language === 'th' ? 'เลขประจำตัวผู้เสียภาษี' : 'Tax ID'} <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceTaxId}
+                    onChange={(e) => setInvoiceTaxId(e.target.value)}
+                    placeholder="0123456789012"
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted mb-2">
+                    {language === 'th' ? 'ที่อยู่สำหรับใบกำกับภาษี' : 'Invoice Address'} <span className="text-primary">*</span>
+                  </label>
+                  <textarea
+                    value={invoiceAddress}
+                    onChange={(e) => setInvoiceAddress(e.target.value)}
+                    placeholder={language === 'th' ? '123 ถนนสุขุมวิท แขวงคลองตัน เขตวัฒนา กรุงเทพฯ 10110' : '123 Sukhumvit Road, Bangkok 10110'}
+                    disabled={isProcessing}
+                    className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </form>
 

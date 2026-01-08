@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { sendStaffNotification, sendCustomerApprovedNotification } from '@/lib/line'
+import { sendStaffNotification, sendCustomerApprovedNotification, sendCustomerInvoiceNotification } from '@/lib/line'
+import { renderInvoicePdf, InvoiceOrderData, InvoiceLineItem } from '@/lib/invoice/pdf'
+import { uploadAndGetSignedUrl } from '@/lib/invoice/storage'
 
 type OrderRow = {
   status: string
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to approve order' }, { status: 500 })
     }
 
-    // Send notifications (fire-and-forget)
+    // Send notifications (fire-and-forget for existing staff/customer)
     Promise.resolve().then(async () => {
       const now = new Date().toISOString()
 
@@ -84,6 +86,74 @@ export async function POST(request: NextRequest) {
         console.error('[API:APPROVE] Customer notification failed:', err)
       }
     })
+
+    // Invoice flow: awaited with try/catch (best-effort, never fails approval)
+    try {
+      // Fetch full order with invoice fields
+      const { data: fullOrderData, error: fullOrderError } = await supabase
+        .from('orders')
+        .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, customer_line_user_id')
+        .eq('id', orderId)
+        .single()
+
+      if (fullOrderError || !fullOrderData) {
+        console.error('[API:APPROVE] Failed to fetch order for invoice:', fullOrderError)
+      } else if (!fullOrderData.invoice_requested) {
+        console.log('[API:APPROVE] Invoice not requested, skipping')
+      } else if (!fullOrderData.invoice_company_name || !fullOrderData.invoice_tax_id || !fullOrderData.invoice_address) {
+        console.error('[API:APPROVE] Missing invoice fields')
+      } else if (!fullOrderData.customer_line_user_id) {
+        console.error('[API:APPROVE] No customer LINE user ID for invoice push')
+      } else {
+        // Fetch order items for the invoice
+        const { data: orderItemsData } = await supabase
+          .from('order_items')
+          .select('name_th, name_en, qty, final_price')
+          .eq('order_id', fullOrderData.id)
+
+        const items: InvoiceLineItem[] = (orderItemsData || []).map((item: { name_th: string; name_en: string; qty: number; final_price: number }) => ({
+          name_th: item.name_th,
+          name_en: item.name_en,
+          qty: item.qty,
+          final_price: item.final_price
+        }))
+
+        // Prepare invoice data (use stored values, never recompute)
+        const invoiceData: InvoiceOrderData = {
+          id: fullOrderData.id,
+          order_number: fullOrderData.order_number,
+          created_at: fullOrderData.created_at,
+          subtotal_amount: fullOrderData.subtotal_amount,
+          vat_rate: fullOrderData.vat_rate,
+          vat_amount: fullOrderData.vat_amount,
+          total_amount: fullOrderData.total_amount,
+          invoice_company_name: fullOrderData.invoice_company_name,
+          invoice_tax_id: fullOrderData.invoice_tax_id,
+          invoice_address: fullOrderData.invoice_address,
+          items
+        }
+
+        // Generate PDF
+        console.log('[API:APPROVE] Generating invoice PDF for:', fullOrderData.order_number)
+        const pdfBuffer = await renderInvoicePdf(invoiceData)
+
+        // Upload to storage and get signed URL
+        const signedUrl = await uploadAndGetSignedUrl(fullOrderData.order_number, pdfBuffer)
+
+        // Send LINE message to customer
+        await sendCustomerInvoiceNotification(
+          fullOrderData.customer_line_user_id,
+          fullOrderData.order_number,
+          fullOrderData.total_amount,
+          signedUrl
+        )
+
+        console.log('[API:APPROVE] Invoice sent successfully:', fullOrderData.order_number)
+      }
+    } catch (err) {
+      // Log but never fail approval
+      console.error('[API:APPROVE] Invoice generation/send failed:', err)
+    }
 
     return NextResponse.json({ status: 'approved' })
   } catch (error) {

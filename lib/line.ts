@@ -869,6 +869,61 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
   console.log('[LINE:CUSTOMER_APPROVED] Success:', orderId)
 }
 
+export async function sendCustomerInvoiceNotification(
+  customerLineUserId: string,
+  orderNumber: string,
+  totalAmount: number,
+  invoicePdfUrl: string
+): Promise<void> {
+  // Validate env vars
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
+  }
+
+  // Build Flex card for invoice notification
+  const formattedTotal = typeof totalAmount === 'number'
+    ? totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : totalAmount
+  const flexCard = buildFlexOrderCard({
+    titleTH: 'ใบกำกับภาษีพร้อมแล้ว',
+    titleEN: 'Your VAT Invoice is ready',
+    fields: [
+      { label: LINE_LABELS.order, value: `#${orderNumber}` },
+      { label: LINE_LABELS.total, value: `฿${formattedTotal}` }
+    ],
+    showButton: true,
+    buttonLabel: 'เปิดใบกำกับภาษี (PDF)',
+    buttonColor: '#0066cc',
+    actionUrl: invoicePdfUrl
+  })
+
+  // Send via LINE Messaging API
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      to: customerLineUserId,
+      messages: [
+        {
+          type: 'flex',
+          altText: `ใบกำกับภาษีพร้อมแล้ว #${orderNumber}`,
+          contents: flexCard
+        }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`LINE API error ${response.status}: ${errorText}`)
+  }
+
+  console.log('[LINE:INVOICE] Success: order', orderNumber)
+}
+
 export async function sendCustomerNotification(orderId: string, status: 'ready' | 'picked_up'): Promise<void> {
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
