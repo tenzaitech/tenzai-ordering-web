@@ -24,7 +24,7 @@ type Order = {
   order_number: string
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number
   customer_note: string | null
   slip_notified_at: string | null
   status: 'pending' | 'approved' | 'rejected' | 'ready' | 'picked_up' | null
@@ -269,7 +269,7 @@ export default function OrderDetailPage() {
                 {/* Total - Bottom */}
                 <div className="flex items-center justify-between pt-4 mt-3 border-t border-border">
                   <span className="text-base font-medium text-muted">{t('total')}</span>
-                  <span className="text-2xl font-bold text-primary">฿{order.total_amount}</span>
+                  <span className="text-2xl font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</span>
                 </div>
               </div>
 

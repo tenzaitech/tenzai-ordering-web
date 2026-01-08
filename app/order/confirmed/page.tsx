@@ -219,7 +219,7 @@ function OrderConfirmedContent() {
           <div className="bg-card border border-primary/30 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-text">{t('total')}</span>
-              <span className="text-2xl font-bold text-primary">฿{order.total_amount}</span>
+              <span className="text-2xl font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</span>
             </div>
           </div>
         </div>

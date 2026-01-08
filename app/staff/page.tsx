@@ -21,7 +21,7 @@ type Order = {
   customer_phone: string
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number
   customer_note: string | null
   status: 'approved' | 'ready' | 'picked_up' | null
   created_at: string
@@ -404,7 +404,7 @@ export default function StaffBoardPage() {
                     </div>
                   )}
                   <div className="mb-3 pb-3 border-b border-border">
-                    <p className="text-lg font-bold text-primary">฿{order.total_amount}</p>
+                    <p className="text-lg font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</p>
                   </div>
                   <button
                     onClick={() => handleStatusChangeRequest(order.id, order.order_number, 'ready')}
@@ -443,7 +443,7 @@ export default function StaffBoardPage() {
                     <p className="text-sm text-muted">{order.items.reduce((sum, item) => sum + item.qty, 0)} items</p>
                   </div>
                   <div className="mb-3 pb-3 border-b border-border">
-                    <p className="text-lg font-bold text-primary">฿{order.total_amount}</p>
+                    <p className="text-lg font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</p>
                   </div>
                   <button
                     onClick={() => handleStatusChangeRequest(order.id, order.order_number, 'picked_up')}
@@ -481,7 +481,7 @@ export default function StaffBoardPage() {
                       <td className="px-4 py-3 text-sm font-medium text-text">#{order.order_number}</td>
                       <td className="px-4 py-3 text-sm text-text">{order.customer_name}</td>
                       <td className="px-4 py-3 text-sm text-muted">{order.items.reduce((sum, item) => sum + item.qty, 0)} items</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-primary">฿{order.total_amount}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-primary">฿{order.total_amount_dec?.toFixed(2)}</td>
                       <td className="px-4 py-3 text-sm text-muted">{new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
                     </tr>
                   ))}

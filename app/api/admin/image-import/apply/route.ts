@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     // Get all file entries
     const files: File[] = []
-    for (const [key, value] of formData.entries()) {
+    for (const [key, value] of Array.from(formData.entries())) {
       if (key.startsWith('file_') && value instanceof File) {
         files.push(value)
       }

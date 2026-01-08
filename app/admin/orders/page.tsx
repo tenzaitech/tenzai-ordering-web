@@ -384,7 +384,7 @@ export default function AdminOrdersPage() {
                   <td className="px-4 py-4 text-text font-medium">{order.order_number}</td>
                   <td className="px-4 py-4 text-text">{order.customer_name}</td>
                   <td className="px-4 py-4 text-text">{formatPickupTime(order.pickup_type, order.pickup_time)}</td>
-                  <td className="px-4 py-4 text-primary font-semibold">฿{order.total_amount}</td>
+                  <td className="px-4 py-4 text-primary font-semibold">฿{order.total_amount_dec?.toFixed(2)}</td>
                   <td className="px-4 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                       {order.status || 'pending'}
@@ -518,7 +518,7 @@ export default function AdminOrdersPage() {
               <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-text">Total Amount</span>
-                  <span className="text-3xl font-bold text-primary">฿{selectedOrder.total_amount}</span>
+                  <span className="text-3xl font-bold text-primary">฿{selectedOrder.total_amount_dec?.toFixed(2)}</span>
                 </div>
               </div>
 

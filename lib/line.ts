@@ -13,7 +13,7 @@ type OrderRow = {
   customer_phone: string
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number
   customer_note: string | null
   slip_url: string | null
   customer_line_user_id: string | null
@@ -485,7 +485,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
       { label: STAFF_LABELS.customerName, value: order.customer_name },
       { label: STAFF_LABELS.phone, value: order.customer_phone },
       { label: STAFF_LABELS.pickupTime, value: pickupText },
-      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount_dec?.toFixed(2)}` }
     ],
     items: itemsList,
     noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
@@ -612,7 +612,7 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
       { label: STAFF_LABELS.customerName, value: order.customer_name },
       { label: STAFF_LABELS.phone, value: order.customer_phone },
       { label: STAFF_LABELS.pickupTime, value: pickupText },
-      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount_dec?.toFixed(2)}` }
     ],
     items: itemsList,
     noteLabel: order.customer_note ? STAFF_LABELS.note : undefined,
@@ -685,7 +685,7 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
       { label: STAFF_LABELS.order, value: `#${order.order_number}` },
       { label: STAFF_LABELS.customerName, value: order.customer_name },
       { label: STAFF_LABELS.pickupTime, value: pickupText },
-      { label: STAFF_LABELS.total, value: `฿${order.total_amount}` }
+      { label: STAFF_LABELS.total, value: `฿${order.total_amount_dec?.toFixed(2)}` }
     ],
     noteLabel: 'Changes',
     noteValue: order.adjustment_note || undefined,
@@ -758,7 +758,7 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
       { label: LINE_LABELS.status, value: 'รอตรวจสอบการชำระเงิน' },
-      { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+      { label: LINE_LABELS.total, value: `฿${order.total_amount_dec?.toFixed(2)}` }
     ],
     showButton: false
   })
@@ -841,7 +841,7 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
   const fields: FlexField[] = [
     { label: LINE_LABELS.order, value: `#${order.order_number}` },
     { label: LINE_LABELS.status, value: 'ชำระเงินสำเร็จ' },
-    { label: LINE_LABELS.total, value: `฿${order.total_amount}` }
+    { label: LINE_LABELS.total, value: `฿${order.total_amount_dec?.toFixed(2)}` }
   ]
 
   // Add pickup time if available

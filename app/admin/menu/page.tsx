@@ -51,7 +51,8 @@ async function getMenuData() {
     return { categories: [], menuItems: [], popularMenus: [], menuCategoryMap: {} }
   }
 
-  const popularMenus: string[] = popularResult.data?.value?.menu_codes || []
+  const popularValue = popularResult.data?.value as { menu_codes?: string[] } | undefined
+  const popularMenus: string[] = popularValue?.menu_codes || []
 
   // Build map of menu_code -> category_codes
   const menuCategoryMap: Record<string, string[]> = {}

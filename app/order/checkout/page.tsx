@@ -253,10 +253,6 @@ export default function CheckoutPage() {
           vat_rate: VAT_RATE,
           vat_amount_dec: Number(vatAmount),
           total_amount_dec: Number(totalAmount),
-          // Legacy integer fields (for backward compatibility only)
-          subtotal_amount: Math.round(subtotalAmount),
-          vat_amount: vatAmount, // float column, no rounding needed
-          total_amount: Math.round(totalAmount),
           // Invoice fields (immutable after creation)
           invoice_requested: invoiceRequested,
           invoice_company_name: invoiceRequested ? invoiceCompanyName.trim() : null,

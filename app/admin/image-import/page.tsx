@@ -166,7 +166,7 @@ export default function ImageImportPage() {
     }
     // Return only groups with more than one file
     const conflicts = new Map<string, string[]>()
-    for (const [code, filenames] of groups.entries()) {
+    for (const [code, filenames] of Array.from(groups.entries())) {
       if (filenames.length > 1) {
         conflicts.set(code, filenames)
       }
@@ -176,7 +176,7 @@ export default function ImageImportPage() {
 
   // Get conflict group for a row
   const getConflictGroup = useCallback((filename: string): string[] | null => {
-    for (const [, filenames] of conflictGroups.entries()) {
+    for (const [, filenames] of Array.from(conflictGroups.entries())) {
       if (filenames.includes(filename)) {
         return filenames
       }

@@ -12,11 +12,11 @@ type Order = {
   order_number: string
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number | null
   customer_note: string | null
   slip_notified_at: string | null
-  status: 'pending' | 'approved' | 'rejected' | 'ready' | 'picked_up' | null
-  created_at: string
+  status: string
+  created_at: string | null
 }
 
 export default function OrderStatusPage() {
@@ -48,7 +48,7 @@ export default function OrderStatusPage() {
       // Query orders for this user (explicit select, slip_url excluded for privacy)
       const { data, error: queryError } = await supabase
         .from('orders')
-        .select('id, order_number, status, pickup_type, pickup_time, total_amount, customer_note, created_at, slip_notified_at')
+        .select('id, order_number, status, pickup_type, pickup_time, total_amount_dec, customer_note, created_at, slip_notified_at')
         .eq('customer_line_user_id', userId)
         .order('created_at', { ascending: false })
         .limit(5)
@@ -202,7 +202,7 @@ export default function OrderStatusPage() {
 
                     {/* Date + Pickup Type */}
                     <div className="mb-3 pb-3 border-b border-border flex items-center justify-between">
-                      <p className="text-sm text-muted">{formatDate(order.created_at)}</p>
+                      <p className="text-sm text-muted">{order.created_at ? formatDate(order.created_at) : '-'}</p>
                       {getPickupLabel(order.pickup_type, order.pickup_time) && (
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                           order.pickup_type === 'ASAP'
@@ -217,7 +217,7 @@ export default function OrderStatusPage() {
                     {/* Total */}
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm text-muted">{t('total')}</span>
-                      <span className="text-xl font-bold text-primary">฿{order.total_amount}</span>
+                      <span className="text-xl font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</span>
                     </div>
 
                     {/* View Details indicator */}

@@ -24,22 +24,10 @@ type AdminSettingsRow = {
 type OrderRow = {
   [key: string]: unknown
   id: string
-  total_amount: number
-  // Decimal columns (preferred if present)
-  subtotal_amount_dec?: number | null
-  vat_amount_dec?: number | null
-  total_amount_dec?: number | null
-  // Legacy columns (fallback)
-  subtotal_amount?: number | null
-  vat_amount?: number | null
-  vat_rate?: number | null
-}
-
-// Helper: Get decimal amount with fallback to legacy column
-function getDecimalAmount(dec: number | null | undefined, legacy: number | null | undefined): number {
-  if (dec != null) return dec
-  if (legacy != null) return legacy
-  return 0
+  subtotal_amount_dec: number
+  vat_amount_dec: number
+  total_amount_dec: number
+  vat_rate: number
 }
 
 // Helper: Format amount with 2 decimals
@@ -57,6 +45,7 @@ function PaymentPageContent() {
   const [order, setOrder] = useState<any>(null)
   const [orderItems, setOrderItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [moneyDataMissing, setMoneyDataMissing] = useState(false)
   const [slipFile, setSlipFile] = useState<File | null>(null)
   const [slipPreview, setSlipPreview] = useState<string | null>(null)
   const [processingState, setProcessingState] = useState<ProcessingState>('IDLE')
@@ -149,6 +138,18 @@ function PaymentPageContent() {
 
         setOrder(data)
 
+        // Check if required money fields are present
+        if (data.subtotal_amount_dec == null || data.vat_amount_dec == null || data.total_amount_dec == null) {
+          console.error('[PAYMENT] Missing *_dec money fields:', {
+            subtotal: data.subtotal_amount_dec,
+            vat: data.vat_amount_dec,
+            total: data.total_amount_dec
+          })
+          setMoneyDataMissing(true)
+          setLoading(false)
+          return
+        }
+
         // Fetch order items from DB for summary display
         const { data: itemsData } = await supabase
           .from('order_items')
@@ -160,8 +161,7 @@ function PaymentPageContent() {
         setLoading(false)
 
         // Generate PromptPay QR code with locked amount using DB promptpay_id
-        // Prefer total_amount_dec (2 decimals), fallback to total_amount (int)
-        const qrAmount = getDecimalAmount(data.total_amount_dec, data.total_amount)
+        const qrAmount = data.total_amount_dec
         if (qrAmount > 0) {
           const payload = generatePromptPayPayload(dbPromptPayId, qrAmount)
           const encodedPayload = encodeURIComponent(payload)
@@ -394,6 +394,36 @@ function PaymentPageContent() {
     )
   }
 
+  // Money data missing error state
+  if (moneyDataMissing) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center px-5">
+        <div className="max-w-sm text-center">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-text mb-2">
+            {language === 'th' ? 'ไม่พบข้อมูลยอดเงินของออเดอร์' : 'Order Amount Data Missing'}
+          </h2>
+          <p className="text-muted mb-6">
+            {language === 'th' ? 'กรุณาลองใหม่อีกครั้ง หรือติดต่อร้านค้า' : 'Please try again or contact the store'}
+          </p>
+          <button
+            onClick={() => {
+              triggerHaptic()
+              router.push('/order/status')
+            }}
+            className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            {language === 'th' ? 'กลับหน้าสถานะออเดอร์' : 'Back to Order Status'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-bg">
       {/* Error Modal */}
@@ -546,20 +576,20 @@ function PaymentPageContent() {
               {/* Subtotal */}
               <div className="flex justify-between items-center text-sm mb-2">
                 <span className="text-muted">{language === 'th' ? 'ราคาสินค้า (ก่อน VAT)' : 'Subtotal (before VAT)'}</span>
-                <span className="text-text">฿{formatAmount(getDecimalAmount(order?.subtotal_amount_dec, order?.subtotal_amount))}</span>
+                <span className="text-text">฿{formatAmount(order.subtotal_amount_dec)}</span>
               </div>
               {/* VAT */}
               <div className="flex justify-between items-center text-sm mb-3">
                 <span className="text-muted">
-                  {language === 'th' ? `VAT ${order?.vat_rate ?? 7}%` : `VAT ${order?.vat_rate ?? 7}%`}
+                  {language === 'th' ? `VAT ${order.vat_rate}%` : `VAT ${order.vat_rate}%`}
                 </span>
-                <span className="text-text">฿{formatAmount(getDecimalAmount(order?.vat_amount_dec, order?.vat_amount))}</span>
+                <span className="text-text">฿{formatAmount(order.vat_amount_dec)}</span>
               </div>
               {/* Divider */}
               <div className="border-t border-border pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-text">{t('total')}</span>
-                  <span className="text-2xl font-bold text-primary">฿{formatAmount(getDecimalAmount(order?.total_amount_dec, order?.total_amount))}</span>
+                  <span className="text-2xl font-bold text-primary">฿{formatAmount(order.total_amount_dec)}</span>
                 </div>
               </div>
             </div>
@@ -588,7 +618,7 @@ function PaymentPageContent() {
                   {/* Amount Display */}
                   <div className="text-center mb-3">
                     <p className="text-xs text-muted mb-1">{language === 'th' ? 'ยอดชำระ' : 'Amount'}</p>
-                    <p className="text-2xl font-bold text-primary">฿{formatAmount(getDecimalAmount(order?.total_amount_dec, order?.total_amount))}</p>
+                    <p className="text-2xl font-bold text-primary">฿{formatAmount(order.total_amount_dec)}</p>
                   </div>
 
                   {/* Recipient Info */}

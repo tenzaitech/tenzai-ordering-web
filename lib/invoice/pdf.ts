@@ -158,10 +158,10 @@ export interface InvoiceOrderData {
   id: string
   order_number: string
   created_at: string
-  subtotal_amount: number
+  subtotal_amount_dec: number
   vat_rate: number
-  vat_amount: number
-  total_amount: number
+  vat_amount_dec: number
+  total_amount_dec: number
   invoice_company_name: string
   invoice_tax_id: string
   invoice_address: string
@@ -361,7 +361,7 @@ function diagLog(...args: unknown[]): void {
 
 /** Dump Unicode codepoints for a string */
 function dumpCodepoints(label: string, text: string): string {
-  const codepoints = [...text].map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+  const codepoints = Array.from(text).map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
   return `[${label}] "${text}" → ${codepoints}`
 }
 
@@ -369,7 +369,7 @@ function dumpCodepoints(label: string, text: string): string {
 function dumpRuns(text: string, runs: Array<{ text: string; isThai: boolean }>): void {
   console.log(`[DIAG:RUNS] Input: "${text}"`)
   runs.forEach((run, i) => {
-    const codepoints = [...run.text].map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
+    const codepoints = Array.from(run.text).map(c => `U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`).join(' ')
     console.log(`  Run ${i}: type=${run.isThai ? 'THAI' : 'LATIN'} text="${run.text}" codes=[${codepoints}]`)
   })
 }
@@ -917,9 +917,9 @@ export async function renderInvoicePdf(order: InvoiceOrderData): Promise<Uint8Ar
   // ============================================================
   const lineAmounts: number[] = items.map(item => item.qty * item.final_price)
   const computedSum = lineAmounts.reduce((sum, amt) => sum + amt, 0)
-  // Tolerance: 0.5 for integer THB storage, or 0.01 for decimal
-  const tolerance = Number.isInteger(order.subtotal_amount) ? 0.5 : 0.01
-  const showLineAmounts = Math.abs(computedSum - order.subtotal_amount) <= tolerance
+  // Tolerance: 0.01 for decimal storage
+  const tolerance = 0.01
+  const showLineAmounts = Math.abs(computedSum - order.subtotal_amount_dec) <= tolerance
 
   // Render items
   while (itemIndex < items.length) {
@@ -1028,13 +1028,13 @@ export async function renderInvoicePdf(order: InvoiceOrderData): Promise<Uint8Ar
 
   // Subtotal
   drawTextSmart(currentPage, L.subtotal, totalsLabelX, y, { size: FONT_SIZE_BODY })
-  const subtotalText = `${formatAmount(order.subtotal_amount)} ${L.currency}`
+  const subtotalText = `${formatAmount(order.subtotal_amount_dec)} ${L.currency}`
   drawTextRight(currentPage, subtotalText, y, { size: FONT_SIZE_BODY, rightX: totalsValueX })
   y -= 18
 
   // VAT
   drawTextSmart(currentPage, `${L.vat} ${order.vat_rate}%`, totalsLabelX, y, { size: FONT_SIZE_BODY })
-  const vatText = `${formatAmount(order.vat_amount)} ${L.currency}`
+  const vatText = `${formatAmount(order.vat_amount_dec)} ${L.currency}`
   drawTextRight(currentPage, vatText, y, { size: FONT_SIZE_BODY, rightX: totalsValueX })
   y -= 18
 
@@ -1048,7 +1048,7 @@ export async function renderInvoicePdf(order: InvoiceOrderData): Promise<Uint8Ar
 
   // Total
   drawTextSmart(currentPage, L.total, totalsLabelX, y, { bold: true, size: 12 })
-  const totalText = `${formatAmount(order.total_amount)} ${L.currency}`
+  const totalText = `${formatAmount(order.total_amount_dec)} ${L.currency}`
   drawTextRight(currentPage, totalText, y, { bold: true, size: 12, rightX: totalsValueX })
 
   // ============================================================

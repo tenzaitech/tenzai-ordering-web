@@ -119,7 +119,7 @@ async function getMenuItem(menuCode: string) {
       }
 
       // Merge and deduplicate option group IDs (menu-level first, then category-level)
-      const allOptionGroupIds = [...new Set([...menuOptionGroupIds, ...categoryOptionGroupIds])]
+      const allOptionGroupIds = Array.from(new Set([...menuOptionGroupIds, ...categoryOptionGroupIds]))
 
       return {
         id: dbItem.menu_code,

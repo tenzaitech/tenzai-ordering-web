@@ -284,7 +284,7 @@ export default function CategoriesClient({
     setTempSchedules(schedules)
 
     // Detect if it's "every day" mode (all 7 days with same time)
-    const days = [...new Set(schedules.map(s => s.day_of_week))]
+   const days = Array.from(new Set(schedules.map(s => s.day_of_week)))
     if (days.length === 7 && schedules.length === 7) {
       const firstSchedule = schedules[0]
       const allSameTime = schedules.every(
@@ -723,7 +723,7 @@ export default function CategoriesClient({
                           <div className="flex flex-wrap gap-1">
                             {(() => {
                               const schedules = categorySchedules[category.category_code]
-                              const days = [...new Set(schedules.map(s => s.day_of_week))].sort()
+                              const days = Array.from(new Set(schedules.map(s => s.day_of_week))).sort()
                               return (
                                 <span className="text-xs text-teal-400">
                                   {days.map(d => DAY_NAMES[d]).join(', ')}

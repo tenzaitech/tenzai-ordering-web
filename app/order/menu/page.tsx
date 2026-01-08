@@ -73,11 +73,12 @@ async function fetchCategoryOrder(): Promise<string[]> {
     .eq('key', CATEGORY_ORDER_KEY)
     .single()
 
-  if (error || !data?.value?.order) {
+  const value = data?.value as { order?: string[] } | undefined
+  if (error || !value?.order) {
     return []
   }
 
-  return data.value.order as string[]
+  return value.order
 }
 
 /**
@@ -90,11 +91,12 @@ async function fetchPopularMenus(): Promise<string[]> {
     .eq('key', POPULAR_MENUS_KEY)
     .single()
 
-  if (error || !data?.value?.menu_codes) {
+  const value = data?.value as { menu_codes?: string[] } | undefined
+  if (error || !value?.menu_codes) {
     return []
   }
 
-  return data.value.menu_codes as string[]
+  return value.menu_codes
 }
 
 /**
@@ -107,11 +109,12 @@ async function fetchHiddenCategories(): Promise<string[]> {
     .eq('key', HIDDEN_CATEGORIES_KEY)
     .single()
 
-  if (error || !data?.value?.hidden) {
+  const value = data?.value as { hidden?: string[] } | undefined
+  if (error || !value?.hidden) {
     return []
   }
 
-  return data.value.hidden as string[]
+  return value.hidden
 }
 
 /**
@@ -129,7 +132,7 @@ function sortCategoriesByOrder(
 
   // Build reverse map: name → code
   const nameToCode = new Map<string, string>()
-  for (const [code, name] of categoryCodeToName) {
+  for (const [code, name] of Array.from(categoryCodeToName)) {
     nameToCode.set(name, code)
   }
 
@@ -284,7 +287,7 @@ async function fetchMenuDataFromDB() {
 
     // Also build code-to-name map for client
     const categoryCodeToNameMap: Record<string, string> = {}
-    for (const [code, name] of categoryMap) {
+    for (const [code, name] of Array.from(categoryMap)) {
       categoryCodeToNameMap[code] = name
     }
 

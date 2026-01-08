@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       // Fetch full order with invoice fields
       const { data: fullOrderData, error: fullOrderError } = await supabase
         .from('orders')
-        .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone, customer_line_user_id')
+        .select('id, order_number, created_at, subtotal_amount_dec, vat_rate, vat_amount_dec, total_amount_dec, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone, customer_line_user_id')
         .eq('id', orderId)
         .single()
 
@@ -122,14 +122,14 @@ export async function POST(request: NextRequest) {
         const invoiceData: InvoiceOrderData = {
           id: fullOrderData.id,
           order_number: fullOrderData.order_number,
-          created_at: fullOrderData.created_at,
-          subtotal_amount: fullOrderData.subtotal_amount,
-          vat_rate: fullOrderData.vat_rate,
-          vat_amount: fullOrderData.vat_amount,
-          total_amount: fullOrderData.total_amount,
-          invoice_company_name: fullOrderData.invoice_company_name,
-          invoice_tax_id: fullOrderData.invoice_tax_id,
-          invoice_address: fullOrderData.invoice_address,
+          created_at: fullOrderData.created_at!, // Always set when order is created
+          subtotal_amount_dec: fullOrderData.subtotal_amount_dec!,
+          vat_rate: fullOrderData.vat_rate!,
+          vat_amount_dec: fullOrderData.vat_amount_dec!,
+          total_amount_dec: fullOrderData.total_amount_dec!,
+          invoice_company_name: fullOrderData.invoice_company_name!,
+          invoice_tax_id: fullOrderData.invoice_tax_id!,
+          invoice_address: fullOrderData.invoice_address!,
           invoice_buyer_phone: fullOrderData.invoice_buyer_phone || undefined,
           items
         }
@@ -143,9 +143,9 @@ export async function POST(request: NextRequest) {
 
         // Send LINE message to customer
         await sendCustomerInvoiceNotification(
-          fullOrderData.customer_line_user_id,
+          fullOrderData.customer_line_user_id!,
           fullOrderData.order_number,
-          fullOrderData.total_amount,
+          fullOrderData.total_amount_dec!,
           signedUrl
         )
 

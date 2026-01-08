@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     }
 
     const collisionSlugs = new Set<string>()
-    for (const [slug, menuCodes] of slugToMenus.entries()) {
+    for (const [slug, menuCodes] of Array.from(slugToMenus.entries())) {
       if (menuCodes.length > 1) {
         collisionSlugs.add(slug)
         console.log(`[IMAGE_IMPORT_PREVIEW] Slug collision: "${slug}" -> [${menuCodes.join(', ')}]`)

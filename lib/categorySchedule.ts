@@ -83,7 +83,7 @@ export function isCategoryAvailable(
   const { dayOfWeek, timeString } = getBangkokNow()
 
   // Get unique scheduled days
-  const scheduledDays = [...new Set(categorySchedules.map(s => s.day_of_week))].sort()
+  const scheduledDays = Array.from(new Set(categorySchedules.map(s => s.day_of_week))).sort()
 
   // Check if today is a scheduled day
   const todayHasSchedule = scheduledDays.includes(dayOfWeek)

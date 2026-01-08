@@ -6,7 +6,7 @@ type OrderRow = {
   id: string
   status: string
   slip_notified_at: string | null
-  total_amount: number
+  total_amount_dec: number
 }
 
 type MenuItemRow = {
@@ -43,7 +43,7 @@ export async function POST(
     // Fetch order with ownership check
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, slip_notified_at, total_amount')
+      .select('id, status, slip_notified_at, total_amount_dec')
       .eq('id', orderId)
       .eq('customer_line_user_id', userId)
       .single()
@@ -129,7 +129,8 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to add item' }, { status: 500 })
     }
 
-    // Recalculate total from DB (race-safe)
+    // Recalculate totals from DB (race-safe)
+    const VAT_RATE = 7 // 7%
     const { data: allItemsData, error: itemsError } = await supabase
       .from('order_items')
       .select('final_price, qty')
@@ -141,11 +142,17 @@ export async function POST(
     }
 
     const allItems = allItemsData as OrderItemRow[]
-    const recalculatedTotal = allItems.reduce((sum, item) => sum + (item.final_price * item.qty), 0)
+    const subtotalAmount = allItems.reduce((sum, item) => sum + (item.final_price * item.qty), 0)
+    const vatAmount = subtotalAmount * VAT_RATE / 100
+    const totalAmount = subtotalAmount + vatAmount
 
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ total_amount: recalculatedTotal } as never)
+      .update({
+        subtotal_amount_dec: subtotalAmount,
+        vat_amount_dec: vatAmount,
+        total_amount_dec: totalAmount,
+      } as never)
       .eq('id', orderId)
 
     if (updateError) {
@@ -156,7 +163,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       item_id: newItem!.id,
-      new_total: recalculatedTotal,
+      new_total: totalAmount,
     })
   } catch (error) {
     console.error('[API:ADD_ITEM] Error:', error)

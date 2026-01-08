@@ -9,7 +9,7 @@ type OrderRow = {
   created_at: string
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number
   customer_note: string | null
   slip_notified_at: string | null
 }
@@ -24,7 +24,7 @@ type OrderItemIdRow = {
 }
 
 // Safe order fields (slip_url excluded)
-const ORDER_SAFE_FIELDS = 'id, order_number, status, created_at, pickup_type, pickup_time, total_amount, customer_note, slip_notified_at'
+const ORDER_SAFE_FIELDS = 'id, order_number, status, created_at, pickup_type, pickup_time, total_amount_dec, customer_note, slip_notified_at'
 const ITEM_SAFE_FIELDS = 'id, menu_item_id, name_th, name_en, qty, base_price, final_price, note, selected_options_json'
 
 // GET: Fetch order for editing with ownership check
@@ -178,8 +178,9 @@ export async function POST(
       priceMap.set(mp.menu_code, mp.price)
     }
 
-    // Recalculate total using server-known base prices where available
-    let totalAmount = 0
+    // Recalculate totals using server-known base prices where available
+    const VAT_RATE = 7 // 7%
+    let subtotalAmount = 0
     const validatedItems: ItemUpdate[] = []
 
     for (const item of items) {
@@ -211,8 +212,12 @@ export async function POST(
         final_price: finalPrice,
       })
 
-      totalAmount += finalPrice * item.qty
+      subtotalAmount += finalPrice * item.qty
     }
+
+    // Calculate VAT and total (no rounding)
+    const vatAmount = subtotalAmount * VAT_RATE / 100
+    const totalAmount = subtotalAmount + vatAmount
 
     // === SAFE UPDATE SEQUENCE ===
     // Step 1: Get existing item IDs
@@ -287,9 +292,11 @@ export async function POST(
       }
     }
 
-    // Step 3: Update order fields
+    // Step 3: Update order fields (all three *_dec fields)
     const orderUpdate: any = {
-      total_amount: totalAmount,
+      subtotal_amount_dec: subtotalAmount,
+      vat_amount_dec: vatAmount,
+      total_amount_dec: totalAmount,
     }
     if (pickup_type !== undefined) {
       orderUpdate.pickup_type = pickup_type

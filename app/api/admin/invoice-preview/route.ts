@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       logs.forEach(line => console.log(line))
       console.log('='.repeat(60) + '\n')
 
-      return new NextResponse(pdf, {
+      return new NextResponse(Buffer.from(pdf), {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     // Build query
     let query = supabase
       .from('orders')
-      .select('id, order_number, created_at, subtotal_amount, vat_rate, vat_amount, total_amount, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone')
+      .select('id, order_number, created_at, subtotal_amount_dec, vat_rate, vat_amount_dec, total_amount_dec, invoice_requested, invoice_company_name, invoice_tax_id, invoice_address, invoice_buyer_phone')
 
     if (orderId) {
       query = query.eq('id', orderId)
@@ -106,14 +106,14 @@ export async function GET(request: NextRequest) {
     const invoiceData: InvoiceOrderData = {
       id: orderData.id,
       order_number: orderData.order_number,
-      created_at: orderData.created_at,
-      subtotal_amount: orderData.subtotal_amount,
-      vat_rate: orderData.vat_rate,
-      vat_amount: orderData.vat_amount,
-      total_amount: orderData.total_amount,
-      invoice_company_name: orderData.invoice_company_name,
-      invoice_tax_id: orderData.invoice_tax_id,
-      invoice_address: orderData.invoice_address,
+      created_at: orderData.created_at!,
+      subtotal_amount_dec: orderData.subtotal_amount_dec!,
+      vat_rate: orderData.vat_rate!,
+      vat_amount_dec: orderData.vat_amount_dec!,
+      total_amount_dec: orderData.total_amount_dec!,
+      invoice_company_name: orderData.invoice_company_name!,
+      invoice_tax_id: orderData.invoice_tax_id!,
+      invoice_address: orderData.invoice_address!,
       invoice_buyer_phone: orderData.invoice_buyer_phone || undefined,
       items
     }
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const pdfBuffer = await renderInvoicePdf(invoiceData)
 
     // Return PDF directly
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

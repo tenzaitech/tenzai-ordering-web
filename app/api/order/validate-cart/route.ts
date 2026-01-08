@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get unique menu codes from cart
-    const menuCodes = [...new Set(items.map(item => item.menuId).filter(Boolean))]
+    const menuCodes = Array.from(new Set(items.map(item => item.menuId).filter(Boolean)))
 
     if (menuCodes.length === 0) {
       return NextResponse.json({ valid: true })
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Get unique category codes that need schedule checking
     const allCategoryCodes = new Set<string>()
-    for (const codes of menuCategoryMap.values()) {
+    for (const codes of Array.from(menuCategoryMap.values())) {
       for (const code of codes) {
         allCategoryCodes.add(code)
       }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Check availability for each category
     const unavailableCategories: { code: string; nextWindow?: { start: string; end: string } }[] = []
 
-    for (const categoryCode of allCategoryCodes) {
+    for (const categoryCode of Array.from(allCategoryCodes)) {
       const result = isCategoryAvailable(categoryCode, schedules)
       if (!result.available) {
         unavailableCategories.push({ code: categoryCode, nextWindow: result.nextWindow })
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 
       if (invalidItems.length > 0) {
         // Build error message
-        const categoryNames = await getCategoryNames([...unavailableCodes])
+        const categoryNames = await getCategoryNames(Array.from(unavailableCodes))
         const messages = invalidItems.map(item => {
           const catName = categoryNames.get(item.category) || item.category
           if (item.nextWindow) {
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           valid: false,
           error: 'Some items are outside their category schedule',
           error_th: 'บางรายการไม่อยู่ในช่วงเวลาที่เปิดให้บริการ',
-          details: [...new Set(messages)],
+          details: Array.from(new Set(messages)),
           invalidItems
         }, { status: 400 })
       }

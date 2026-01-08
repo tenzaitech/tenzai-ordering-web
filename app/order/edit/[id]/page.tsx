@@ -24,7 +24,7 @@ type Order = {
   status: string | null
   pickup_type: string
   pickup_time: string | null
-  total_amount: number
+  total_amount_dec: number
   customer_note: string | null
   slip_notified_at: string | null
 }

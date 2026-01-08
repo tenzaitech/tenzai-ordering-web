@@ -202,7 +202,7 @@ export default function AdminOrderDetailPage() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-primary">฿{order.total_amount}</p>
+              <p className="text-3xl font-bold text-primary">฿{order.total_amount_dec?.toFixed(2)}</p>
             </div>
           </div>
 

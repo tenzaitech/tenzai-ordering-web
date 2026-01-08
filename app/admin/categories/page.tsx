@@ -69,11 +69,12 @@ async function getCategoryOrder(): Promise<string[]> {
     .eq('key', SETTINGS_KEY)
     .single()
 
-  if (error || !data?.value?.order) {
+  const value = data?.value as { order?: string[] } | undefined
+  if (error || !value?.order) {
     return []
   }
 
-  return data.value.order as string[]
+  return value.order
 }
 
 async function getHiddenCategories(): Promise<string[]> {
@@ -83,11 +84,12 @@ async function getHiddenCategories(): Promise<string[]> {
     .eq('key', HIDDEN_KEY)
     .single()
 
-  if (error || !data?.value?.hidden) {
+  const value = data?.value as { hidden?: string[] } | undefined
+  if (error || !value?.hidden) {
     return []
   }
 
-  return data.value.hidden as string[]
+  return value.hidden
 }
 
 async function getOptionGroups(): Promise<OptionGroup[]> {
