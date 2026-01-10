@@ -14,77 +14,24 @@ export default function AdminMenuDataPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setImporting(true)
     try {
-      const XLSX = await import('xlsx')
+      // Upload file to server for parsing (xlsx vulnerability contained server-side)
+      const formData = new FormData()
+      formData.append('file', file)
 
-      const arrayBuffer = await file.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const parseResponse = await fetch('/api/admin/parse-xlsx', {
+        method: 'POST',
+        body: formData
+      })
 
-      const data: ParsedMenuData = {
-        categories: [],
-        menu: [],
-        options: [],
-        menu_option_groups: []
+      const parseResult = await parseResponse.json()
+      if (!parseResponse.ok) {
+        alert(parseResult.error || 'Failed to parse file')
+        return
       }
 
-      // Parse categories
-      if (workbook.SheetNames.includes('categories')) {
-        const sheet = workbook.Sheets['categories']
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[]
-        data.categories = rows.map(r => ({
-          category_name: String(r.category_name || '').trim()
-        }))
-      }
-
-      // Parse menu
-      if (workbook.SheetNames.includes('menu')) {
-        const sheet = workbook.Sheets['menu']
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[]
-        data.menu = rows.map(r => ({
-          menu_code: String(r.menu_code || '').trim(),
-          category_name: String(r.category_name || '').trim(),
-          menu_name: String(r.menu_name || '').trim(),
-          menu_name_2: r.menu_name_2 ? String(r.menu_name_2).trim() : undefined,
-          barcode: r.barcode ? String(r.barcode).trim() : undefined,
-          description: r.description ? String(r.description).trim() : undefined,
-          price: Number(r.price) || 0,
-          image_url: r.image_url ? String(r.image_url).trim() : undefined
-        }))
-      }
-
-      // Parse options (wide format)
-      if (workbook.SheetNames.includes('options')) {
-        const sheet = workbook.Sheets['options']
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[]
-        data.options = rows.map(r => ({
-          option_group_name: String(r.option_group_name || '').trim(),
-          is_required: Boolean(r.is_required),
-          max_select: Number(r.max_select) || 1,
-          option_name_1: r.option_name_1 ? String(r.option_name_1).trim() : undefined,
-          price_1: r.price_1 !== undefined && r.price_1 !== '' ? Number(r.price_1) : undefined,
-          option_name_2: r.option_name_2 ? String(r.option_name_2).trim() : undefined,
-          price_2: r.price_2 !== undefined && r.price_2 !== '' ? Number(r.price_2) : undefined,
-          option_name_3: r.option_name_3 ? String(r.option_name_3).trim() : undefined,
-          price_3: r.price_3 !== undefined && r.price_3 !== '' ? Number(r.price_3) : undefined,
-          option_name_4: r.option_name_4 ? String(r.option_name_4).trim() : undefined,
-          price_4: r.price_4 !== undefined && r.price_4 !== '' ? Number(r.price_4) : undefined,
-          option_name_5: r.option_name_5 ? String(r.option_name_5).trim() : undefined,
-          price_5: r.price_5 !== undefined && r.price_5 !== '' ? Number(r.price_5) : undefined,
-          option_name_6: r.option_name_6 ? String(r.option_name_6).trim() : undefined,
-          price_6: r.price_6 !== undefined && r.price_6 !== '' ? Number(r.price_6) : undefined
-        }))
-      }
-
-      // Parse menu_option_groups
-      if (workbook.SheetNames.includes('menu_option_groups')) {
-        const sheet = workbook.Sheets['menu_option_groups']
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[]
-        data.menu_option_groups = rows.map(r => ({
-          menu_code: String(r.menu_code || '').trim(),
-          option_group_name: String(r.option_group_name || '').trim()
-        }))
-      }
-
+      const data: ParsedMenuData = parseResult.data
       setParsedData(data)
       setValidationErrors([])
       setImportResult(null)
@@ -100,7 +47,7 @@ export default function AdminMenuDataPage() {
       if (response.status === 400 && result.errors) {
         setValidationErrors(result.errors)
       } else if (response.ok) {
-        setImportResult(`Import successful! Imported: ${result.counts.categories} categories, ${result.counts.menu} menu items, ${result.counts.option_groups} option groups, ${result.counts.options} options, ${result.counts.menu_option_groups} mappings`)
+        setImportResult("Import successful! Imported: " + result.counts.categories + " categories, " + result.counts.menu + " menu items, " + result.counts.option_groups + " option groups, " + result.counts.options + " options, " + result.counts.menu_option_groups + " mappings")
         setParsedData(null)
       } else {
         alert('Import failed: ' + (result.error || 'Unknown error'))
@@ -108,6 +55,8 @@ export default function AdminMenuDataPage() {
     } catch (error) {
       console.error('[IMPORT] Parse error:', error)
       alert('Failed to parse file. Ensure it is a valid XLSX file.')
+    } finally {
+      setImporting(false)
     }
 
     e.target.value = ''
@@ -116,71 +65,22 @@ export default function AdminMenuDataPage() {
   const handleExport = async () => {
     setExporting(true)
     try {
+      // Server now returns xlsx binary directly
       const response = await fetch('/api/admin/export-menu')
       if (!response.ok) {
         throw new Error('Export failed')
       }
 
-      const data = await response.json()
-
-      const XLSX = await import('xlsx')
-
-      const wb = XLSX.utils.book_new()
-
-      // Canonical headers for each sheet (human-friendly format)
-      const headers = {
-        categories: ['category_name'],
-        menu: ['menu_code', 'category_name', 'menu_name', 'menu_name_2', 'barcode', 'description', 'price', 'image_url'],
-        options: ['option_group_name', 'is_required', 'max_select', 'option_name_1', 'price_1', 'option_name_2', 'price_2', 'option_name_3', 'price_3', 'option_name_4', 'price_4', 'option_name_5', 'price_5', 'option_name_6', 'price_6'],
-        menu_option_groups: ['menu_code', 'option_group_name']
-      }
-
-      // Categories sheet
-      const categoriesWs = XLSX.utils.aoa_to_sheet([headers.categories])
-      if (data.categories.length > 0) {
-        XLSX.utils.sheet_add_json(categoriesWs, data.categories, {
-          header: headers.categories,
-          skipHeader: true,
-          origin: -1
-        })
-      }
-      XLSX.utils.book_append_sheet(wb, categoriesWs, 'categories')
-
-      // Menu sheet
-      const menuWs = XLSX.utils.aoa_to_sheet([headers.menu])
-      if (data.menu.length > 0) {
-        XLSX.utils.sheet_add_json(menuWs, data.menu, {
-          header: headers.menu,
-          skipHeader: true,
-          origin: -1
-        })
-      }
-      XLSX.utils.book_append_sheet(wb, menuWs, 'menu')
-
-      // Options sheet (wide format)
-      const optionsWs = XLSX.utils.aoa_to_sheet([headers.options])
-      if (data.options.length > 0) {
-        XLSX.utils.sheet_add_json(optionsWs, data.options, {
-          header: headers.options,
-          skipHeader: true,
-          origin: -1
-        })
-      }
-      XLSX.utils.book_append_sheet(wb, optionsWs, 'options')
-
-      // Menu-Option Groups sheet
-      const menuOptionGroupsWs = XLSX.utils.aoa_to_sheet([headers.menu_option_groups])
-      if (data.menu_option_groups.length > 0) {
-        XLSX.utils.sheet_add_json(menuOptionGroupsWs, data.menu_option_groups, {
-          header: headers.menu_option_groups,
-          skipHeader: true,
-          origin: -1
-        })
-      }
-      XLSX.utils.book_append_sheet(wb, menuOptionGroupsWs, 'menu_option_groups')
-
-      // Download
-      XLSX.writeFile(wb, `tenzai-menu-export-${new Date().toISOString().split('T')[0]}.xlsx`)
+      // Download the binary file
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'menu-export.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
 
       setImportResult('Export successful!')
       setTimeout(() => setImportResult(null), 3000)
@@ -216,7 +116,8 @@ export default function AdminMenuDataPage() {
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-xl font-semibold text-text mb-4">Import Menu Data</h2>
           <p className="text-sm text-muted mb-4">
-            Upload an Excel file (.xlsx) with the following sheets: categories, menu, options, menu_option_groups
+            Upload an Excel file (.xlsx) with the following sheets: categories, menu, options, menu_option_groups.
+            Maximum file size: 5MB.
           </p>
 
           <div className="mb-4">
