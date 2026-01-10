@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "check:lockfile": "node -e \"JSON.parse(require('fs').readFileSync('package-lock.json','utf8')); console.log('package-lock.json OK')\"",
+    "check:no-xlsx-client": "node scripts/check-no-xlsx-client.js",
     "prepare": "husky"
   },
   "keywords": [],

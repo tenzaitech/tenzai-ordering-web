@@ -24,5 +24,8 @@ jobs:
       - name: Validate lockfile
         run: npm run check:lockfile
 
+      - name: Check no xlsx in client code
+        run: npm run check:no-xlsx-client
+
       - name: Build
         run: npm run build

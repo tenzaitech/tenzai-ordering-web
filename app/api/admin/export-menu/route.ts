@@ -199,7 +199,8 @@ export async function GET(request: NextRequest) {
     return new NextResponse(xlsxBuffer, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": "attachment; filename=\"" + filename + "\""
+        "Content-Disposition": "attachment; filename=\"" + filename + "\"",
+        "Cache-Control": "no-store"
       }
     })
   } catch (error) {

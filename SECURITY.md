@@ -32,7 +32,12 @@
 2. **Admin auth required:** All xlsx endpoints protected by `checkAdminAuth()`
 3. **File size limit:** 5MB max on upload (`/api/admin/parse-xlsx`)
 4. **MIME type validation:** Only accepts xlsx MIME types
-5. **No client bundle exposure:** xlsx is NOT in client JavaScript bundle
+5. **File extension check:** Filename must end with `.xlsx`
+6. **ZIP signature check:** First bytes must be `PK` (0x50 0x4B) - prevents spoofed files
+7. **Row limit:** Max 10,000 rows per sheet (DoS protection)
+8. **Cache-Control:** `no-store` on all xlsx endpoints
+9. **No client bundle exposure:** xlsx is NOT in client JavaScript bundle
+10. **CI regression guard:** `npm run check:no-xlsx-client` fails if xlsx imported in client code
 
 **Acceptance Rationale:**
 - No fix available from SheetJS maintainer

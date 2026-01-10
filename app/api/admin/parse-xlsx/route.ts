@@ -4,6 +4,16 @@ import type { ParsedMenuData } from '@/lib/menu-import-validator'
 
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024
+// Max rows per sheet (DoS protection)
+const MAX_ROWS_PER_SHEET = 10000
+
+// Helper to create JSON response with no-cache header
+function jsonResponse(data: object, status = 200) {
+  return NextResponse.json(data, {
+    status,
+    headers: { "Cache-Control": "no-store" }
+  })
+}
 
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
@@ -14,14 +24,22 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      return jsonResponse({ error: 'No file provided' }, 400)
     }
 
     // File size guard
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
-        { status: 400 }
+      return jsonResponse(
+        { error: 'File too large. Maximum size is ' + (MAX_FILE_SIZE / 1024 / 1024) + 'MB' },
+        400
+      )
+    }
+
+    // Filename extension guard
+    if (file.name && !file.name.toLowerCase().endsWith('.xlsx')) {
+      return jsonResponse(
+        { error: 'Invalid file extension. Only .xlsx files are accepted' },
+        400
       )
     }
 
@@ -31,15 +49,24 @@ export async function POST(request: NextRequest) {
       'application/vnd.ms-excel'
     ]
     if (file.type && !validMimes.includes(file.type)) {
-      return NextResponse.json(
+      return jsonResponse(
         { error: 'Invalid file type. Only .xlsx files are accepted' },
-        { status: 400 }
+        400
+      )
+    }
+
+    // ZIP signature check (xlsx files are ZIP archives starting with "PK")
+    const arrayBuffer = await file.arrayBuffer()
+    const bytes = new Uint8Array(arrayBuffer)
+    if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+      return jsonResponse(
+        { error: 'Invalid file format. File does not appear to be a valid xlsx' },
+        400
       )
     }
 
     // Server-side xlsx import (vulnerability contained to server)
     const XLSX = await import('xlsx')
-    const arrayBuffer = await file.arrayBuffer()
     const workbook = XLSX.read(arrayBuffer, { type: 'array' })
 
     const data: ParsedMenuData = {
@@ -53,6 +80,9 @@ export async function POST(request: NextRequest) {
     if (workbook.SheetNames.includes('categories')) {
       const sheet = workbook.Sheets['categories']
       const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[]
+      if (rows.length > MAX_ROWS_PER_SHEET) {
+        return jsonResponse({ error: 'categories sheet exceeds ' + MAX_ROWS_PER_SHEET + ' row limit' }, 400)
+      }
       data.categories = rows.map(r => ({
         category_name: String(r.category_name || '').trim()
       }))
@@ -62,6 +92,9 @@ export async function POST(request: NextRequest) {
     if (workbook.SheetNames.includes('menu')) {
       const sheet = workbook.Sheets['menu']
       const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[]
+      if (rows.length > MAX_ROWS_PER_SHEET) {
+        return jsonResponse({ error: 'menu sheet exceeds ' + MAX_ROWS_PER_SHEET + ' row limit' }, 400)
+      }
       data.menu = rows.map(r => ({
         menu_code: String(r.menu_code || '').trim(),
         category_name: String(r.category_name || '').trim(),
@@ -78,6 +111,9 @@ export async function POST(request: NextRequest) {
     if (workbook.SheetNames.includes('options')) {
       const sheet = workbook.Sheets['options']
       const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[]
+      if (rows.length > MAX_ROWS_PER_SHEET) {
+        return jsonResponse({ error: 'options sheet exceeds ' + MAX_ROWS_PER_SHEET + ' row limit' }, 400)
+      }
       data.options = rows.map(r => ({
         option_group_name: String(r.option_group_name || '').trim(),
         is_required: Boolean(r.is_required),
@@ -101,18 +137,22 @@ export async function POST(request: NextRequest) {
     if (workbook.SheetNames.includes('menu_option_groups')) {
       const sheet = workbook.Sheets['menu_option_groups']
       const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[]
+      if (rows.length > MAX_ROWS_PER_SHEET) {
+        return jsonResponse({ error: 'menu_option_groups sheet exceeds ' + MAX_ROWS_PER_SHEET + ' row limit' }, 400)
+      }
       data.menu_option_groups = rows.map(r => ({
         menu_code: String(r.menu_code || '').trim(),
         option_group_name: String(r.option_group_name || '').trim()
       }))
     }
 
-    return NextResponse.json({ data })
+    return jsonResponse({ data })
   } catch (error) {
+    // Log error server-side only (no stack trace in response)
     console.error('[PARSE-XLSX] Error:', error)
-    return NextResponse.json(
+    return jsonResponse(
       { error: 'Failed to parse file. Ensure it is a valid XLSX file.' },
-      { status: 400 }
+      400
     )
   }
 }
