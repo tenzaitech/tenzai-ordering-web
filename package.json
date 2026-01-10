@@ -7,7 +7,9 @@
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:lockfile": "node -e \"JSON.parse(require('fs').readFileSync('package-lock.json','utf8')); console.log('package-lock.json OK')\"",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "husky": "^9.1.7",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
