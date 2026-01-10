@@ -14,6 +14,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "dependencies": {
     "@line/liff": "^2.27.3",
     "@pdf-lib/fontkit": "^1.1.1",
