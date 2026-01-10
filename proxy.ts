@@ -7,7 +7,7 @@ import {
   ADMIN_COOKIE_NAME
 } from '@/lib/adminAuth'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
   // Handle /admin/* routes - set session cookie if authenticated via header
