@@ -1,0 +1,28 @@
+[
+  {
+    "id": "slips",
+    "name": "slips",
+    "public": true,
+    "file_size_limit": 5242880,
+    "allowed_mime_types": [
+      "image/*"
+    ],
+    "created_at": "2026-01-01T10:57:16.991Z"
+  },
+  {
+    "id": "menu-images",
+    "name": "menu-images",
+    "public": true,
+    "file_size_limit": null,
+    "allowed_mime_types": null,
+    "created_at": "2026-01-02T16:50:15.912Z"
+  },
+  {
+    "id": "invoices",
+    "name": "invoices",
+    "public": false,
+    "file_size_limit": null,
+    "allowed_mime_types": null,
+    "created_at": "2026-01-07T02:06:34.808Z"
+  }
+]

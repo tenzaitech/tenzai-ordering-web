@@ -1,0 +1,38 @@
+[
+  {
+    "table_name": "menu_item_categories"
+  },
+  {
+    "table_name": "orders"
+  },
+  {
+    "table_name": "category_schedules"
+  },
+  {
+    "table_name": "option_groups"
+  },
+  {
+    "table_name": "menu_items"
+  },
+  {
+    "table_name": "category_option_groups"
+  },
+  {
+    "table_name": "options"
+  },
+  {
+    "table_name": "order_items"
+  },
+  {
+    "table_name": "system_settings"
+  },
+  {
+    "table_name": "admin_settings"
+  },
+  {
+    "table_name": "menu_option_groups"
+  },
+  {
+    "table_name": "categories"
+  }
+]

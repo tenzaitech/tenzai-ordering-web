@@ -1,0 +1,74 @@
+[
+  {
+    "table_name": "menu_item_categories",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "orders",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "category_schedules",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "option_groups",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "menu_items",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "category_option_groups",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "options",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "order_items",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "system_settings",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "admin_settings",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "menu_option_groups",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  },
+  {
+    "table_name": "categories",
+    "rls_enabled": true,
+    "accessible": true,
+    "status_code": 200
+  }
+]

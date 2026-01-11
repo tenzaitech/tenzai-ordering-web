@@ -1,0 +1,90 @@
+{
+  "note": "RLS policies not directly accessible via REST API",
+  "recommendation": "Use Supabase Dashboard or psql to inspect policies",
+  "expected_policies": [
+    {
+      "table_name": "menu_item_categories",
+      "policy_name": "Allow all operations on menu_item_categories",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "orders",
+      "policy_name": "Allow all operations on orders",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "category_schedules",
+      "policy_name": "Allow all operations on category_schedules",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "option_groups",
+      "policy_name": "Allow all operations on option_groups",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "menu_items",
+      "policy_name": "Allow all operations on menu_items",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "category_option_groups",
+      "policy_name": "Allow all operations on category_option_groups",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "options",
+      "policy_name": "Allow all operations on options",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "order_items",
+      "policy_name": "Allow all operations on order_items",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "system_settings",
+      "policy_name": "Allow all operations on system_settings",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "admin_settings",
+      "policy_name": "Allow all operations on admin_settings",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "menu_option_groups",
+      "policy_name": "Allow all operations on menu_option_groups",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    },
+    {
+      "table_name": "categories",
+      "policy_name": "Allow all operations on categories",
+      "command": "ALL",
+      "using": "true",
+      "with_check": "true"
+    }
+  ]
+}

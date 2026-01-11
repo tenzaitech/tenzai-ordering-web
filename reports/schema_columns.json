@@ -1,0 +1,778 @@
+[
+  {
+    "table_name": "menu_item_categories",
+    "column_name": "menu_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `menu_items.menu_code`.<fk table='menu_items' column='menu_code'/>"
+  },
+  {
+    "table_name": "menu_item_categories",
+    "column_name": "category_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `categories.category_code`.<fk table='categories' column='category_code'/>"
+  },
+  {
+    "table_name": "menu_item_categories",
+    "column_name": "sort_order",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Display order within this category. Lower values appear first."
+  },
+  {
+    "table_name": "orders",
+    "column_name": "id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "order_number",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "status",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": "pending",
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_name",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_phone",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "pickup_type",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "pickup_time",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "slip_url",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_note",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "slip_notified_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "approved_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "approved_by",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "rejected_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "rejected_reason",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "adjustment_note",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "adjusted_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "adjusted_by",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_line_user_id",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_line_display_name",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "vat_rate",
+    "data_type": "number",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "VAT percentage applied (e.g., 7 for 7%)"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "invoice_requested",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Customer requested VAT invoice"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "invoice_company_name",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Company name for VAT invoice"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "invoice_tax_id",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Tax ID for VAT invoice"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "invoice_address",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Address for VAT invoice"
+  },
+  {
+    "table_name": "orders",
+    "column_name": "invoice_buyer_phone",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "subtotal_amount_dec",
+    "data_type": "number",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "vat_amount_dec",
+    "data_type": "number",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "orders",
+    "column_name": "total_amount_dec",
+    "data_type": "number",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "category_schedules",
+    "column_name": "id",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "category_schedules",
+    "column_name": "category_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Foreign Key to `categories.category_code`.<fk table='categories' column='category_code'/>"
+  },
+  {
+    "table_name": "category_schedules",
+    "column_name": "day_of_week",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "0=Sunday, 1=Monday, ..., 6=Saturday"
+  },
+  {
+    "table_name": "category_schedules",
+    "column_name": "start_time",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Start time of visibility window (inclusive)"
+  },
+  {
+    "table_name": "category_schedules",
+    "column_name": "end_time",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "End time of visibility window (exclusive)"
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "group_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "group_name",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "is_required",
+    "data_type": "boolean",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "max_select",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": 1,
+    "description": null
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "option_groups",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "menu_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "category_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Foreign Key to `categories.category_code`.<fk table='categories' column='category_code'/>"
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "name_th",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "name_en",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "barcode",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "description",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "price",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "image_url",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "NO",
+    "column_default": true,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "image_focus_y_1x1",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": 70,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "image_focus_y_4x3",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": 62,
+    "description": null
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "promo_price",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Promotional price in THB. If set and < price, item is on promotion."
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "promo_label",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": "Promotional badge text displayed on menu cards."
+  },
+  {
+    "table_name": "menu_items",
+    "column_name": "promo_percent",
+    "data_type": "number",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "category_option_groups",
+    "column_name": "category_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `categories.category_code`.<fk table='categories' column='category_code'/>"
+  },
+  {
+    "table_name": "category_option_groups",
+    "column_name": "group_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `option_groups.group_code`.<fk table='option_groups' column='group_code'/>"
+  },
+  {
+    "table_name": "options",
+    "column_name": "option_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "options",
+    "column_name": "group_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Foreign Key to `option_groups.group_code`.<fk table='option_groups' column='group_code'/>"
+  },
+  {
+    "table_name": "options",
+    "column_name": "option_name",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "options",
+    "column_name": "price_delta",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "options",
+    "column_name": "sort_order",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": 1,
+    "description": null
+  },
+  {
+    "table_name": "options",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "options",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "order_id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Foreign Key to `orders.id`.<fk table='orders' column='id'/>"
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "menu_item_id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "name_th",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "name_en",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "qty",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "base_price",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "final_price",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "note",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "selected_options_json",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "system_settings",
+    "column_name": "key",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "system_settings",
+    "column_name": "value",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "system_settings",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()",
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "line_approver_id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "line_staff_id",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "staff_pin_hash",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "pin_version",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": 1,
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "admin_settings",
+    "column_name": "promptpay_id",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "menu_option_groups",
+    "column_name": "menu_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `menu_items.menu_code`.<fk table='menu_items' column='menu_code'/>"
+  },
+  {
+    "table_name": "menu_option_groups",
+    "column_name": "group_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `option_groups.group_code`.<fk table='option_groups' column='group_code'/>"
+  },
+  {
+    "table_name": "menu_option_groups",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "categories",
+    "column_name": "category_code",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": "Note:\nThis is a Primary Key.<pk/>"
+  },
+  {
+    "table_name": "categories",
+    "column_name": "name",
+    "data_type": "string",
+    "is_nullable": "NO",
+    "column_default": null,
+    "description": null
+  },
+  {
+    "table_name": "categories",
+    "column_name": "created_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  },
+  {
+    "table_name": "categories",
+    "column_name": "updated_at",
+    "data_type": "string",
+    "is_nullable": "YES",
+    "column_default": "now()",
+    "description": null
+  }
+]

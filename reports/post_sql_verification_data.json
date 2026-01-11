@@ -1,0 +1,97 @@
+{
+  "timestamp": "2026-01-10T20:47:51.829Z",
+  "policies": {
+    "status": "PASS",
+    "data": [
+      {
+        "table": "admin_settings",
+        "service_role_select": true,
+        "anon_select": true,
+        "anon_status": 200
+      },
+      {
+        "table": "orders",
+        "service_role_select": true,
+        "anon_select": true,
+        "anon_status": 200
+      },
+      {
+        "table": "order_items",
+        "service_role_select": true,
+        "anon_select": true,
+        "anon_status": 200
+      },
+      {
+        "table": "system_settings",
+        "service_role_select": true,
+        "anon_select": true,
+        "anon_status": 200
+      },
+      {
+        "test": "anon_insert_admin_settings",
+        "blocked": true
+      }
+    ],
+    "issues": []
+  },
+  "rls_enabled": {
+    "status": "INFERRED_PASS",
+    "data": [
+      {
+        "table": "admin_settings",
+        "accessible": true,
+        "inferred_rls": "ENABLED (cannot verify directly via REST)"
+      },
+      {
+        "table": "orders",
+        "accessible": true,
+        "inferred_rls": "ENABLED (cannot verify directly via REST)"
+      },
+      {
+        "table": "order_items",
+        "accessible": true,
+        "inferred_rls": "ENABLED (cannot verify directly via REST)"
+      },
+      {
+        "table": "system_settings",
+        "accessible": true,
+        "inferred_rls": "ENABLED (cannot verify directly via REST)"
+      }
+    ],
+    "issues": []
+  },
+  "indexes": {
+    "status": "MANUAL_CHECK_REQUIRED",
+    "data": {
+      "expected": [
+        "idx_orders_customer_line_user_id",
+        "idx_orders_status",
+        "idx_orders_status_created_at"
+      ]
+    },
+    "issues": []
+  },
+  "anon_exposure": {
+    "status": "CRITICAL_FAIL",
+    "data": {
+      "anon_can_select": true,
+      "staff_pin_hash_exposed": true,
+      "hash_value_redacted": "[REDACTED - value exists]",
+      "visible_columns": [
+        "id",
+        "line_approver_id",
+        "line_staff_id",
+        "staff_pin_hash",
+        "pin_version",
+        "created_at",
+        "updated_at",
+        "promptpay_id"
+      ]
+    },
+    "issues": [
+      "CRITICAL: staff_pin_hash is exposed to anon key",
+      "staff_pin_hash column is in the visible columns list"
+    ]
+  },
+  "overall": "CRITICAL_FAIL"
+}
