@@ -15,6 +15,8 @@ import {
 } from '@/lib/rate-limiter'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
+export const runtime = 'nodejs'
+
 const scryptAsync = promisify(scrypt)
 
 type AdminSettingsRow = {

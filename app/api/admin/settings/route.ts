@@ -7,6 +7,8 @@ import { revokeAllStaffSessions } from '@/lib/staffAuth'
 import { scrypt, randomBytes } from 'crypto'
 import { promisify } from 'util'
 
+export const runtime = 'nodejs'
+
 type SettingsRow = {
   id: string
   promptpay_id: string | null

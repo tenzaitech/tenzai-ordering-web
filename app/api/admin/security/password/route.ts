@@ -7,6 +7,8 @@ import { revokeAllAdminSessions, generateAdminSessionToken, ADMIN_COOKIE_NAME, g
 import { scrypt, randomBytes } from 'crypto'
 import { promisify } from 'util'
 
+export const runtime = 'nodejs'
+
 const scryptAsync = promisify(scrypt)
 
 type SettingsRow = {

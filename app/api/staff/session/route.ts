@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { scrypt } from 'crypto'
 import { promisify } from 'util'
 
+export const runtime = 'nodejs'
+
 type SettingsRow = {
   staff_pin_hash: string | null
   pin_version: number
