@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { scryptSync, timingSafeEqual } from 'crypto'
+import { scryptSync, timingSafeEqual, randomUUID } from 'crypto'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import {
   STAFF_COOKIE_NAME,
@@ -25,7 +25,56 @@ type ErrorResponse = {
   error: {
     code: string
     message_th: string
+    error_id?: string
+    name?: string
+    hint?: string
   }
+}
+
+type ErrorHint =
+  | 'ENV_MISSING'
+  | 'SUPABASE_AUTH'
+  | 'SUPABASE_DB'
+  | 'DB_SCHEMA'
+  | 'DB_PERMISSIONS'
+  | 'COOKIE'
+  | 'CSRF'
+  | 'RATE_LIMIT'
+  | 'UNKNOWN'
+
+/**
+ * Derive a safe, non-sensitive hint from an error for debugging.
+ * Never includes secrets, passwords, hashes, tokens, or env values.
+ */
+function safeHint(err: unknown): ErrorHint {
+  const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase()
+  const name = err instanceof Error ? err.name.toLowerCase() : ''
+
+  if (msg.includes('supabase_url') || msg.includes('supabase_service_role_key') || msg.includes('missing')) {
+    return 'ENV_MISSING'
+  }
+  if (msg.includes('invalid api key') || msg.includes('jwt') || msg.includes('apikey')) {
+    return 'SUPABASE_AUTH'
+  }
+  if (msg.includes('permission denied') || msg.includes('rls')) {
+    return 'DB_PERMISSIONS'
+  }
+  if (msg.includes('relation') || msg.includes('does not exist') || msg.includes('column') || msg.includes('schema')) {
+    return 'DB_SCHEMA'
+  }
+  if (name.includes('postgrest') || msg.includes('postgrest')) {
+    return 'SUPABASE_DB'
+  }
+  if (msg.includes('csrf')) {
+    return 'CSRF'
+  }
+  if (msg.includes('cookie') || msg.includes('headers')) {
+    return 'COOKIE'
+  }
+  if (msg.includes('auth_rate_limits') || msg.includes('rate')) {
+    return 'RATE_LIMIT'
+  }
+  return 'UNKNOWN'
 }
 
 /**
@@ -179,14 +228,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return response
   } catch (error) {
-    console.error('[STAFF:AUTH:PIN] Error:', error)
+    // Generate safe diagnostics (no secrets in logs or response)
+    const errorId = randomUUID()
+    const errorName = error instanceof Error ? error.name : 'Error'
+    const hint = safeHint(error)
+
+    // Log minimal info (never include stack, message content, or env values)
+    console.error('AUTH_STAFF_PIN_ERROR', { error_id: errorId, name: errorName, hint })
+
+    // Build response
+    const baseError = {
+      code: 'SERVER_ERROR',
+      message_th: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
+    }
+
+    // Include debug fields only when DEBUG_AUTH_ERRORS=true
+    const responseError = process.env.DEBUG_AUTH_ERRORS === 'true'
+      ? { ...baseError, error_id: errorId, name: errorName, hint }
+      : baseError
+
     return NextResponse.json<ErrorResponse>(
-      {
-        error: {
-          code: 'SERVER_ERROR',
-          message_th: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
-        }
-      },
+      { error: responseError },
       { status: 500 }
     )
   }
