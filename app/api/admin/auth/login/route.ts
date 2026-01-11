@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scrypt } from 'crypto'
 import { promisify } from 'util'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import {
   generateAdminSessionToken,
   ADMIN_COOKIE_NAME,
   getAdminCookieOptions
 } from '@/lib/adminAuth'
 import {
-  checkRateLimit,
-  recordFailedAttempt,
+  checkAndIncrementRateLimit,
   clearRateLimit,
-  getClientIp
+  getClientIp,
+  adminLoginKey
 } from '@/lib/rate-limiter'
+import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 const scryptAsync = promisify(scrypt)
 
@@ -40,17 +41,18 @@ async function verifyPassword(storedHash: string, suppliedPassword: string): Pro
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request)
-  const rateLimitKey = `admin:${clientIp}`
+  const rateLimitKey = adminLoginKey(clientIp)
+  const { ip, userAgent } = getRequestMeta(request)
 
-  // Check rate limit
-  const rateLimit = checkRateLimit(rateLimitKey)
+  // Check rate limit (persistent, cloud-safe)
+  const rateLimit = await checkAndIncrementRateLimit(rateLimitKey)
   if (!rateLimit.allowed) {
-    const retryAfterSeconds = Math.ceil((rateLimit.retryAfterMs || 0) / 1000)
+    const retryAfterSeconds = rateLimit.retryAfterSeconds || 900
     return NextResponse.json<ErrorResponse>(
       {
         error: {
           code: 'RATE_LIMITED',
-          message_th: `เข้าสู่ระบบล้มเหลวหลายครั้ง กรุณารอ ${retryAfterSeconds} วินาที`
+          message_th: `เข้าสู่ระบบล้มเหลวหลายครั้ง กรุณารอ ${Math.ceil(retryAfterSeconds / 60)} นาที`
         }
       },
       {
@@ -77,7 +79,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // Fetch admin credentials from DB
+    // Fetch admin credentials from DB (using server-side client)
+    const supabase = getSupabaseServer()
     const { data: settingsData, error: fetchError } = await supabase
       .from('admin_settings')
       .select('admin_username, admin_password_hash')
@@ -101,29 +104,53 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Check if admin credentials are configured
     if (!settings?.admin_username || !settings?.admin_password_hash) {
-      // Fall back to ADMIN_API_KEY if no DB credentials set
-      const adminApiKey = process.env.ADMIN_API_KEY
-      if (adminApiKey && username === 'admin' && password === adminApiKey) {
-        clearRateLimit(rateLimitKey)
-        const token = await generateAdminSessionToken()
-        if (!token) {
-          return NextResponse.json<ErrorResponse>(
-            {
-              error: {
-                code: 'SERVER_ERROR',
-                message_th: 'เกิดข้อผิดพลาดในระบบ'
-              }
-            },
-            { status: 500 }
-          )
-        }
+      // ADMIN_API_KEY fallback ONLY in dev with explicit flag
+      if (
+        process.env.NODE_ENV === 'development' &&
+        process.env.ALLOW_ADMIN_API_KEY_FALLBACK === 'true'
+      ) {
+        const adminApiKey = process.env.ADMIN_API_KEY
+        if (adminApiKey && username === 'admin' && password === adminApiKey) {
+          await clearRateLimit(rateLimitKey)
+          const token = await generateAdminSessionToken()
+          if (!token) {
+            return NextResponse.json<ErrorResponse>(
+              {
+                error: {
+                  code: 'SERVER_ERROR',
+                  message_th: 'เกิดข้อผิดพลาดในระบบ'
+                }
+              },
+              { status: 500 }
+            )
+          }
 
-        const response = NextResponse.json({ ok: true })
-        response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
-        return response
+          // Audit log - dev fallback login
+          await auditLog({
+            actor_type: 'admin',
+            actor_identifier: username,
+            ip,
+            user_agent: userAgent,
+            action_code: 'ADMIN_LOGIN_OK',
+            metadata: { method: 'api_key_fallback', env: 'development' }
+          })
+
+          const response = NextResponse.json({ ok: true })
+          response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
+          return response
+        }
       }
 
-      recordFailedAttempt(rateLimitKey)
+      // No credentials configured and fallback not allowed/matched
+      await auditLog({
+        actor_type: 'admin',
+        actor_identifier: username,
+        ip,
+        user_agent: userAgent,
+        action_code: 'ADMIN_LOGIN_FAIL',
+        metadata: { reason: 'no_credentials_configured' }
+      })
+
       return NextResponse.json<ErrorResponse>(
         {
           error: {
@@ -137,7 +164,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Verify username (case-insensitive)
     if (username.toLowerCase() !== settings.admin_username.toLowerCase()) {
-      recordFailedAttempt(rateLimitKey)
+      await auditLog({
+        actor_type: 'admin',
+        actor_identifier: username,
+        ip,
+        user_agent: userAgent,
+        action_code: 'ADMIN_LOGIN_FAIL',
+        metadata: { reason: 'invalid_username' }
+      })
+
       return NextResponse.json<ErrorResponse>(
         {
           error: {
@@ -152,7 +187,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify password
     const passwordValid = await verifyPassword(settings.admin_password_hash, password)
     if (!passwordValid) {
-      recordFailedAttempt(rateLimitKey)
+      await auditLog({
+        actor_type: 'admin',
+        actor_identifier: username,
+        ip,
+        user_agent: userAgent,
+        action_code: 'ADMIN_LOGIN_FAIL',
+        metadata: { reason: 'invalid_password' }
+      })
+
       return NextResponse.json<ErrorResponse>(
         {
           error: {
@@ -165,7 +208,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Success - clear rate limit and issue session
-    clearRateLimit(rateLimitKey)
+    await clearRateLimit(rateLimitKey)
     const token = await generateAdminSessionToken()
     if (!token) {
       return NextResponse.json<ErrorResponse>(
@@ -178,6 +221,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       )
     }
+
+    // Audit log - successful login
+    await auditLog({
+      actor_type: 'admin',
+      actor_identifier: username,
+      ip,
+      user_agent: userAgent,
+      action_code: 'ADMIN_LOGIN_OK',
+      metadata: { method: 'password' }
+    })
 
     const response = NextResponse.json({ ok: true })
     response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())

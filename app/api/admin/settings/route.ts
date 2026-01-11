@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
+import { auditLog, getRequestMeta } from '@/lib/audit-log'
+import { revokeAllStaffSessions } from '@/lib/staffAuth'
 import { scrypt, randomBytes } from 'crypto'
 import { promisify } from 'util'
 
@@ -82,6 +85,13 @@ export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
 
+  // CSRF check
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
+
+  const { ip, userAgent } = getRequestMeta(request)
+
   try {
     const body = await request.json()
     const { promptpay_id, line_approver_id, line_staff_id, new_staff_pin } = body
@@ -130,10 +140,12 @@ export async function POST(request: NextRequest) {
     }
 
     // If new PIN provided, hash it and increment version
-    if (new_staff_pin && new_staff_pin.length > 0) {
+    const pinChanged = new_staff_pin && new_staff_pin.length > 0
+    if (pinChanged) {
       const hashedPin = await hashPin(new_staff_pin)
       updateData.staff_pin_hash = hashedPin
       updateData.pin_version = (existing?.pin_version || 1) + 1
+      updateData.staff_session_version = (existing?.pin_version || 1) + 1 // Also update session version
     }
 
     // Upsert (update or insert)
@@ -146,6 +158,18 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         console.error('[ADMIN:SETTINGS] Update error:', updateError.message)
         return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+      }
+
+      // If PIN changed, revoke all staff sessions and audit log
+      if (pinChanged) {
+        await revokeAllStaffSessions()
+        await auditLog({
+          actor_type: 'admin',
+          ip,
+          user_agent: userAgent,
+          action_code: 'STAFF_PIN_CHANGED',
+          metadata: { revoked_sessions: true }
+        })
       }
     } else {
       // First time setup - need to include staff_pin_hash
@@ -169,6 +193,15 @@ export async function POST(request: NextRequest) {
         console.error('[ADMIN:SETTINGS] Insert error:', insertError.message)
         return NextResponse.json({ error: 'Failed to create settings' }, { status: 500 })
       }
+
+      // Audit log for initial PIN setup
+      await auditLog({
+        actor_type: 'admin',
+        ip,
+        user_agent: userAgent,
+        action_code: 'STAFF_PIN_CHANGED',
+        metadata: { initial_setup: true }
+      })
     }
 
     return NextResponse.json({ success: true })

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scrypt } from 'crypto'
 import { promisify } from 'util'
-import { supabase } from '@/lib/supabase'
-import { STAFF_COOKIE_NAME, getStaffCookieOptions } from '@/lib/staffAuth'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import {
-  checkRateLimit,
-  recordFailedAttempt,
+  STAFF_COOKIE_NAME,
+  getStaffCookieOptions,
+  generateStaffSessionToken
+} from '@/lib/staffAuth'
+import {
+  checkAndIncrementRateLimit,
   clearRateLimit,
-  getClientIp
+  getClientIp,
+  staffPinKey
 } from '@/lib/rate-limiter'
+import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 const scryptAsync = promisify(scrypt)
 
@@ -36,17 +41,18 @@ async function verifyPin(storedHash: string, suppliedPin: string): Promise<boole
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request)
-  const rateLimitKey = `staff:${clientIp}`
+  const rateLimitKey = staffPinKey(clientIp)
+  const { ip, userAgent } = getRequestMeta(request)
 
-  // Check rate limit
-  const rateLimit = checkRateLimit(rateLimitKey)
+  // Check rate limit (persistent, cloud-safe)
+  const rateLimit = await checkAndIncrementRateLimit(rateLimitKey)
   if (!rateLimit.allowed) {
-    const retryAfterSeconds = Math.ceil((rateLimit.retryAfterMs || 0) / 1000)
+    const retryAfterSeconds = rateLimit.retryAfterSeconds || 900
     return NextResponse.json<ErrorResponse>(
       {
         error: {
           code: 'RATE_LIMITED',
-          message_th: `เข้าสู่ระบบล้มเหลวหลายครั้ง กรุณารอ ${retryAfterSeconds} วินาที`
+          message_th: `เข้าสู่ระบบล้มเหลวหลายครั้ง กรุณารอ ${Math.ceil(retryAfterSeconds / 60)} นาที`
         }
       },
       {
@@ -73,10 +79,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // Fetch PIN hash from DB
+    // Fetch PIN hash from DB (using server-side client)
+    const supabase = getSupabaseServer()
     const { data: settingsData, error: fetchError } = await supabase
       .from('admin_settings')
-      .select('staff_pin_hash, pin_version')
+      .select('staff_pin_hash, pin_version, staff_session_version')
       .limit(1)
       .single()
 
@@ -93,20 +100,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const settings = settingsData as SettingsRow | null
+    const settings = settingsData as (SettingsRow & { staff_session_version?: number }) | null
 
     // Validate PIN
     let pinValid = false
-    let pinVersion = 1
 
     if (settings && settings.staff_pin_hash) {
       pinValid = await verifyPin(settings.staff_pin_hash, pin)
-      pinVersion = settings.pin_version
     } else {
-      // Fallback to env STAFF_PIN (plaintext comparison for backward compat)
-      const envPin = process.env.STAFF_PIN
-      if (!envPin) {
-        console.error('[STAFF:AUTH:PIN] No PIN configured (DB or env)')
+      // Fallback to env STAFF_PIN ONLY in dev with explicit flag
+      if (
+        process.env.NODE_ENV === 'development' &&
+        process.env.ALLOW_STAFF_PIN_FALLBACK === 'true'
+      ) {
+        const envPin = process.env.STAFF_PIN
+        if (envPin) {
+          pinValid = pin === envPin
+        }
+      }
+
+      if (!pinValid) {
+        console.error('[STAFF:AUTH:PIN] No PIN configured (DB or env fallback disabled)')
         return NextResponse.json<ErrorResponse>(
           {
             error: {
@@ -117,11 +131,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           { status: 500 }
         )
       }
-      pinValid = pin === envPin
     }
 
     if (!pinValid) {
-      recordFailedAttempt(rateLimitKey)
+      await auditLog({
+        actor_type: 'staff',
+        ip,
+        user_agent: userAgent,
+        action_code: 'STAFF_PIN_FAIL',
+        metadata: { reason: 'invalid_pin' }
+      })
+
       return NextResponse.json<ErrorResponse>(
         {
           error: {
@@ -134,14 +154,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Success - clear rate limit and issue session
-    clearRateLimit(rateLimitKey)
+    await clearRateLimit(rateLimitKey)
+
+    // Use session version from DB (prefer staff_session_version, fall back to pin_version)
+    const sessionVersion = settings?.staff_session_version || settings?.pin_version || 1
+    const token = await generateStaffSessionToken(sessionVersion)
+
+    // Audit log - successful login
+    await auditLog({
+      actor_type: 'staff',
+      ip,
+      user_agent: userAgent,
+      action_code: 'STAFF_PIN_OK',
+      metadata: { session_version: sessionVersion }
+    })
 
     const response = NextResponse.json({ ok: true })
-    response.cookies.set(
-      STAFF_COOKIE_NAME,
-      `STAFF_VERIFIED:${pinVersion}`,
-      getStaffCookieOptions()
-    )
+    response.cookies.set(STAFF_COOKIE_NAME, token, getStaffCookieOptions())
 
     return response
   } catch (error) {

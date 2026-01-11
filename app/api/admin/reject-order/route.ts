@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
+import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 type OrderRow = {
   status: string
@@ -13,6 +16,17 @@ type OrderRejection = {
 }
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  const authError = await checkAdminAuth(request)
+  if (authError) return authError
+
+  // CSRF check
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
+
+  const { ip, userAgent } = getRequestMeta(request)
+
   try {
     const body = await request.json()
     const { orderId, reason } = body
@@ -55,6 +69,15 @@ export async function POST(request: NextRequest) {
       console.error('[API:REJECT] Failed to update order:', updateError)
       return NextResponse.json({ error: 'Failed to reject order' }, { status: 500 })
     }
+
+    // Audit log - order rejected
+    await auditLog({
+      actor_type: 'admin',
+      ip,
+      user_agent: userAgent,
+      action_code: 'ORDER_REJECTED',
+      metadata: { order_id: orderId, reason: reason || null }
+    })
 
     return NextResponse.json({ status: 'rejected' })
   } catch (error) {

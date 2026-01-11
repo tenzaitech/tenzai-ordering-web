@@ -1,73 +1,27 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import {
-  generateAdminSessionToken,
-  hasValidAdminHeader,
-  hasValidAdminCookie,
-  ADMIN_COOKIE_NAME
-} from '@/lib/adminAuth'
-
-const STAFF_COOKIE_NAME = 'tenzai_staff'
+import { hasValidAdminCookie } from '@/lib/adminAuth'
+import { hasValidStaffCookie } from '@/lib/staffAuth'
 
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
-  // Handle /admin/* routes - set session cookie if authenticated via header
+  // Handle /admin/* routes
   if (pathname.startsWith('/admin')) {
     // Skip login page - don't require auth
     if (pathname === '/admin/login') {
       return NextResponse.next()
     }
 
-    // Already has valid cookie - proceed
+    // Validate admin session (includes version check)
     if (await hasValidAdminCookie(request)) {
       return NextResponse.next()
     }
 
-    // Has valid header - mint cookie for subsequent browser requests
-    if (hasValidAdminHeader(request)) {
-      const token = await generateAdminSessionToken()
-      if (token) {
-        const response = NextResponse.next()
-        response.cookies.set(ADMIN_COOKIE_NAME, token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 60 * 60 * 8 // 8 hours
-        })
-        return response
-      }
-    }
-
-    // Redirect to login page (production behavior)
-    if (process.env.NODE_ENV === 'production') {
-      const loginUrl = new URL('/admin/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-
-    // Dev mode: allow cookie minting for local testing without header
-    if (process.env.NODE_ENV === 'development') {
-      const existingCookie = request.cookies.get(ADMIN_COOKIE_NAME)
-      if (!existingCookie) {
-        const token = await generateAdminSessionToken()
-        if (token) {
-          const response = NextResponse.next()
-          response.cookies.set(ADMIN_COOKIE_NAME, token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 60 * 60 * 8 // 8 hours
-          })
-          return response
-        }
-      }
-    }
-
-    // No auth - let the page/API handle the 401
-    return NextResponse.next()
+    // Not authenticated - redirect to login
+    const loginUrl = new URL('/admin/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Handle /staff/* routes - require staff session
@@ -77,10 +31,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next()
     }
 
-    const staffCookie = request.cookies.get(STAFF_COOKIE_NAME)
-
-    if (!staffCookie?.value || !staffCookie.value.startsWith('STAFF_VERIFIED:')) {
-      // Redirect to staff login
+    // Fast format check (synchronous) - API routes do full version validation
+    if (!hasValidStaffCookie(request)) {
       const loginUrl = new URL('/staff/login', request.url)
       return NextResponse.redirect(loginUrl)
     }

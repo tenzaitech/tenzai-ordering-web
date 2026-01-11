@@ -17,10 +17,6 @@ const FALLBACK_PROMPTPAY_ID = '0988799990'
 
 type ProcessingState = 'IDLE' | 'UPLOADING_SLIP'
 
-type AdminSettingsRow = {
-  promptpay_id: string | null
-}
-
 type OrderRow = {
   [key: string]: unknown
   id: string
@@ -111,15 +107,13 @@ function PaymentPageContent() {
 
     const fetchOrder = async () => {
       try {
-        // Fetch PromptPay ID from admin_settings
-        const { data: settingsData } = await supabase
-          .from('admin_settings')
-          .select('promptpay_id')
-          .limit(1)
-          .single()
-
-        const settings = settingsData as AdminSettingsRow | null
-        const dbPromptPayId = settings?.promptpay_id || FALLBACK_PROMPTPAY_ID
+        // Fetch PromptPay ID via secure server-side API (avoids exposing staff_pin_hash)
+        const promptPayResponse = await fetch('/api/public/promptpay', { cache: 'no-store' })
+        let dbPromptPayId = FALLBACK_PROMPTPAY_ID
+        if (promptPayResponse.ok) {
+          const promptPayData = await promptPayResponse.json()
+          dbPromptPayId = promptPayData.promptpay_id || FALLBACK_PROMPTPAY_ID
+        }
         setPromptPayId(dbPromptPayId)
 
         // Fetch order
@@ -263,16 +257,39 @@ function PaymentPageContent() {
     }
   }
 
+  // Slip upload validation constants
+  const MAX_SLIP_SIZE_MB = 5
+  const MAX_SLIP_SIZE_BYTES = MAX_SLIP_SIZE_MB * 1024 * 1024
+  const ALLOWED_SLIP_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+
   const handleSlipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setSlipFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setSlipPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+    if (!file) return
+
+    // Validate file type
+    if (!ALLOWED_SLIP_TYPES.includes(file.type)) {
+      alert(language === 'th'
+        ? 'กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, WebP)'
+        : 'Please select an image file (JPG, PNG, WebP)')
+      e.target.value = ''
+      return
     }
+
+    // Validate file size
+    if (file.size > MAX_SLIP_SIZE_BYTES) {
+      alert(language === 'th'
+        ? `ไฟล์ใหญ่เกินไป (สูงสุด ${MAX_SLIP_SIZE_MB}MB)`
+        : `File too large (max ${MAX_SLIP_SIZE_MB}MB)`)
+      e.target.value = ''
+      return
+    }
+
+    setSlipFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setSlipPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

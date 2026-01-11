@@ -3,6 +3,9 @@ import { supabase } from '@/lib/supabase'
 import { sendStaffNotification, sendCustomerApprovedNotification, sendCustomerInvoiceNotification } from '@/lib/line'
 import { renderInvoicePdf, InvoiceOrderData, InvoiceLineItem } from '@/lib/invoice/pdf'
 import { uploadAndGetSignedUrl } from '@/lib/invoice/storage'
+import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
+import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 type OrderRow = {
   status: string
@@ -20,6 +23,17 @@ type StaffNotifiedUpdate = {
 }
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  const authError = await checkAdminAuth(request)
+  if (authError) return authError
+
+  // CSRF check
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
+
+  const { ip, userAgent } = getRequestMeta(request)
+
   try {
     const body = await request.json()
     const { orderId } = body
@@ -62,6 +76,15 @@ export async function POST(request: NextRequest) {
       console.error('[API:APPROVE] Failed to update order:', updateError)
       return NextResponse.json({ error: 'Failed to approve order' }, { status: 500 })
     }
+
+    // Audit log - order approved
+    await auditLog({
+      actor_type: 'admin',
+      ip,
+      user_agent: userAgent,
+      action_code: 'ORDER_APPROVED',
+      metadata: { order_id: orderId }
+    })
 
     // Send notifications (fire-and-forget for existing staff/customer)
     Promise.resolve().then(async () => {

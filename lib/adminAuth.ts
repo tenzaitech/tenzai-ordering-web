@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseServer } from './supabase-server'
 
 export const ADMIN_COOKIE_NAME = 'tenzai_admin_session'
-const COOKIE_VERSION = 'v2' // Updated for password-based auth
+const COOKIE_VERSION = 'v3' // v3 includes session versioning
 const SESSION_TTL_SECONDS = 8 * 60 * 60 // 8 hours
+
+type SessionVersionRow = {
+  admin_session_version: number
+}
 
 /**
  * Convert string to Uint8Array (UTF-8)
@@ -51,63 +56,106 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Generate a signed session token with expiry
- * Format: version:expiry:signature
+ * Get current admin session version from database
  */
-export async function generateAdminSessionToken(expiryTimestamp?: number): Promise<string | null> {
+async function getAdminSessionVersion(): Promise<number> {
+  try {
+    const supabase = getSupabaseServer()
+    const { data } = await supabase
+      .from('admin_settings')
+      .select('*')
+      .limit(1)
+      .single()
+
+    const settings = data as unknown as SessionVersionRow | null
+    return settings?.admin_session_version || 1
+  } catch {
+    return 1
+  }
+}
+
+/**
+ * Generate a signed session token with expiry and version
+ * Format: version:sessionVersion:expiry:signature
+ */
+export async function generateAdminSessionToken(sessionVersion?: number): Promise<string | null> {
   const adminKey = process.env.ADMIN_API_KEY
   if (!adminKey) return null
 
-  const expiry = expiryTimestamp || (Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS)
-  const payload = `admin:${expiry}`
+  const version = sessionVersion ?? await getAdminSessionVersion()
+  const expiry = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS
+  const payload = `admin:${version}:${expiry}`
   const signature = await hmacSha256Hex(adminKey, payload)
-  return `${COOKIE_VERSION}:${expiry}:${signature}`
+  return `${COOKIE_VERSION}:${version}:${expiry}:${signature}`
 }
 
 /**
- * Validate the admin session cookie value
- * Checks signature AND expiry
+ * Parse and validate admin session token
+ * Returns session version if valid, null if invalid
  */
-async function isValidAdminSessionCookie(cookieValue: string): Promise<boolean> {
+async function parseAdminSessionToken(cookieValue: string): Promise<{ valid: boolean; sessionVersion?: number }> {
   const adminKey = process.env.ADMIN_API_KEY
-  if (!adminKey) return false
+  if (!adminKey) return { valid: false }
 
   const parts = cookieValue.split(':')
 
-  // Support both old v1 format and new v2 format
-  if (parts[0] === 'v1' && parts.length === 2) {
-    // Legacy v1 format: v1:signature (no expiry)
-    const legacySignature = await hmacSha256Hex(adminKey, 'tenzai_admin')
-    return constantTimeEqual(parts[1], legacySignature)
+  // v3 format: v3:sessionVersion:expiry:signature
+  if (parts[0] === 'v3' && parts.length === 4) {
+    const [, sessionVersionStr, expiryStr, signature] = parts
+    const sessionVersion = parseInt(sessionVersionStr, 10)
+    const expiry = parseInt(expiryStr, 10)
+
+    // Check expiry
+    if (isNaN(expiry) || Date.now() / 1000 > expiry) {
+      return { valid: false }
+    }
+
+    // Verify signature
+    const payload = `admin:${sessionVersion}:${expiry}`
+    const expectedSignature = await hmacSha256Hex(adminKey, payload)
+    if (!constantTimeEqual(signature, expectedSignature)) {
+      return { valid: false }
+    }
+
+    return { valid: true, sessionVersion }
   }
 
-  if (parts[0] !== COOKIE_VERSION || parts.length !== 3) {
-    return false
+  // v2 format (legacy): v2:expiry:signature - treat as session version 0
+  if (parts[0] === 'v2' && parts.length === 3) {
+    const [, expiryStr, signature] = parts
+    const expiry = parseInt(expiryStr, 10)
+
+    if (isNaN(expiry) || Date.now() / 1000 > expiry) {
+      return { valid: false }
+    }
+
+    const payload = `admin:${expiry}`
+    const expectedSignature = await hmacSha256Hex(adminKey, payload)
+    if (!constantTimeEqual(signature, expectedSignature)) {
+      return { valid: false }
+    }
+
+    // v2 tokens are considered session version 0 - will be invalidated on first version bump
+    return { valid: true, sessionVersion: 0 }
   }
 
-  const [, expiryStr, signature] = parts
-  const expiry = parseInt(expiryStr, 10)
-
-  // Check expiry
-  if (isNaN(expiry) || Date.now() / 1000 > expiry) {
-    return false
-  }
-
-  // Verify signature
-  const payload = `admin:${expiry}`
-  const expectedSignature = await hmacSha256Hex(adminKey, payload)
-  return constantTimeEqual(signature, expectedSignature)
+  return { valid: false }
 }
 
 /**
- * Check if request has valid x-admin-key header
+ * Validate admin session cookie including session version check
  */
-export function hasValidAdminHeader(request: NextRequest | Request): boolean {
-  const adminKey = process.env.ADMIN_API_KEY
-  if (!adminKey) return false
+async function isValidAdminSessionCookie(cookieValue: string): Promise<boolean> {
+  const parsed = await parseAdminSessionToken(cookieValue)
+  if (!parsed.valid) return false
 
-  const providedKey = request.headers.get('x-admin-key')
-  return providedKey === adminKey
+  // Check session version against database
+  const currentVersion = await getAdminSessionVersion()
+  if (parsed.sessionVersion !== currentVersion) {
+    return false // Session was revoked
+  }
+
+  return true
 }
 
 /**
@@ -116,12 +164,10 @@ export function hasValidAdminHeader(request: NextRequest | Request): boolean {
 export async function hasValidAdminCookie(request: NextRequest | Request): Promise<boolean> {
   let cookieValue: string | undefined
 
-  // Handle NextRequest (has cookies helper)
   if ('cookies' in request && typeof request.cookies?.get === 'function') {
     const cookie = (request as NextRequest).cookies.get(ADMIN_COOKIE_NAME)
     cookieValue = cookie?.value
   } else {
-    // Fallback: parse Cookie header manually
     const cookieHeader = request.headers.get('cookie')
     if (cookieHeader) {
       const cookies = cookieHeader.split(';').map(c => c.trim())
@@ -141,13 +187,27 @@ export async function hasValidAdminCookie(request: NextRequest | Request): Promi
 
 /**
  * Check if request is authorized for admin access
- * Returns true if either:
- * - Valid x-admin-key header is present
- * - Valid httpOnly admin session cookie is present
+ * PRODUCTION: Only cookie-based auth is allowed
+ * DEV with ALLOW_ADMIN_API_KEY_FALLBACK=true: Also allows x-admin-key header
  */
 export async function isAdminAuthorized(request: NextRequest | Request): Promise<boolean> {
-  if (hasValidAdminHeader(request)) return true
-  return hasValidAdminCookie(request)
+  // Check cookie first (preferred method)
+  if (await hasValidAdminCookie(request)) {
+    return true
+  }
+
+  // Header fallback ONLY in development with explicit flag
+  if (process.env.NODE_ENV === 'development' && process.env.ALLOW_ADMIN_API_KEY_FALLBACK === 'true') {
+    const adminKey = process.env.ADMIN_API_KEY
+    if (adminKey) {
+      const providedKey = request.headers.get('x-admin-key')
+      if (providedKey === adminKey) {
+        return true
+      }
+    }
+  }
+
+  return false
 }
 
 /**
@@ -159,13 +219,44 @@ export function unauthorized(): NextResponse {
 
 /**
  * Create admin session cookie options
+ * Path scoped to /admin and /api/admin for security
  */
-export function getAdminCookieOptions() {
+export function getAdminCookieOptions(path: '/admin' | '/api/admin' | '/' = '/') {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
-    path: '/',
+    path,
     maxAge: SESSION_TTL_SECONDS
+  }
+}
+
+/**
+ * Increment admin session version to revoke all sessions
+ */
+export async function revokeAllAdminSessions(): Promise<boolean> {
+  try {
+    const supabase = getSupabaseServer()
+
+    const { data: settings } = await supabase
+      .from('admin_settings')
+      .select('*')
+      .limit(1)
+      .single()
+
+    if (!settings) return false
+
+    const typedSettings = settings as unknown as { id: string; admin_session_version?: number }
+    const currentVersion = typedSettings.admin_session_version || 1
+
+    await supabase
+      .from('admin_settings')
+      .update({ admin_session_version: currentVersion + 1 } as never)
+      .eq('id', typedSettings.id)
+
+    return true
+  } catch (error) {
+    console.error('[ADMIN_AUTH] Failed to revoke sessions:', error)
+    return false
   }
 }

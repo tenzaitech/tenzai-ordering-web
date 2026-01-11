@@ -18,6 +18,8 @@ import { checkAdminAuth } from '@/lib/admin-gate'
 export const runtime = 'nodejs'
 
 const BUCKET_NAME = 'menu-images'
+const MAX_MENU_IMAGE_SIZE_MB = 10
+const ALLOWED_EXTENSIONS = ['webp', 'jpg', 'jpeg', 'png']
 
 function getSupabaseServerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -75,7 +77,15 @@ export async function POST(request: NextRequest) {
     }
 
     const menuCode = body.menu_code.trim()
-    const extension = body.extension || 'webp'
+    const extension = (body.extension || 'webp').toLowerCase()
+
+    // Validate extension
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      return NextResponse.json(
+        { error: `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}` },
+        { status: 400 }
+      )
+    }
 
     // Generate unique upload path
     // Format: menu/{menu_code}/uploads/{upload_id}.{ext}

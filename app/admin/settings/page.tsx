@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/admin-fetch'
 import { useLanguage } from '@/contexts/LanguageContext'
+import Link from 'next/link'
 
 export default function AdminSettingsPage() {
   const { t } = useLanguage()
@@ -273,6 +274,22 @@ export default function AdminSettingsPage() {
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {/* Security Settings Link */}
+          <Link
+            href="/admin/settings/security"
+            className="block bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-text mb-1">ความปลอดภัย</h2>
+                <p className="text-sm text-muted">
+                  เปลี่ยนรหัสผ่านผู้ดูแล, ยกเลิก Session ทั้งหมด
+                </p>
+              </div>
+              <span className="text-muted text-2xl">&rarr;</span>
+            </div>
+          </Link>
 
           {/* Save Button */}
           <button

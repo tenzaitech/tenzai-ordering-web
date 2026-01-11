@@ -32,6 +32,9 @@ export default function MenuCardLarge({
 
   const promoText = promo_label || (language === 'th' ? 'โปรโมชั่น' : 'DEAL')
 
+  // Calculate savings for display (only if promo_price is set and less than price)
+  const savings = promo_price && promo_price < price_thb ? price_thb - promo_price : 0
+
   return (
     <div className={`overflow-hidden ${is_sold_out ? 'opacity-40' : ''}`}>
       {/* Thumbnail - premium styling with MenuThumb */}
@@ -78,12 +81,18 @@ export default function MenuCardLarge({
           {displayName}
         </h3>
         {promo_price ? (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {/* Highlighted price block */}
             <div className="inline-flex items-baseline gap-2 bg-gradient-to-r from-orange-500/15 to-red-500/10 px-2 py-1 rounded-lg w-fit">
               <span className="text-orange-400 font-bold text-xl scale-text">฿{promo_price}</span>
               <span className="text-text-muted line-through text-xs">฿{price_thb}</span>
             </div>
+            {/* Savings indicator */}
+            {savings > 0 && (
+              <span className="text-green-500 text-xs font-medium px-2">
+                {language === 'th' ? `ประหยัด ฿${savings}` : `Save ฿${savings}`}
+              </span>
+            )}
           </div>
         ) : (
           <p className="text-accent font-bold text-lg scale-text">฿{price_thb}</p>
