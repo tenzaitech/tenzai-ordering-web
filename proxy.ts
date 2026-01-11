@@ -7,11 +7,18 @@ import {
   ADMIN_COOKIE_NAME
 } from '@/lib/adminAuth'
 
+const STAFF_COOKIE_NAME = 'tenzai_staff'
+
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
   // Handle /admin/* routes - set session cookie if authenticated via header
   if (pathname.startsWith('/admin')) {
+    // Skip login page - don't require auth
+    if (pathname === '/admin/login') {
+      return NextResponse.next()
+    }
+
     // Already has valid cookie - proceed
     if (await hasValidAdminCookie(request)) {
       return NextResponse.next()
@@ -31,6 +38,13 @@ export async function proxy(request: NextRequest) {
         })
         return response
       }
+    }
+
+    // Redirect to login page (production behavior)
+    if (process.env.NODE_ENV === 'production') {
+      const loginUrl = new URL('/admin/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
     }
 
     // Dev mode: allow cookie minting for local testing without header
@@ -54,6 +68,22 @@ export async function proxy(request: NextRequest) {
 
     // No auth - let the page/API handle the 401
     return NextResponse.next()
+  }
+
+  // Handle /staff/* routes - require staff session
+  if (pathname.startsWith('/staff')) {
+    // Skip login page - don't require auth
+    if (pathname === '/staff/login') {
+      return NextResponse.next()
+    }
+
+    const staffCookie = request.cookies.get(STAFF_COOKIE_NAME)
+
+    if (!staffCookie?.value || !staffCookie.value.startsWith('STAFF_VERIFIED:')) {
+      // Redirect to staff login
+      const loginUrl = new URL('/staff/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
   // Guard all /order/* routes
@@ -92,5 +122,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/order/:path*', '/admin/:path*', '/api/admin/:path*']
+  matcher: ['/order/:path*', '/admin/:path*', '/api/admin/:path*', '/staff/:path*']
 }

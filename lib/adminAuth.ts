@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const COOKIE_NAME = 'tenzai_admin_session'
-const COOKIE_VERSION = 'v1'
+export const ADMIN_COOKIE_NAME = 'tenzai_admin_session'
+const COOKIE_VERSION = 'v2' // Updated for password-based auth
+const SESSION_TTL_SECONDS = 8 * 60 * 60 // 8 hours
 
 /**
  * Convert string to Uint8Array (UTF-8)
@@ -50,28 +51,52 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Generate the admin session cookie value using HMAC-SHA256
- * This ensures the cookie cannot be forged without knowing ADMIN_API_KEY
+ * Generate a signed session token with expiry
+ * Format: version:expiry:signature
  */
-export async function generateAdminSessionToken(): Promise<string | null> {
+export async function generateAdminSessionToken(expiryTimestamp?: number): Promise<string | null> {
   const adminKey = process.env.ADMIN_API_KEY
   if (!adminKey) return null
 
-  const signature = await hmacSha256Hex(adminKey, 'tenzai_admin')
-  return `${COOKIE_VERSION}:${signature}`
+  const expiry = expiryTimestamp || (Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS)
+  const payload = `admin:${expiry}`
+  const signature = await hmacSha256Hex(adminKey, payload)
+  return `${COOKIE_VERSION}:${expiry}:${signature}`
 }
 
 /**
  * Validate the admin session cookie value
+ * Checks signature AND expiry
  */
 async function isValidAdminSessionCookie(cookieValue: string): Promise<boolean> {
   const adminKey = process.env.ADMIN_API_KEY
   if (!adminKey) return false
 
-  const expectedToken = await generateAdminSessionToken()
-  if (!expectedToken) return false
+  const parts = cookieValue.split(':')
 
-  return constantTimeEqual(cookieValue, expectedToken)
+  // Support both old v1 format and new v2 format
+  if (parts[0] === 'v1' && parts.length === 2) {
+    // Legacy v1 format: v1:signature (no expiry)
+    const legacySignature = await hmacSha256Hex(adminKey, 'tenzai_admin')
+    return constantTimeEqual(parts[1], legacySignature)
+  }
+
+  if (parts[0] !== COOKIE_VERSION || parts.length !== 3) {
+    return false
+  }
+
+  const [, expiryStr, signature] = parts
+  const expiry = parseInt(expiryStr, 10)
+
+  // Check expiry
+  if (isNaN(expiry) || Date.now() / 1000 > expiry) {
+    return false
+  }
+
+  // Verify signature
+  const payload = `admin:${expiry}`
+  const expectedSignature = await hmacSha256Hex(adminKey, payload)
+  return constantTimeEqual(signature, expectedSignature)
 }
 
 /**
@@ -93,7 +118,7 @@ export async function hasValidAdminCookie(request: NextRequest | Request): Promi
 
   // Handle NextRequest (has cookies helper)
   if ('cookies' in request && typeof request.cookies?.get === 'function') {
-    const cookie = (request as NextRequest).cookies.get(COOKIE_NAME)
+    const cookie = (request as NextRequest).cookies.get(ADMIN_COOKIE_NAME)
     cookieValue = cookie?.value
   } else {
     // Fallback: parse Cookie header manually
@@ -102,7 +127,7 @@ export async function hasValidAdminCookie(request: NextRequest | Request): Promi
       const cookies = cookieHeader.split(';').map(c => c.trim())
       for (const cookie of cookies) {
         const [name, ...valueParts] = cookie.split('=')
-        if (name === COOKIE_NAME) {
+        if (name === ADMIN_COOKIE_NAME) {
           cookieValue = valueParts.join('=')
           break
         }
@@ -133,6 +158,14 @@ export function unauthorized(): NextResponse {
 }
 
 /**
- * Cookie name export for middleware use
+ * Create admin session cookie options
  */
-export const ADMIN_COOKIE_NAME = COOKIE_NAME
+export function getAdminCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS
+  }
+}

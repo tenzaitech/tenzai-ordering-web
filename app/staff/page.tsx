@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 type OrderItem = {
   id: string
@@ -36,10 +37,9 @@ type OrderRow = {
 }
 
 export default function StaffBoardPage() {
+  const router = useRouter()
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState('')
   const [activeTab, setActiveTab] = useState<Tab>('prepare')
   const [orders, setOrders] = useState<Order[]>([])
   const [historyOrders, setHistoryOrders] = useState<Order[]>([])
@@ -69,42 +69,27 @@ export default function StaffBoardPage() {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/staff/session')
+      const response = await fetch('/api/staff/auth/me')
       if (response.ok) {
         setAuthenticated(true)
+      } else {
+        // Redirect to login page
+        router.replace('/staff/login')
       }
     } catch (error) {
       console.error('[STAFF] Auth check error:', error)
+      router.replace('/staff/login')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPinError('')
-
-    if (!pin) {
-      setPinError('Please enter PIN')
-      return
-    }
-
+  const handleLogout = async () => {
     try {
-      const response = await fetch('/api/staff/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
-      })
-
-      if (response.ok) {
-        setAuthenticated(true)
-        setPin('')
-      } else {
-        setPinError('Incorrect PIN')
-      }
+      await fetch('/api/staff/auth/logout', { method: 'POST' })
+      router.replace('/staff/login')
     } catch (error) {
-      console.error('[STAFF] Login error:', error)
-      setPinError('Login failed')
+      console.error('[STAFF] Logout error:', error)
     }
   }
 
@@ -236,37 +221,8 @@ export default function StaffBoardPage() {
   }
 
   if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-5">
-        <div className="w-full max-w-sm">
-          <div className="bg-card border border-border rounded-lg p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-2xl">T</span>
-              </div>
-              <h1 className="text-2xl font-bold text-text mb-2">Staff Board</h1>
-              <p className="text-sm text-muted">Enter PIN to continue</p>
-            </div>
-            <form onSubmit={handleLogin}>
-              <input
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Enter PIN"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-text text-center text-xl tracking-widest mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
-                autoFocus
-              />
-              {pinError && <p className="text-sm text-red-500 mb-4 text-center">{pinError}</p>}
-              <button type="submit" className="w-full py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors">
-                Login
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
+    // Will redirect via checkAuth, show nothing
+    return null
   }
 
   const approvedOrders = orders.filter(o => o.status === 'approved')
@@ -317,15 +273,23 @@ export default function StaffBoardPage() {
               <h1 className="text-2xl font-bold text-text mb-1">Staff Board</h1>
               <p className="text-sm text-muted">{orders.length} active orders</p>
             </div>
-            <button
-              onClick={() => {
-                fetchOrders()
-                if (activeTab === 'history') fetchHistory()
-              }}
-              className="px-4 py-2 text-sm font-medium text-muted hover:text-text border border-border rounded-lg hover:bg-card transition-colors"
-            >
-              Refresh
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  fetchOrders()
+                  if (activeTab === 'history') fetchHistory()
+                }}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-text border border-border rounded-lg hover:bg-card transition-colors"
+              >
+                Refresh
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}

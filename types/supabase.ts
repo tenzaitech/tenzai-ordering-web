@@ -24,6 +24,8 @@ export type Database = {
           promptpay_id: string | null
           staff_pin_hash: string
           updated_at: string | null
+          admin_username: string | null
+          admin_password_hash: string | null
         }
         Insert: {
           created_at?: string | null
@@ -34,6 +36,8 @@ export type Database = {
           promptpay_id?: string | null
           staff_pin_hash: string
           updated_at?: string | null
+          admin_username?: string | null
+          admin_password_hash?: string | null
         }
         Update: {
           created_at?: string | null
@@ -44,6 +48,8 @@ export type Database = {
           promptpay_id?: string | null
           staff_pin_hash?: string
           updated_at?: string | null
+          admin_username?: string | null
+          admin_password_hash?: string | null
         }
         Relationships: []
       }
