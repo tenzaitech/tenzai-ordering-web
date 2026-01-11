@@ -16,6 +16,12 @@ import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 export const runtime = 'nodejs'
 
+// Unmistakable route marker for debugging route-level issues
+const ROUTE_MARKER = 'admin-login-route:v1'
+
+// Check if debug mode is enabled (cached at module level for perf)
+const isDebugMode = () => process.env.DEBUG_AUTH_ERRORS === 'true'
+
 type AdminSettingsRow = {
   admin_username: string | null
   admin_password_hash: string | null
@@ -28,6 +34,7 @@ type ErrorResponse = {
     error_id?: string
     name?: string
     hint?: string
+    route_marker?: string
   }
 }
 
@@ -40,7 +47,35 @@ type ErrorHint =
   | 'COOKIE'
   | 'CSRF'
   | 'RATE_LIMIT'
+  | 'TOKEN_GEN_FAILED'
   | 'UNKNOWN'
+
+/**
+ * Create a 500 error response with route marker header and optional debug fields.
+ * Always includes x-route-marker header. Debug fields only when DEBUG_AUTH_ERRORS=true.
+ */
+function create500Response(hint: ErrorHint, errorName = 'Error'): NextResponse<ErrorResponse> {
+  const errorId = randomUUID()
+  const debug = isDebugMode()
+
+  // Always log minimal safe info
+  console.error('AUTH_ADMIN_LOGIN_ERROR', { error_id: errorId, name: errorName, hint, route_marker: ROUTE_MARKER })
+
+  const baseError = {
+    code: 'SERVER_ERROR',
+    message_th: 'เกิดข้อผิดพลาดในระบบ'
+  }
+
+  const responseError = debug
+    ? { ...baseError, error_id: errorId, name: errorName, hint, route_marker: ROUTE_MARKER }
+    : baseError
+
+  const response = NextResponse.json<ErrorResponse>(
+    { error: responseError },
+    { status: 500, headers: { 'x-route-marker': ROUTE_MARKER } }
+  )
+  return response
+}
 
 /**
  * Derive a safe, non-sensitive hint from an error for debugging.
@@ -95,6 +130,11 @@ function verifyPassword(storedHash: string, suppliedPassword: string): boolean {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // Route entry marker - log only when debug enabled (no secrets)
+  if (isDebugMode()) {
+    console.log({ route_marker: ROUTE_MARKER, stage: 'entered' })
+  }
+
   const clientIp = getClientIp(request)
   const rateLimitKey = adminLoginKey(clientIp)
   const { ip, userAgent } = getRequestMeta(request)
@@ -112,7 +152,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       {
         status: 429,
-        headers: { 'Retry-After': String(retryAfterSeconds) }
+        headers: { 'Retry-After': String(retryAfterSeconds), 'x-route-marker': ROUTE_MARKER }
       }
     )
   }
@@ -130,7 +170,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             message_th: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'
           }
         },
-        { status: 400 }
+        { status: 400, headers: { 'x-route-marker': ROUTE_MARKER } }
       )
     }
 
@@ -143,16 +183,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .single()
 
     if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('[ADMIN:AUTH:LOGIN] Settings fetch error:', fetchError.message)
-      return NextResponse.json<ErrorResponse>(
-        {
-          error: {
-            code: 'SERVER_ERROR',
-            message_th: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
-          }
-        },
-        { status: 500 }
-      )
+      return create500Response('SUPABASE_DB', fetchError.name || 'PostgrestError')
     }
 
     const settings = settingsData as AdminSettingsRow | null
@@ -169,15 +200,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           await clearRateLimit(rateLimitKey)
           const token = await generateAdminSessionToken()
           if (!token) {
-            return NextResponse.json<ErrorResponse>(
-              {
-                error: {
-                  code: 'SERVER_ERROR',
-                  message_th: 'เกิดข้อผิดพลาดในระบบ'
-                }
-              },
-              { status: 500 }
-            )
+            return create500Response('TOKEN_GEN_FAILED', 'TokenGenerationError')
           }
 
           // Audit log - dev fallback login
@@ -190,7 +213,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             metadata: { method: 'api_key_fallback', env: 'development' }
           })
 
-          const response = NextResponse.json({ ok: true })
+          const response = NextResponse.json(
+            { ok: true },
+            { headers: { 'x-route-marker': ROUTE_MARKER } }
+          )
           response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
           return response
         }
@@ -213,7 +239,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             message_th: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
           }
         },
-        { status: 401 }
+        { status: 401, headers: { 'x-route-marker': ROUTE_MARKER } }
       )
     }
 
@@ -235,7 +261,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             message_th: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
           }
         },
-        { status: 401 }
+        { status: 401, headers: { 'x-route-marker': ROUTE_MARKER } }
       )
     }
 
@@ -258,7 +284,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             message_th: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
           }
         },
-        { status: 401 }
+        { status: 401, headers: { 'x-route-marker': ROUTE_MARKER } }
       )
     }
 
@@ -266,15 +292,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await clearRateLimit(rateLimitKey)
     const token = await generateAdminSessionToken()
     if (!token) {
-      return NextResponse.json<ErrorResponse>(
-        {
-          error: {
-            code: 'SERVER_ERROR',
-            message_th: 'เกิดข้อผิดพลาดในระบบ'
-          }
-        },
-        { status: 500 }
-      )
+      // TOKEN_GEN_FAILED: Most likely cause is missing ADMIN_API_KEY env var
+      return create500Response('TOKEN_GEN_FAILED', 'TokenGenerationError')
     }
 
     // Audit log - successful login
@@ -287,32 +306,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: { method: 'password' }
     })
 
-    const response = NextResponse.json({ ok: true })
+    const response = NextResponse.json(
+      { ok: true },
+      { headers: { 'x-route-marker': ROUTE_MARKER } }
+    )
     response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
     return response
   } catch (error) {
-    // Generate safe diagnostics (no secrets in logs or response)
-    const errorId = randomUUID()
+    // Use helper for consistent error handling with route marker
     const errorName = error instanceof Error ? error.name : 'Error'
     const hint = safeHint(error)
-
-    // Log minimal info (never include stack, message content, or env values)
-    console.error('AUTH_ADMIN_LOGIN_ERROR', { error_id: errorId, name: errorName, hint })
-
-    // Build response
-    const baseError = {
-      code: 'SERVER_ERROR',
-      message_th: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
-    }
-
-    // Include debug fields only when DEBUG_AUTH_ERRORS=true
-    const responseError = process.env.DEBUG_AUTH_ERRORS === 'true'
-      ? { ...baseError, error_id: errorId, name: errorName, hint }
-      : baseError
-
-    return NextResponse.json<ErrorResponse>(
-      { error: responseError },
-      { status: 500 }
-    )
+    return create500Response(hint, errorName)
   }
 }
