@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { scrypt } from 'crypto'
-import { promisify } from 'util'
+import { scryptSync, timingSafeEqual } from 'crypto'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import {
   STAFF_COOKIE_NAME,
@@ -17,8 +16,6 @@ import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 export const runtime = 'nodejs'
 
-const scryptAsync = promisify(scrypt)
-
 type SettingsRow = {
   staff_pin_hash: string | null
   pin_version: number
@@ -32,13 +29,19 @@ type ErrorResponse = {
 }
 
 /**
- * Verify PIN against stored scrypt hash
+ * Verify PIN against stored scrypt hash (sync for Vercel stability)
  */
-async function verifyPin(storedHash: string, suppliedPin: string): Promise<boolean> {
-  const [hashedPassword, salt] = storedHash.split('.')
-  if (!hashedPassword || !salt) return false
-  const buf = (await scryptAsync(suppliedPin, salt, 64)) as Buffer
-  return buf.toString('hex') === hashedPassword
+function verifyPin(storedHash: string, suppliedPin: string): boolean {
+  try {
+    const [hashedPassword, salt] = storedHash.split('.')
+    if (!hashedPassword || !salt) return false
+    const buf = scryptSync(suppliedPin, salt, 64)
+    const storedBuf = Buffer.from(hashedPassword, 'hex')
+    if (buf.length !== storedBuf.length) return false
+    return timingSafeEqual(buf, storedBuf)
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -108,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let pinValid = false
 
     if (settings && settings.staff_pin_hash) {
-      pinValid = await verifyPin(settings.staff_pin_hash, pin)
+      pinValid = verifyPin(settings.staff_pin_hash, pin)
     } else {
       // Fallback to env STAFF_PIN ONLY in dev with explicit flag
       if (

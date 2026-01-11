@@ -4,8 +4,7 @@ import { checkAdminAuth } from '@/lib/admin-gate'
 import { validateCsrf, csrfError } from '@/lib/csrf'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
 import { revokeAllStaffSessions } from '@/lib/staffAuth'
-import { scrypt, randomBytes } from 'crypto'
-import { promisify } from 'util'
+import { scryptSync, randomBytes } from 'crypto'
 
 export const runtime = 'nodejs'
 
@@ -27,18 +26,10 @@ type SettingsInsert = {
   updated_at: string
 }
 
-const scryptAsync = promisify(scrypt)
-
-async function hashPin(pin: string): Promise<string> {
+function hashPin(pin: string): string {
   const salt = randomBytes(16).toString('hex')
-  const buf = (await scryptAsync(pin, salt, 64)) as Buffer
+  const buf = scryptSync(pin, salt, 64)
   return `${buf.toString('hex')}.${salt}`
-}
-
-async function verifyPin(storedHash: string, suppliedPin: string): Promise<boolean> {
-  const [hashedPassword, salt] = storedHash.split('.')
-  const buf = (await scryptAsync(suppliedPin, salt, 64)) as Buffer
-  return buf.toString('hex') === hashedPassword
 }
 
 // GET: Fetch current settings
@@ -144,7 +135,7 @@ export async function POST(request: NextRequest) {
     // If new PIN provided, hash it and increment version
     const pinChanged = new_staff_pin && new_staff_pin.length > 0
     if (pinChanged) {
-      const hashedPin = await hashPin(new_staff_pin)
+      const hashedPin = hashPin(new_staff_pin)
       updateData.staff_pin_hash = hashedPin
       updateData.pin_version = (existing?.pin_version || 1) + 1
       updateData.staff_session_version = (existing?.pin_version || 1) + 1 // Also update session version
@@ -178,7 +169,7 @@ export async function POST(request: NextRequest) {
       if (!new_staff_pin) {
         return NextResponse.json({ error: 'PIN required for initial setup' }, { status: 400 })
       }
-      const hashedPin = await hashPin(new_staff_pin)
+      const hashedPin = hashPin(new_staff_pin)
       const insertPayload: SettingsInsert = {
         promptpay_id: promptpay_id || '',
         line_approver_id: line_approver_id || '',

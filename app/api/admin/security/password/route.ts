@@ -4,12 +4,9 @@ import { checkAdminAuth } from '@/lib/admin-gate'
 import { validateCsrf, csrfError } from '@/lib/csrf'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
 import { revokeAllAdminSessions, generateAdminSessionToken, ADMIN_COOKIE_NAME, getAdminCookieOptions } from '@/lib/adminAuth'
-import { scrypt, randomBytes } from 'crypto'
-import { promisify } from 'util'
+import { scryptSync, randomBytes, timingSafeEqual } from 'crypto'
 
 export const runtime = 'nodejs'
-
-const scryptAsync = promisify(scrypt)
 
 type SettingsRow = {
   id: string
@@ -17,17 +14,23 @@ type SettingsRow = {
   admin_session_version?: number
 }
 
-async function hashPassword(password: string): Promise<string> {
+function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex')
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer
+  const buf = scryptSync(password, salt, 64)
   return `${buf.toString('hex')}.${salt}`
 }
 
-async function verifyPassword(storedHash: string, suppliedPassword: string): Promise<boolean> {
-  const [hashedPassword, salt] = storedHash.split('.')
-  if (!hashedPassword || !salt) return false
-  const buf = (await scryptAsync(suppliedPassword, salt, 64)) as Buffer
-  return buf.toString('hex') === hashedPassword
+function verifyPassword(storedHash: string, suppliedPassword: string): boolean {
+  try {
+    const [hashedPassword, salt] = storedHash.split('.')
+    if (!hashedPassword || !salt) return false
+    const buf = scryptSync(suppliedPassword, salt, 64)
+    const storedBuf = Buffer.from(hashedPassword, 'hex')
+    if (buf.length !== storedBuf.length) return false
+    return timingSafeEqual(buf, storedBuf)
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -88,7 +91,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Verify current password
-    const passwordValid = await verifyPassword(settings.admin_password_hash, current_password)
+    const passwordValid = verifyPassword(settings.admin_password_hash, current_password)
     if (!passwordValid) {
       await auditLog({
         actor_type: 'admin',
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Hash new password
-    const newPasswordHash = await hashPassword(new_password)
+    const newPasswordHash = hashPassword(new_password)
     const newSessionVersion = (settings.admin_session_version || 1) + 1
 
     // Update password and session version

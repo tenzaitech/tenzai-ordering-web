@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { scrypt } from 'crypto'
-import { promisify } from 'util'
+import { scryptSync, timingSafeEqual } from 'crypto'
 
 export const runtime = 'nodejs'
 
@@ -14,12 +13,17 @@ type PinVersionRow = {
   pin_version: number
 }
 
-const scryptAsync = promisify(scrypt)
-
-async function verifyPin(storedHash: string, suppliedPin: string): Promise<boolean> {
-  const [hashedPassword, salt] = storedHash.split('.')
-  const buf = (await scryptAsync(suppliedPin, salt, 64)) as Buffer
-  return buf.toString('hex') === hashedPassword
+function verifyPin(storedHash: string, suppliedPin: string): boolean {
+  try {
+    const [hashedPassword, salt] = storedHash.split('.')
+    if (!hashedPassword || !salt) return false
+    const buf = scryptSync(suppliedPin, salt, 64)
+    const storedBuf = Buffer.from(hashedPassword, 'hex')
+    if (buf.length !== storedBuf.length) return false
+    return timingSafeEqual(buf, storedBuf)
+  } catch {
+    return false
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
     let pinVersion = 1
 
     if (settings && settings.staff_pin_hash) {
-      pinValid = await verifyPin(settings.staff_pin_hash, pin)
+      pinValid = verifyPin(settings.staff_pin_hash, pin)
       pinVersion = settings.pin_version
     } else {
       // Fallback to env STAFF_PIN (plaintext comparison for backward compat)

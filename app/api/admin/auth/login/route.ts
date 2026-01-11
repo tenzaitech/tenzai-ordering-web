@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { scrypt } from 'crypto'
-import { promisify } from 'util'
+import { scryptSync, timingSafeEqual } from 'crypto'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import {
   generateAdminSessionToken,
@@ -17,8 +16,6 @@ import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
 export const runtime = 'nodejs'
 
-const scryptAsync = promisify(scrypt)
-
 type AdminSettingsRow = {
   admin_username: string | null
   admin_password_hash: string | null
@@ -32,13 +29,20 @@ type ErrorResponse = {
 }
 
 /**
- * Verify password against stored scrypt hash
+ * Verify password against stored scrypt hash (sync for Vercel stability)
  */
-async function verifyPassword(storedHash: string, suppliedPassword: string): Promise<boolean> {
-  const [hashedPassword, salt] = storedHash.split('.')
-  if (!hashedPassword || !salt) return false
-  const buf = (await scryptAsync(suppliedPassword, salt, 64)) as Buffer
-  return buf.toString('hex') === hashedPassword
+function verifyPassword(storedHash: string, suppliedPassword: string): boolean {
+  try {
+    const [hashedPassword, salt] = storedHash.split('.')
+    if (!hashedPassword || !salt) return false
+    const buf = scryptSync(suppliedPassword, salt, 64)
+    const storedBuf = Buffer.from(hashedPassword, 'hex')
+    if (buf.length !== storedBuf.length) return false
+    return timingSafeEqual(buf, storedBuf)
+  } catch (err) {
+    console.error('[ADMIN:AUTH:LOGIN] verifyPassword error:', err instanceof Error ? err.message : 'unknown')
+    return false
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -187,7 +191,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Verify password
-    const passwordValid = await verifyPassword(settings.admin_password_hash, password)
+    const passwordValid = verifyPassword(settings.admin_password_hash, password)
     if (!passwordValid) {
       await auditLog({
         actor_type: 'admin',
