@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabaseServer } from './supabase-server'
 
 type AdminSettingsRow = {
   line_approver_id: string | null
@@ -76,6 +76,7 @@ function getAdminUrl(path: string): string {
 
 // Fetch LINE recipient IDs from DB (with env fallback)
 async function getLineRecipients(): Promise<{ approverId: string; staffId: string }> {
+  const supabase = getSupabaseServer()
   const { data: settingsData } = await supabase
     .from('admin_settings')
     .select('line_approver_id, line_staff_id')
@@ -442,6 +443,7 @@ function buildFlexOrderCard(options: FlexCardOptions): object {
 // ============================================================
 
 export async function sendSlipNotification(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
@@ -537,6 +539,7 @@ export async function sendSlipNotification(orderId: string): Promise<void> {
 }
 
 export async function sendStaffNotification(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
@@ -661,6 +664,7 @@ export async function sendStaffNotification(orderId: string): Promise<void> {
 }
 
 export async function sendStaffAdjustmentNotification(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
@@ -733,6 +737,7 @@ export async function sendStaffAdjustmentNotification(orderId: string): Promise<
 }
 
 export async function sendCustomerSlipConfirmation(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
@@ -796,6 +801,7 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
 }
 
 export async function sendCustomerApprovedNotification(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
@@ -941,6 +947,7 @@ export async function sendCustomerInvoiceNotification(
 }
 
 export async function sendCustomerNotification(orderId: string, status: 'ready' | 'picked_up'): Promise<void> {
+  const supabase = getSupabaseServer()
   // Fetch order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function AdminOrdersPage() {
@@ -37,48 +36,21 @@ export default function AdminOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      let query = supabase
-        .from('orders')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (dateFilter === 'today') params.set('date', 'today')
+      params.set('page', String(currentPage))
 
-      // Admin dashboard shows only paid orders (slip uploaded)
-      query = query.not('slip_url', 'is', null)
-
-      // Status filter
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter)
-      }
-
-      // Date filter (Today in Bangkok timezone)
-      if (dateFilter === 'today') {
-        const now = new Date()
-        const bangkokOffset = 7 * 60
-        const bangkokNow = new Date(now.getTime() + bangkokOffset * 60 * 1000)
-        const startOfDay = new Date(bangkokNow)
-        startOfDay.setUTCHours(0, 0, 0, 0)
-        const startISO = new Date(startOfDay.getTime() - bangkokOffset * 60 * 1000).toISOString()
-        const endOfDay = new Date(bangkokNow)
-        endOfDay.setUTCHours(23, 59, 59, 999)
-        const endISO = new Date(endOfDay.getTime() - bangkokOffset * 60 * 1000).toISOString()
-
-        query = query.gte('created_at', startISO).lte('created_at', endISO)
-      }
-
-      // Pagination
-      const from = (currentPage - 1) * pageSize
-      const to = from + pageSize - 1
-      query = query.range(from, to)
-
-      const { data, error, count } = await query
-
-      if (error) {
-        console.error('[ADMIN:ORDERS] Failed to fetch orders:', error)
+      const response = await fetch(`/api/admin/orders?${params.toString()}`)
+      if (!response.ok) {
+        console.error('[ADMIN:ORDERS] Failed to fetch orders')
+        setLoading(false)
         return
       }
 
-      setOrders(data || [])
-      setTotalCount(count || 0)
+      const data = await response.json()
+      setOrders(data.orders || [])
+      setTotalCount(data.count || 0)
       setLoading(false)
     } catch (error) {
       console.error('[ADMIN:ORDERS] Unexpected error:', error)
@@ -129,13 +101,10 @@ export default function AdminOrdersPage() {
     setDrawerLoading(true)
 
     try {
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', order.id)
-
-      if (!error && data) {
-        setOrderItems(data)
+      const response = await fetch(`/api/admin/orders/${order.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setOrderItems(data.items || [])
       }
     } catch (error) {
       console.error('[ADMIN:DRAWER] Error fetching items:', error)

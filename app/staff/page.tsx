@@ -107,41 +107,10 @@ export default function StaffBoardPage() {
 
   const fetchHistory = async () => {
     try {
-      // Calculate Bangkok today (00:00 - 23:59)
-      const now = new Date()
-      const bangkokOffset = 7 * 60 // UTC+7
-      const bangkokNow = new Date(now.getTime() + bangkokOffset * 60 * 1000)
-
-      const startOfDay = new Date(bangkokNow)
-      startOfDay.setUTCHours(0, 0, 0, 0)
-      const startISO = new Date(startOfDay.getTime() - bangkokOffset * 60 * 1000).toISOString()
-
-      const endOfDay = new Date(bangkokNow)
-      endOfDay.setUTCHours(23, 59, 59, 999)
-      const endISO = new Date(endOfDay.getTime() - bangkokOffset * 60 * 1000).toISOString()
-
-      const { supabase } = await import('@/lib/supabase')
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('status', 'picked_up')
-        .gte('created_at', startISO)
-        .lte('created_at', endISO)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      const orders = (data ?? []) as OrderRow[]
-      if (!error && orders.length > 0) {
-        const ordersWithItems = await Promise.all(
-          orders.map(async (order) => {
-            const { data: items } = await supabase
-              .from('order_items')
-              .select('*')
-              .eq('order_id', order.id)
-            return { ...order, items: items || [] }
-          })
-        )
-        setHistoryOrders(ordersWithItems as unknown as Order[])
+      const response = await fetch('/api/staff/orders/history')
+      if (response.ok) {
+        const data = await response.json()
+        setHistoryOrders(data.orders || [])
       }
     } catch (error) {
       console.error('[STAFF] Fetch history error:', error)

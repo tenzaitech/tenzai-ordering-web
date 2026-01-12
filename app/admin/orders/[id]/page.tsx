@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 
 export default function AdminOrderDetailPage() {
   const router = useRouter()
@@ -24,31 +23,16 @@ export default function AdminOrderDetailPage() {
 
   const fetchOrderDetails = async () => {
     try {
-      // Fetch order
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single()
-
-      if (orderError || !orderData) {
-        console.error('[ADMIN:DETAIL] Failed to fetch order:', orderError)
+      const response = await fetch(`/api/admin/orders/${orderId}`)
+      if (!response.ok) {
+        console.error('[ADMIN:DETAIL] Failed to fetch order')
         setLoading(false)
         return
       }
 
-      // Fetch order items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', orderId)
-
-      if (itemsError) {
-        console.error('[ADMIN:DETAIL] Failed to fetch items:', itemsError)
-      }
-
-      setOrder(orderData)
-      setItems(itemsData || [])
+      const data = await response.json()
+      setOrder(data.order)
+      setItems(data.items || [])
       setLoading(false)
     } catch (error) {
       console.error('[ADMIN:DETAIL] Unexpected error:', error)
