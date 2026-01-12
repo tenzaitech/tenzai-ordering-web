@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 
 type MenuToggleUpdate = {
   is_active: boolean
@@ -13,6 +14,10 @@ export async function PATCH(
 ) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const { menu_code } = await params

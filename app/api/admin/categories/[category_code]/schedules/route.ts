@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 
 type Schedule = {
   day_of_week: number  // 0-6 (Sunday-Saturday)
@@ -45,6 +46,10 @@ export async function POST(
 ) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const { category_code } = await params

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 import {
   DERIVATIVES,
   generateDerivative,
@@ -45,6 +46,10 @@ function getSupabaseServerClient() {
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const supabase = getSupabaseServerClient()

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { generateCode } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 
 type OptionGroupInsert = {
   group_code: string
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const body = await request.json()

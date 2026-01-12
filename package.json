@@ -7,9 +7,17 @@
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint app lib components scripts types --ext .js,.jsx,.ts,.tsx --max-warnings=0",
+    "lint:next": "next lint",
+    "typecheck": "tsc --noEmit",
     "check:lockfile": "node -e \"JSON.parse(require('fs').readFileSync('package-lock.json','utf8')); console.log('package-lock.json OK')\"",
     "check:no-xlsx-client": "node scripts/check-no-xlsx-client.js",
+    "verify:csrf": "npx tsx scripts/verify-csrf-coverage.ts",
+    "verify:rate-limit": "npx tsx scripts/verify-rate-limit-coverage.ts",
+    "verify:all": "npm run verify:csrf && npm run verify:rate-limit",
+    "preflight": "npx tsx scripts/preflight.ts",
+    "quality:check": "npm run typecheck && npm run build",
+    "quality:check:full": "npm run typecheck && npm run lint && npm run build",
     "prepare": "husky"
   },
   "keywords": [],
@@ -32,13 +40,15 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
-    "husky": "^9.1.7",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.23",
+    "eslint": "^8.57.1",
+    "husky": "^9.1.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.19.0",
     "typescript": "^5.9.3"
   }
 }

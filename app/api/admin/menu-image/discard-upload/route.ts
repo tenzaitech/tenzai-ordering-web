@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 import { formatImageOpLog } from '@/lib/image-types'
 
 export const runtime = 'nodejs'
@@ -54,6 +55,10 @@ interface DiscardUploadRequest {
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const body: DiscardUploadRequest = await request.json()

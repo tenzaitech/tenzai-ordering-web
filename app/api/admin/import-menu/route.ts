@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { validateMenuData, ParsedMenuData, generateCode, parseIntegerPrice } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 
 type CategoryUpsert = {
   category_code: string
@@ -46,6 +47,10 @@ type MenuOptionGroupInsert = {
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const data: ParsedMenuData = await request.json()

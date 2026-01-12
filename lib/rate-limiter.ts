@@ -7,10 +7,28 @@
 
 import { getSupabaseServer } from './supabase-server'
 
-// Configuration
+// Default Configuration (for auth endpoints)
 const MAX_ATTEMPTS = 5
 const WINDOW_MINUTES = 15
 const LOCKOUT_MINUTES = 15
+
+// Configurable rate limit settings for different endpoint types
+export type RateLimitConfig = {
+  maxAttempts: number
+  windowMinutes: number
+  lockoutMinutes: number
+}
+
+// Predefined configs for public endpoints
+export const RATE_LIMIT_CONFIGS = {
+  // Public endpoints (by IP)
+  'validate-cart': { maxAttempts: 30, windowMinutes: 1, lockoutMinutes: 5 },
+  'promptpay': { maxAttempts: 10, windowMinutes: 1, lockoutMinutes: 5 },
+  'liff-session': { maxAttempts: 10, windowMinutes: 1, lockoutMinutes: 5 },
+  // Customer endpoints (by user)
+  'order-create': { maxAttempts: 5, windowMinutes: 1, lockoutMinutes: 5 },
+  'slip-upload': { maxAttempts: 10, windowMinutes: 1, lockoutMinutes: 5 },
+} as const
 
 export type RateLimitResult = {
   allowed: boolean
@@ -219,4 +237,112 @@ export function adminLoginKey(ip: string): string {
  */
 export function staffPinKey(ip: string): string {
   return `staff:pin:ip:${ip}`
+}
+
+/**
+ * Build rate limit key for public endpoints (by IP)
+ */
+export function publicEndpointKey(endpoint: string, ip: string): string {
+  return `public:${endpoint}:ip:${ip}`
+}
+
+/**
+ * Check rate limit with configurable limits
+ * @param key - Rate limit key
+ * @param config - Custom rate limit configuration
+ * @returns Rate limit status
+ */
+export async function checkAndIncrementRateLimitWithConfig(
+  key: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const supabase = getSupabaseServer()
+  const now = new Date()
+
+  try {
+    // Fetch existing entry
+    const { data: existing } = await (supabase as ReturnType<typeof getSupabaseServer>)
+      .from('auth_rate_limits' as never)
+      .select('*')
+      .eq('key', key)
+      .single()
+
+    const entry = existing as RateLimitRow | null
+
+    // Check if locked
+    if (entry?.locked_until) {
+      const lockedUntil = new Date(entry.locked_until)
+      if (now < lockedUntil) {
+        const retryAfterSeconds = Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000)
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterSeconds
+        }
+      }
+    }
+
+    // Check if window expired - reset if so
+    const windowStart = new Date(now.getTime() - config.windowMinutes * 60 * 1000)
+    const isExpired = !entry || new Date(entry.first_attempt_at) < windowStart
+
+    if (isExpired) {
+      // Reset or create entry with 1 attempt
+      const newEntry = {
+        key,
+        attempts: 1,
+        first_attempt_at: now.toISOString(),
+        locked_until: null,
+        updated_at: now.toISOString()
+      }
+
+      await (supabase as ReturnType<typeof getSupabaseServer>)
+        .from('auth_rate_limits' as never)
+        .upsert(newEntry as never, { onConflict: 'key' })
+
+      return {
+        allowed: true,
+        remaining: config.maxAttempts - 1,
+        retryAfterSeconds: null
+      }
+    }
+
+    // Increment attempts
+    const newAttempts = entry.attempts + 1
+    const isLocked = newAttempts >= config.maxAttempts
+    const lockedUntil = isLocked
+      ? new Date(now.getTime() + config.lockoutMinutes * 60 * 1000).toISOString()
+      : null
+
+    await (supabase as ReturnType<typeof getSupabaseServer>)
+      .from('auth_rate_limits' as never)
+      .update({
+        attempts: newAttempts,
+        locked_until: lockedUntil,
+        updated_at: now.toISOString()
+      } as never)
+      .eq('key', key)
+
+    if (isLocked) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: config.lockoutMinutes * 60
+      }
+    }
+
+    return {
+      allowed: true,
+      remaining: config.maxAttempts - newAttempts,
+      retryAfterSeconds: null
+    }
+  } catch (error) {
+    // On DB error, fail open but log
+    console.error('[RATE_LIMIT] Database error:', error)
+    return {
+      allowed: true,
+      remaining: config.maxAttempts,
+      retryAfterSeconds: null
+    }
+  }
 }

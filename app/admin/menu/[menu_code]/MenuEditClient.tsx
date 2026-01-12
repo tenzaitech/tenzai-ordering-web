@@ -7,6 +7,7 @@ import Toast from '@/components/Toast'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import { generateCode } from '@/lib/menu-import-validator'
 import { adminFetch } from '@/lib/admin-fetch'
+import { normalizeToastMessage } from '@/lib/toast-helpers'
 
 type MenuItem = {
   menu_code: string
@@ -110,8 +111,8 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
           }
 
           if (!res.ok) {
-            const errorData = await res.json()
-            showToast(errorData.error || 'Failed to delete menu item', 'error')
+            const errorData = await res.json().catch(() => null)
+            showToast(normalizeToastMessage(errorData?.error ?? errorData) || 'Failed to delete menu item', 'error')
             return
           }
 
@@ -211,8 +212,8 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
         }
 
         if (!res.ok) {
-          const errorData = await res.json()
-          showToast(errorData.error || 'Failed to create menu item', 'error')
+          const errorData = await res.json().catch(() => null)
+          showToast(normalizeToastMessage(errorData?.error ?? errorData) || 'Failed to create menu item', 'error')
           return
         }
 
@@ -270,8 +271,8 @@ export default function MenuEditClient({ menuItem, categories, optionGroups, sel
         }
 
         if (!res.ok) {
-          const errorData = await res.json()
-          showToast(errorData.error || 'Failed to update menu item', 'error')
+          const errorData = await res.json().catch(() => null)
+          showToast(normalizeToastMessage(errorData?.error ?? errorData) || 'Failed to update menu item', 'error')
           return
         }
 

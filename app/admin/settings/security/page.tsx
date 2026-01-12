@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { adminFetch } from '@/lib/admin-fetch'
+import { normalizeToastMessage } from '@/lib/toast-helpers'
 import Link from 'next/link'
 
 type FeedbackState = {
@@ -64,8 +65,8 @@ export default function SecuritySettingsPage() {
         setConfirmPassword('')
         showFeedback('เปลี่ยนรหัสผ่านสำเร็จ session อื่นทั้งหมดถูกยกเลิก', 'success')
       } else {
-        const data = await res.json()
-        showFeedback(data.error?.message_th || 'เกิดข้อผิดพลาด', 'error')
+        const data = await res.json().catch(() => null)
+        showFeedback(normalizeToastMessage(data?.error ?? data), 'error')
       }
     } catch (error) {
       console.error('[SECURITY] Password change error:', error)
@@ -96,8 +97,8 @@ export default function SecuritySettingsPage() {
         }
         showFeedback(messages[target], 'success')
       } else {
-        const data = await res.json()
-        showFeedback(data.error?.message_th || 'เกิดข้อผิดพลาด', 'error')
+        const data = await res.json().catch(() => null)
+        showFeedback(normalizeToastMessage(data?.error ?? data), 'error')
       }
     } catch (error) {
       console.error('[SECURITY] Revoke session error:', error)

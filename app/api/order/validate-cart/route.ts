@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { isCategoryAvailable, type CategorySchedule } from '@/lib/categorySchedule'
+import {
+  checkAndIncrementRateLimitWithConfig,
+  publicEndpointKey,
+  getClientIp,
+  RATE_LIMIT_CONFIGS
+} from '@/lib/rate-limiter'
 
 type CartItemInput = {
   menuId: string
@@ -17,6 +23,25 @@ type MenuItemCategory = {
  * Returns 400 if any item's category is outside its schedule window.
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request)
+  const rateLimitKey = publicEndpointKey('validate-cart', ip)
+  const rateLimit = await checkAndIncrementRateLimitWithConfig(rateLimitKey, RATE_LIMIT_CONFIGS['validate-cart'])
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: 'Too many requests',
+        error_th: 'คำขอมากเกินไป กรุณารอสักครู่',
+        retryAfter: rateLimit.retryAfterSeconds
+      },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rateLimit.retryAfterSeconds || 60) }
+      }
+    )
+  }
+
   try {
     const body = await request.json()
     const items: CartItemInput[] = body.items || []

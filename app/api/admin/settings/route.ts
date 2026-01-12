@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { checkAdminAuth } from '@/lib/admin-gate'
 import { validateCsrf, csrfError } from '@/lib/csrf'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
@@ -7,6 +7,9 @@ import { revokeAllStaffSessions } from '@/lib/staffAuth'
 import { scryptSync, randomBytes } from 'crypto'
 
 export const runtime = 'nodejs'
+
+// Dev-only diagnostics flag
+const isDebugMode = () => process.env.DEBUG_ADMIN_SETTINGS === 'true'
 
 type SettingsRow = {
   id: string
@@ -26,16 +29,73 @@ type SettingsInsert = {
   updated_at: string
 }
 
+type ErrorCode = 'DB_ERROR' | 'FORBIDDEN' | 'BAD_REQUEST' | 'SERVER_ERROR'
+
+type ErrorResponse = {
+  error: {
+    code: ErrorCode
+    message_th: string
+    debug?: {
+      table: string
+      operation: string
+      supabaseErrorCode: string | null
+      supabaseErrorMessage: string | null
+      client: 'service'
+    }
+  }
+}
+
+function createErrorResponse(
+  code: ErrorCode,
+  message_th: string,
+  status: number,
+  debugInfo?: {
+    table: string
+    operation: string
+    supabaseError?: { code: string; message: string } | null
+  }
+): NextResponse<ErrorResponse> {
+  const body: ErrorResponse = {
+    error: {
+      code,
+      message_th
+    }
+  }
+
+  // Include debug info only in dev mode
+  if (isDebugMode() && debugInfo) {
+    body.error.debug = {
+      table: debugInfo.table,
+      operation: debugInfo.operation,
+      supabaseErrorCode: debugInfo.supabaseError?.code || null,
+      supabaseErrorMessage: debugInfo.supabaseError?.message?.slice(0, 120) || null,
+      client: 'service'
+    }
+  }
+
+  return NextResponse.json(body, { status })
+}
+
 function hashPin(pin: string): string {
   const salt = randomBytes(16).toString('hex')
   const buf = scryptSync(pin, salt, 64)
   return `${buf.toString('hex')}.${salt}`
 }
 
-// GET: Fetch current settings
+/**
+ * GET: Fetch current admin settings
+ *
+ * CANONICAL SOURCE: admin_settings table (service-role access)
+ * BOOTSTRAP FALLBACK: Environment variables (LINE_APPROVER_ID, LINE_STAFF_ID)
+ *
+ * When no admin_settings row exists (fresh install), returns env var defaults.
+ * Once admin saves settings via POST, DB becomes the canonical source.
+ */
 export async function GET(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  const supabase = getSupabaseServer()
 
   try {
     const { data: rawData, error } = await supabase
@@ -46,12 +106,16 @@ export async function GET(request: NextRequest) {
 
     if (error && error.code !== 'PGRST116') {
       console.error('[ADMIN:SETTINGS] Fetch error:', error.message)
-      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
+      return createErrorResponse('DB_ERROR', 'ไม่สามารถโหลดการตั้งค่าได้', 500, {
+        table: 'admin_settings',
+        operation: 'select',
+        supabaseError: error
+      })
     }
 
     const data = rawData as SettingsRow | null
 
-    // If no row exists, return defaults
+    // Bootstrap: No row exists yet, return env defaults for initial setup UI
     if (!data) {
       return NextResponse.json({
         promptpay_id: '',
@@ -61,6 +125,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Canonical: Return DB values
     return NextResponse.json({
       promptpay_id: data.promptpay_id || '',
       line_approver_id: data.line_approver_id || '',
@@ -69,21 +134,30 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('[ADMIN:SETTINGS] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createErrorResponse('SERVER_ERROR', 'เกิดข้อผิดพลาดในระบบ', 500)
   }
 }
 
-// POST: Update settings (PATCH-style: only update fields present in body)
+/**
+ * POST: Update admin settings (PATCH-style: only update fields present in body)
+ *
+ * WRITES TO: admin_settings table (canonical source)
+ * SECURITY: Requires admin auth + CSRF token
+ *
+ * This endpoint establishes admin_settings as the canonical source.
+ * After first successful POST, env var fallbacks are no longer used.
+ */
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
 
-  // CSRF check
+  // CSRF check - required for all mutations
   if (!validateCsrf(request)) {
     return csrfError()
   }
 
   const { ip, userAgent } = getRequestMeta(request)
+  const supabase = getSupabaseServer()
 
   try {
     const body = await request.json()
@@ -92,7 +166,7 @@ export async function POST(request: NextRequest) {
     // Validate only provided fields
     if (new_staff_pin !== undefined && new_staff_pin !== '') {
       if (!/^\d{4}$/.test(new_staff_pin)) {
-        return NextResponse.json({ error: 'PIN must be exactly 4 digits' }, { status: 400 })
+        return createErrorResponse('BAD_REQUEST', 'PIN ต้องเป็นตัวเลข 4 หลัก', 400)
       }
     }
 
@@ -100,7 +174,7 @@ export async function POST(request: NextRequest) {
     const hasAnyField = promptpay_id !== undefined || line_approver_id !== undefined ||
                         line_staff_id !== undefined || (new_staff_pin && new_staff_pin.length > 0)
     if (!hasAnyField) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+      return createErrorResponse('BAD_REQUEST', 'ไม่มีข้อมูลที่จะอัพเดท', 400)
     }
 
     // Fetch existing settings
@@ -112,13 +186,17 @@ export async function POST(request: NextRequest) {
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('[ADMIN:SETTINGS] Fetch error:', fetchError.message)
-      return NextResponse.json({ error: 'Failed to fetch existing settings' }, { status: 500 })
+      return createErrorResponse('DB_ERROR', 'ไม่สามารถโหลดการตั้งค่าได้', 500, {
+        table: 'admin_settings',
+        operation: 'select',
+        supabaseError: fetchError
+      })
     }
 
     const existing = existingData as SettingsRow | null
 
     // Prepare update data (only include fields that were provided)
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString()
     }
 
@@ -150,7 +228,11 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error('[ADMIN:SETTINGS] Update error:', updateError.message)
-        return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
+        return createErrorResponse('DB_ERROR', 'ไม่สามารถบันทึกการตั้งค่าได้', 500, {
+          table: 'admin_settings',
+          operation: 'update',
+          supabaseError: updateError
+        })
       }
 
       // If PIN changed, revoke all staff sessions and audit log
@@ -167,7 +249,7 @@ export async function POST(request: NextRequest) {
     } else {
       // First time setup - need to include staff_pin_hash
       if (!new_staff_pin) {
-        return NextResponse.json({ error: 'PIN required for initial setup' }, { status: 400 })
+        return createErrorResponse('BAD_REQUEST', 'ต้องกำหนด PIN สำหรับการตั้งค่าครั้งแรก', 400)
       }
       const hashedPin = hashPin(new_staff_pin)
       const insertPayload: SettingsInsert = {
@@ -184,7 +266,11 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('[ADMIN:SETTINGS] Insert error:', insertError.message)
-        return NextResponse.json({ error: 'Failed to create settings' }, { status: 500 })
+        return createErrorResponse('DB_ERROR', 'ไม่สามารถสร้างการตั้งค่าได้', 500, {
+          table: 'admin_settings',
+          operation: 'insert',
+          supabaseError: insertError
+        })
       }
 
       // Audit log for initial PIN setup
@@ -200,6 +286,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[ADMIN:SETTINGS] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return createErrorResponse('SERVER_ERROR', 'เกิดข้อผิดพลาดในระบบ', 500)
   }
 }

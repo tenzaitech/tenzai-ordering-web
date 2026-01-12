@@ -74,7 +74,15 @@ function getAdminUrl(path: string): string {
   return `${origin}${cleanPath}`
 }
 
-// Fetch LINE recipient IDs from DB (with env fallback)
+/**
+ * Fetch LINE recipient IDs from canonical source (admin_settings table)
+ *
+ * CANONICAL SOURCE: admin_settings.line_approver_id, admin_settings.line_staff_id
+ * FALLBACK (bootstrap only): process.env.LINE_APPROVER_ID, process.env.LINE_STAFF_ID
+ *
+ * The env vars serve as initial defaults before admin configures settings via UI.
+ * Once admin saves settings, DB values are canonical and env vars are ignored.
+ */
 async function getLineRecipients(): Promise<{ approverId: string; staffId: string }> {
   const supabase = getSupabaseServer()
   const { data: settingsData } = await supabase

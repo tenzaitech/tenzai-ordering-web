@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { parseIntegerPrice, isValidIntegerPrice } from '@/lib/menu-import-validator'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 
 export async function PATCH(
   request: NextRequest,
@@ -9,6 +10,10 @@ export async function PATCH(
 ) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const { menu_code } = await params
@@ -84,6 +89,10 @@ export async function DELETE(
 ) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const { menu_code } = await params

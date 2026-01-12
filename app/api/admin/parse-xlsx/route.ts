@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
 import type { ParsedMenuData } from '@/lib/menu-import-validator'
 
 // Max file size: 5MB
@@ -18,6 +19,10 @@ function jsonResponse(data: object, status = 200) {
 export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
+
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
 
   try {
     const formData = await request.formData()

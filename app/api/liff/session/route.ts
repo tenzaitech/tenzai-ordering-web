@@ -1,7 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import {
+  checkAndIncrementRateLimitWithConfig,
+  publicEndpointKey,
+  getClientIp,
+  RATE_LIMIT_CONFIGS
+} from '@/lib/rate-limiter'
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request)
+  const rateLimitKey = publicEndpointKey('liff-session', ip)
+  const rateLimit = await checkAndIncrementRateLimitWithConfig(rateLimitKey, RATE_LIMIT_CONFIGS['liff-session'])
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: 'Too many requests',
+        error_th: 'คำขอมากเกินไป กรุณารอสักครู่',
+        retryAfter: rateLimit.retryAfterSeconds
+      },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rateLimit.retryAfterSeconds || 60) }
+      }
+    )
+  }
+
   try {
     const body = await request.json()
     const { userId } = body

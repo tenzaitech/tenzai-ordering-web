@@ -13,6 +13,7 @@ import {
   adminLoginKey
 } from '@/lib/rate-limiter'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
+import { setCsrfCookie } from '@/lib/csrf'
 
 export const runtime = 'nodejs'
 
@@ -218,6 +219,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             { headers: { 'x-route-marker': ROUTE_MARKER } }
           )
           response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
+          setCsrfCookie(response) // Provision CSRF token for subsequent mutations
           return response
         }
       }
@@ -311,6 +313,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { headers: { 'x-route-marker': ROUTE_MARKER } }
     )
     response.cookies.set(ADMIN_COOKIE_NAME, token, getAdminCookieOptions())
+    setCsrfCookie(response) // Provision CSRF token for subsequent mutations
     return response
   } catch (error) {
     // Use helper for consistent error handling with route marker

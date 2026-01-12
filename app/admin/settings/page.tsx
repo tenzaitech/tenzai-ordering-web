@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { adminFetch } from '@/lib/admin-fetch'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { normalizeToastMessage } from '@/lib/toast-helpers'
 import Link from 'next/link'
 
 export default function AdminSettingsPage() {
@@ -124,8 +125,8 @@ export default function AdminSettingsPage() {
           showFeedback(t('settingsSaved'), 'success')
         }
       } else {
-        const error = await res.json()
-        showFeedback(error.error || t('failedToSaveSettings'), 'error')
+        const error = await res.json().catch(() => null)
+        showFeedback(normalizeToastMessage(error?.error ?? error) || t('failedToSaveSettings'), 'error')
       }
     } catch (error) {
       console.error('[ADMIN:SETTINGS] Save error:', error)
@@ -149,8 +150,8 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         showFeedback(t('testMessageSent'), 'success')
       } else {
-        const error = await res.json()
-        showFeedback(error.error || t('failedToSendTestMessage'), 'error')
+        const error = await res.json().catch(() => null)
+        showFeedback(normalizeToastMessage(error?.error ?? error) || t('failedToSendTestMessage'), 'error')
       }
     } catch (error) {
       console.error('[ADMIN:TEST] Error:', error)
