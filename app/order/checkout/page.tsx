@@ -6,7 +6,6 @@ import { useCart } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
-import { supabase } from '@/lib/supabase'
 import { generateOrderNumber, generatePickupTimes, generatePickupDates, getCartFingerprint } from '@/lib/orderUtils'
 import { saveCheckoutDraft, loadCheckoutDraft, clearCheckoutDraft } from '@/lib/checkoutDraft'
 import ErrorModal from '@/components/ErrorModal'
@@ -222,7 +221,7 @@ export default function CheckoutPage() {
         return
       }
 
-      // === STEP A: Create order ===
+      // === STEP A: Create order via API (server-side, uses service role) ===
       setProcessingState('CREATING_ORDER')
       await new Promise(resolve => setTimeout(resolve, 500)) // Allow users to read status
 
@@ -231,92 +230,69 @@ export default function CheckoutPage() {
       // Convert pickup date + time to timestamptz for Asia/Bangkok (+07:00)
       let pickupTimeISO: string | null = null
       if (pickupType === 'SCHEDULED' && pickupDate && pickupTime) {
-        // pickupDate is YYYY-MM-DD, pickupTime is HH:MM
         const [selectedHours, selectedMinutes] = pickupTime.split(':').map(Number)
         const hours = String(selectedHours).padStart(2, '0')
         const minutes = String(selectedMinutes).padStart(2, '0')
-
         pickupTimeISO = `${pickupDate}T${hours}:${minutes}:00+07:00`
       }
 
-      const { data: orderInsertData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
+      setProcessingState('SAVING_ITEMS')
+      await new Promise(resolve => setTimeout(resolve, 300)) // Allow users to read status
+
+      // Create order with items via API
+      const createResponse = await fetch('/api/order/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           order_number: orderNumber,
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
-          customer_line_user_id: userId,
           pickup_type: pickupType,
           pickup_time: pickupTimeISO,
-          // VAT fields - DECIMAL SOURCE OF TRUTH (never rounded)
           subtotal_amount_dec: Number(subtotalAmount),
           vat_rate: VAT_RATE,
           vat_amount_dec: Number(vatAmount),
           total_amount_dec: Number(totalAmount),
-          // Invoice fields (immutable after creation)
           invoice_requested: invoiceRequested,
           invoice_company_name: invoiceRequested ? invoiceCompanyName.trim() : null,
           invoice_tax_id: invoiceRequested ? invoiceTaxId.trim() : null,
           invoice_address: invoiceRequested ? invoiceAddress.trim() : null,
           invoice_buyer_phone: invoiceRequested && invoiceBuyerPhone.trim() ? invoiceBuyerPhone.trim() : null,
           customer_note: customerNote.trim() || null,
-          slip_url: null,
-        } as never)
-        .select()
-        .single()
+          items: items.map(item => ({
+            menuId: item.menuId,
+            name_th: item.name_th,
+            name_en: item.name_en,
+            quantity: item.quantity,
+            base_price_thb: item.base_price_thb,
+            final_price_thb: item.final_price_thb,
+            note: item.note || null,
+            options: item.options || null,
+          })),
+        }),
+      })
 
-      const orderData = orderInsertData as OrderInsertResult | null
+      const createResult = await createResponse.json()
 
-      if (orderError || !orderData) {
-        console.error('[ERROR:ORDER]', orderError)
-        setErrorState({ step: 'ORDER' })
+      if (!createResponse.ok || !createResult.success) {
+        console.error('[ERROR:ORDER]', createResult.error)
+        // Check if order was created but items failed
+        if (createResult.order_id) {
+          setErrorState({
+            step: 'ITEMS',
+            orderNumber: createResult.order_number,
+            orderId: createResult.order_id,
+          })
+        } else {
+          setErrorState({ step: 'ORDER' })
+        }
         setProcessingState('IDLE')
         return
       }
 
-      // === STEP B: Insert order items ===
-      setProcessingState('SAVING_ITEMS')
-      await new Promise(resolve => setTimeout(resolve, 300)) // Allow users to read status
-
-      const orderItems = items.map((item) => {
-        const basePrice = item.base_price_thb
-        const finalPrice = item.final_price_thb
-
-        if (basePrice == null || typeof basePrice !== 'number' || isNaN(basePrice)) {
-          throw new Error(`[VALIDATION] Invalid base_price for menu item ${item.menuId} (${item.name_en}): ${basePrice}`)
-        }
-        if (finalPrice == null || typeof finalPrice !== 'number' || isNaN(finalPrice)) {
-          throw new Error(`[VALIDATION] Invalid final_price for menu item ${item.menuId} (${item.name_en}): ${finalPrice}`)
-        }
-
-        return {
-          order_id: orderData.id,
-          menu_item_id: item.menuId,
-          name_th: item.name_th,
-          name_en: item.name_en,
-          qty: item.quantity,
-          base_price: basePrice,
-          final_price: finalPrice,
-          note: item.note || null,
-          selected_options_json: item.options || null,
-        }
-      })
-
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems as never)
-        .select()
-
-      if (itemsError) {
-        console.error('[ERROR:ITEMS]', itemsError)
-        console.error('[ERROR:ITEMS] Failed payload:', orderItems)
-        setErrorState({
-          step: 'ITEMS',
-          orderNumber: orderData.order_number,
-          orderId: orderData.id
-        })
-        setProcessingState('IDLE')
-        return
+      const orderData = {
+        id: createResult.order_id,
+        order_number: createResult.order_number,
       }
 
       // Set navigating flag to prevent cart-empty redirect

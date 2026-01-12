@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { checkAdminAuth } from '@/lib/admin-gate'
+
+export const runtime = 'nodejs'
 import { validateCsrf, csrfError } from '@/lib/csrf'
 import { auditLog, getRequestMeta } from '@/lib/audit-log'
 
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { ip, userAgent } = getRequestMeta(request)
+  const supabase = getSupabaseServer()
 
   try {
     const body = await request.json()

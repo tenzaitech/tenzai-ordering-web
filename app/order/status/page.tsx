@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/utils/haptic'
 import { useLanguage } from '@/contexts/LanguageContext'
 import UnifiedOrderHeader from '@/components/order/UnifiedOrderHeader'
@@ -34,29 +33,19 @@ export default function OrderStatusPage() {
     setError(false)
 
     try {
-      // Get LINE userId from existing session (no-store to ensure fresh data)
-      const userResponse = await fetch('/api/liff/user', { cache: 'no-store' })
-      if (!userResponse.ok) {
-        throw new Error('No LIFF session')
-      }
-      const { userId } = await userResponse.json()
-
-      if (!userId) {
-        throw new Error('userId missing')
-      }
-
-      // Query orders for this user (explicit select, slip_url excluded for privacy)
-      const { data, error: queryError } = await supabase
-        .from('orders')
-        .select('id, order_number, status, pickup_type, pickup_time, total_amount_dec, customer_note, created_at, slip_notified_at')
-        .eq('customer_line_user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      if (queryError) {
-        throw queryError
+      // Fetch orders via API (uses service role, respects RLS)
+      const response = await fetch('/api/order/list', { cache: 'no-store' })
+      if (!response.ok) {
+        if (response.status === 401) {
+          // No session - not necessarily an error, just no orders to show
+          setOrders([])
+          setLoading(false)
+          return
+        }
+        throw new Error('Failed to fetch orders')
       }
 
+      const { orders: data } = await response.json()
       setOrders(data || [])
     } catch (err) {
       console.error('[ORDER_STATUS] Failed to fetch orders:', String(err))

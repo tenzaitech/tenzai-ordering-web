@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
+
+export const runtime = 'nodejs'
 
 type OrderRow = {
   id: string
@@ -39,6 +41,7 @@ export async function POST(
     }
 
     const userId = userIdCookie.value
+    const supabase = getSupabaseServer()
 
     // Fetch order with ownership check
     const { data: orderData, error: orderError } = await supabase

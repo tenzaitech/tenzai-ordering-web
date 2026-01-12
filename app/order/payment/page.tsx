@@ -6,7 +6,6 @@ import { useCart } from '@/contexts/CartContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useCheckout } from '@/contexts/CheckoutContext'
 import { triggerHaptic } from '@/utils/haptic'
-import { supabase } from '@/lib/supabase'
 import { generatePromptPayPayload } from '@/lib/promptpay'
 import { clearCheckoutDraft } from '@/lib/checkoutDraft'
 import ErrorModal from '@/components/ErrorModal'
@@ -116,16 +115,19 @@ function PaymentPageContent() {
         }
         setPromptPayId(dbPromptPayId)
 
-        // Fetch order
-        const { data: orderData, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single()
+        // Fetch order via API (uses service role, respects RLS)
+        const orderResponse = await fetch(`/api/order/${orderId}`, { cache: 'no-store' })
+        if (!orderResponse.ok) {
+          console.error('[ERROR] Failed to fetch order:', orderResponse.status)
+          setLoading(false)
+          return
+        }
 
+        const { order: orderData, items: itemsData } = await orderResponse.json()
         const data = orderData as OrderRow | null
-        if (error || !data) {
-          console.error('[ERROR] Failed to fetch order:', error)
+
+        if (!data) {
+          console.error('[ERROR] Order not found')
           setLoading(false)
           return
         }
@@ -143,13 +145,6 @@ function PaymentPageContent() {
           setLoading(false)
           return
         }
-
-        // Fetch order items from DB for summary display
-        const { data: itemsData } = await supabase
-          .from('order_items')
-          .select('id, name_th, name_en, qty, base_price, final_price, note, selected_options_json')
-          .eq('order_id', orderId)
-          .order('id', { ascending: true })
 
         setOrderItems(itemsData || [])
         setLoading(false)
@@ -307,34 +302,20 @@ function PaymentPageContent() {
     triggerHaptic()
 
     try {
-      // Upload slip to Supabase Storage
+      // Upload slip via API (uses service role, respects RLS)
       setProcessingState('UPLOADING_SLIP')
 
-      const fileExt = slipFile.name.split('.').pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('slips')
-        .upload(fileName, slipFile)
+      const formData = new FormData()
+      formData.append('slip', slipFile)
 
-      if (uploadError) {
-        console.error('[ERROR:SLIP]', uploadError)
-        setShowError(true)
-        setProcessingState('IDLE')
-        return
-      }
+      const uploadResponse = await fetch(`/api/order/${orderId}/slip`, {
+        method: 'POST',
+        body: formData,
+      })
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('slips')
-        .getPublicUrl(fileName)
-
-      // Update order with slip URL
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ slip_url: publicUrl } as never)
-        .eq('id', orderId)
-
-      if (updateError) {
-        console.error('[ERROR:SLIP] Failed to update order:', updateError)
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json()
+        console.error('[ERROR:SLIP]', errorData.error)
         setShowError(true)
         setProcessingState('IDLE')
         return

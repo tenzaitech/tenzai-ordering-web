@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { sendStaffNotification, sendCustomerApprovedNotification, sendCustomerInvoiceNotification } from '@/lib/line'
+
+export const runtime = 'nodejs'
 import { renderInvoicePdf, InvoiceOrderData, InvoiceLineItem } from '@/lib/invoice/pdf'
 import { uploadAndGetSignedUrl } from '@/lib/invoice/storage'
 import { checkAdminAuth } from '@/lib/admin-gate'
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { ip, userAgent } = getRequestMeta(request)
+  const supabase = getSupabaseServer()
 
   try {
     const body = await request.json()

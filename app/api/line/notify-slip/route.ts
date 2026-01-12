@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { cookies } from 'next/headers'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { sendSlipNotification, sendCustomerSlipConfirmation } from '@/lib/line'
+
+export const runtime = 'nodejs'
 
 type OrderRow = {
   slip_url: string | null
@@ -12,6 +15,17 @@ type SlipNotifiedUpdate = {
 }
 
 export async function POST(request: NextRequest) {
+  // Require LIFF session
+  const cookieStore = await cookies()
+  const userIdCookie = cookieStore.get('tenzai_liff_user')
+
+  if (!userIdCookie || !userIdCookie.value) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userId = userIdCookie.value
+  const supabase = getSupabaseServer()
+
   try {
     const body = await request.json()
     const { orderId } = body
@@ -20,11 +34,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
     }
 
-    // Fetch order
+    // Fetch order with ownership enforcement
     const { data, error: orderError } = await supabase
       .from('orders')
       .select('slip_url, slip_notified_at')
       .eq('id', orderId)
+      .eq('customer_line_user_id', userId)
       .single()
 
     const order = data as OrderRow | null

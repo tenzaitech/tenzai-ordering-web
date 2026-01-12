@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
+
+export const runtime = 'nodejs'
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +20,7 @@ export async function GET(
     }
 
     const userId = userIdCookie.value
+    const supabase = getSupabaseServer()
 
     // Secure query: explicit SELECT (slip_url excluded) + ownership check
     const { data: order, error: orderError } = await supabase

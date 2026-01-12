@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
+
+export const runtime = 'nodejs'
 
 type OrderRow = {
   id: string
@@ -13,6 +15,8 @@ export async function GET(request: NextRequest) {
   if (!staffCookie || !staffCookie.value.startsWith('STAFF_VERIFIED')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const supabase = getSupabaseServer()
 
   try {
     // Fetch orders with status 'approved' or 'ready'

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { sendCustomerNotification } from '@/lib/line'
+
+export const runtime = 'nodejs'
 
 type OrderRow = {
   id: string
@@ -16,6 +18,8 @@ export async function POST(request: NextRequest) {
   if (!staffCookie || !staffCookie.value.startsWith('STAFF_VERIFIED')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const supabase = getSupabaseServer()
 
   try {
     const { orderId, newStatus } = await request.json()

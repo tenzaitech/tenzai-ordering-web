@@ -4,7 +4,6 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { triggerHaptic } from '@/utils/haptic'
-import { supabase } from '@/lib/supabase'
 import { clearCheckoutDraft } from '@/lib/checkoutDraft'
 
 function OrderConfirmedContent() {
@@ -32,28 +31,22 @@ function OrderConfirmedContent() {
       }
 
       try {
-        // Fetch order
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single()
+        // Fetch order via API (uses service role, respects RLS)
+        const response = await fetch(`/api/order/${orderId}`, { cache: 'no-store' })
 
-        if (orderError || !orderData) {
-          console.error('Order error:', orderError)
+        if (!response.ok) {
+          console.error('Order fetch failed:', response.status)
           setFetchError(true)
           setLoading(false)
           return
         }
 
-        // Fetch order items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('*')
-          .eq('order_id', orderId)
+        const { order: orderData, items: itemsData } = await response.json()
 
-        if (itemsError) {
-          console.error('Items error:', itemsError)
+        if (!orderData) {
+          setFetchError(true)
+          setLoading(false)
+          return
         }
 
         setOrder(orderData)

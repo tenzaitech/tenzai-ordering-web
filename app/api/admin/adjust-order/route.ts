@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { sendStaffAdjustmentNotification } from '@/lib/line'
+import { checkAdminAuth } from '@/lib/admin-gate'
+import { validateCsrf, csrfError } from '@/lib/csrf'
+
+export const runtime = 'nodejs'
 
 type OrderRow = {
   approved_at: string | null
@@ -14,6 +18,17 @@ type OrderUpdate = {
 }
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  const authError = await checkAdminAuth(request)
+  if (authError) return authError
+
+  // CSRF check
+  if (!validateCsrf(request)) {
+    return csrfError()
+  }
+
+  const supabase = getSupabaseServer()
+
   try {
     const body = await request.json()
     const { orderId, note } = body
