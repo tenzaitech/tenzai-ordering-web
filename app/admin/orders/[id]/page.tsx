@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { adminFetch } from '@/lib/admin-fetch'
 
 export default function AdminOrderDetailPage() {
   const router = useRouter()
@@ -45,7 +46,7 @@ export default function AdminOrderDetailPage() {
 
     setProcessing(true)
     try {
-      const response = await fetch('/api/admin/approve-order', {
+      const response = await adminFetch('/api/admin/approve-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId })
@@ -68,7 +69,7 @@ export default function AdminOrderDetailPage() {
   const handleReject = async () => {
     setProcessing(true)
     try {
-      const response = await fetch('/api/admin/reject-order', {
+      const response = await adminFetch('/api/admin/reject-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, reason: rejectReason.trim() || null })
@@ -97,7 +98,7 @@ export default function AdminOrderDetailPage() {
 
     setProcessing(true)
     try {
-      const response = await fetch('/api/admin/adjust-order', {
+      const response = await adminFetch('/api/admin/adjust-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, note: adjustmentNote.trim() })

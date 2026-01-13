@@ -53,6 +53,8 @@ function PaymentPageContent() {
   const [showQRModal, setShowQRModal] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const qrImageRef = useRef<HTMLImageElement>(null)
+  const [notifySlipSent, setNotifySlipSent] = useState(false)
+  const notifySentRef = useRef(false)
 
   const orderId = searchParams.get('id')
   const fromPage = searchParams.get('from')
@@ -321,12 +323,19 @@ function PaymentPageContent() {
         return
       }
 
-      // Fire-and-forget LINE notification
-      fetch('/api/line/notify-slip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId })
-      }).catch(err => console.error('[LINE:NOTIFY] Failed to trigger:', err))
+      // Fire-and-forget LINE notification with duplicate guard
+      if (!notifySentRef.current) {
+        notifySentRef.current = true
+        setNotifySlipSent(true)
+        fetch('/api/line/notify-slip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, source: 'payment_confirm' })
+        })
+        .then(res => res.json())
+        .then(data => console.log('[LINE:NOTIFY] Response:', data))
+        .catch(err => console.error('[LINE:NOTIFY] Failed to trigger:', err))
+      }
 
       // Navigate to confirmation page
       router.replace(`/order/confirmed?id=${orderId}`)

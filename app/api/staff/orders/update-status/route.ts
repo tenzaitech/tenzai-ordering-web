@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     // Update with optimistic guard
     const { data: updated, error: updateError } = await supabase
       .from('orders')
-      .update({ status: newStatus } as never)
+      .update({ status: newStatus })
       .eq('id', orderId)
       .eq('status', order.status)
       .select('id')
@@ -82,8 +82,10 @@ export async function POST(request: NextRequest) {
     // Send customer notification after successful update
     try {
       await sendCustomerNotification(orderId, newStatus as 'ready' | 'picked_up')
+      console.log('[STAFF:UPDATE] Customer notification sent:', orderId, newStatus)
     } catch (notifyError) {
-      console.error('[STAFF:UPDATE] Notification error:', String(notifyError))
+      const errorMsg = notifyError instanceof Error ? notifyError.message : String(notifyError)
+      console.error('[STAFF:UPDATE] Notification error:', orderId, newStatus, errorMsg)
       // Don't fail the request if notification fails
     }
 

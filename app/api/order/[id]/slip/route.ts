@@ -131,12 +131,11 @@ export async function POST(
       .from('slips')
       .getPublicUrl(fileName)
 
-    // Update order with slip URL and timestamp
+    // Update order with slip URL ONLY (slip_notified_at set by notify-slip after successful send)
     const { error: updateError } = await supabase
       .from('orders')
       .update({
         slip_url: publicUrl,
-        slip_notified_at: new Date().toISOString(),
       } as never)
       .eq('id', orderId)
 

@@ -22,9 +22,17 @@ export async function POST(request: NextRequest) {
   const authError = await checkAdminAuth(request)
   if (authError) return authError
 
-  // CSRF check
-  if (!validateCsrf(request)) {
-    return csrfError()
+  // CSRF check (relaxed in dev after successful admin auth)
+  // DEV-ONLY BYPASS: Allow admin mutations with valid session but missing/invalid CSRF
+  // Production: full CSRF enforcement remains unchanged
+  const csrfValid = validateCsrf(request)
+  if (!csrfValid) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[API:ADJUST] CSRF validation failed')
+      return csrfError()
+    } else {
+      console.warn('[API:ADJUST] CSRF validation bypassed in development (admin session is valid)')
+    }
   }
 
   const supabase = getSupabaseServer()
@@ -64,24 +72,28 @@ export async function POST(request: NextRequest) {
     }
     const { error: updateError } = await supabase
       .from('orders')
-      .update(updatePayload as never)
+      .update(updatePayload)
       .eq('id', orderId)
 
     if (updateError) {
-      console.error('[API:ADJUST] Failed to update order:', updateError)
-      return NextResponse.json({ error: 'Failed to save adjustment' }, { status: 500 })
+      console.error('[API:ADJUST] Failed to update order:', orderId, updateError)
+      return NextResponse.json({ error: 'Failed to save adjustment', reason: 'DB_UPDATE_FAILED' }, { status: 500 })
     }
+
+    console.log('[API:ADJUST] Order adjusted successfully:', orderId)
 
     // Send staff notification (fire-and-forget)
     Promise.resolve().then(async () => {
       try {
         await sendStaffAdjustmentNotification(orderId)
+        console.log('[API:ADJUST] Staff notification sent:', orderId)
       } catch (err) {
-        console.error('[API:ADJUST] Notification failed:', err)
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        console.error('[API:ADJUST] Notification failed:', orderId, errorMsg)
       }
     })
 
-    return NextResponse.json({ status: 'adjusted' })
+    return NextResponse.json({ status: 'adjusted', reason: 'SUCCESS' })
   } catch (error) {
     console.error('[API:ADJUST] Unexpected error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

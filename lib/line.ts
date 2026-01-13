@@ -899,6 +899,72 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
   console.log('[LINE:CUSTOMER_APPROVED] Success:', orderId)
 }
 
+export async function sendCustomerRejectedNotification(orderId: string): Promise<void> {
+  const supabase = getSupabaseServer()
+  // Fetch order
+  const { data: orderData, error: orderError } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  const order = orderData as OrderRow | null
+  if (orderError || !order) {
+    console.error('[LINE:CUSTOMER_REJECTED] Failed to fetch order:', orderError?.message || 'Not found')
+    throw new Error('Failed to fetch order')
+  }
+
+  if (!order.customer_line_user_id) {
+    console.error('[LINE:CUSTOMER_REJECTED] No customer LINE user ID')
+    throw new Error('No customer LINE user ID')
+  }
+
+  // Validate env vars
+  if (!process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error('Missing LINE_CHANNEL_ACCESS_TOKEN')
+  }
+
+  // Build fields
+  const fields: FlexField[] = [
+    { label: LINE_LABELS.order, value: `#${order.order_number}` },
+    { label: LINE_LABELS.status, value: 'ยกเลิก' }
+  ]
+
+  // Build Flex card for customer
+  const flexCard = buildFlexOrderCard({
+    titleTH: 'ขออภัย ออเดอร์ถูกปฏิเสธ',
+    titleEN: 'กรุณาติดต่อร้านค้า',
+    fields,
+    showButton: false
+  })
+
+  // Send via LINE Messaging API
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      to: order.customer_line_user_id,
+      messages: [
+        {
+          type: 'flex',
+          altText: `ออเดอร์ถูกปฏิเสธ #${order.order_number}`,
+          contents: flexCard
+        }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`LINE API error ${response.status}: ${errorText}`)
+  }
+
+  console.log('[LINE:CUSTOMER_REJECTED] Success:', orderId)
+}
+
 export async function sendCustomerInvoiceNotification(
   customerLineUserId: string,
   orderNumber: string,
