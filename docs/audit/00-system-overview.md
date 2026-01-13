@@ -1,13 +1,40 @@
 # System Overview
 
+## TL;DR
+- **What**: Thai restaurant pre-order system via LINE LIFF
+- **Flow**: Customer orders → uploads PromptPay slip → Admin approves → Staff fulfills → Customer picks up
+- **Auth**: LIFF session (customer), admin/staff cookies
+- **Data**: Supabase Postgres + Storage
+- **Critical Path**: All orders/mutations server-side only (service_role), RLS locked
+
+## When Confused → Do This
+1. **Can't find where X happens?** → Check [01-api-surface-map.md](01-api-surface-map.md) for route/endpoint
+2. **DB access pattern unclear?** → Check [02-supabase-usage-map.md](02-supabase-usage-map.md) for client usage
+3. **Table schema question?** → Check [03-db-domain-map.md](03-db-domain-map.md)
+4. **Order flow confused?** → See "Order Creation Flow" below or CLAUDE.md invariants
+5. **Auth not working?** → Verify cookie (`tenzai_liff_user`, `tenzai_admin`, `tenzai_staff`)
+6. **Migration issue?** → All DB changes require forward + rollback SQL
+7. **"Who can do X?"** → See "Actors" table below
+8. **Known issues?** → Check [04-cleanup-backlog.md](04-cleanup-backlog.md)
+
+## Current Truth / Invariants
+- **Order lifecycle**: `pending → approved → ready → picked_up` OR `pending → rejected` (NO shortcuts)
+- **Approval authority**: Admin/Approver ONLY (never customer, never auto)
+- **Payment proof**: Slip MUST exist BEFORE approval can happen
+- **Mutations**: ALL writes to orders/order_items via service_role API routes (RLS=DENY)
+- **VAT calc**: Authoritative decimal columns (`subtotal_amount_dec`, `vat_amount_dec`, `total_amount_dec`)
+- **Customer access**: LINE LIFF ONLY (no guest ordering)
+- **Deployment**: Pre-production (no live customers yet)
+- **System NOT accepting orders**: Check `system_settings.order_accepting` key
+
 ## Purpose
 
-TENZAI Ordering System is a Thai restaurant pre-order platform that enables customers to:
-1. Browse menu items via LINE LIFF (LINE Front-end Framework)
-2. Place orders and upload payment slips
-3. Receive order status notifications via LINE messaging
+TENZAI Ordering System is a Thai restaurant pre-order platform:
+1. Browse menu via LINE LIFF
+2. Place orders + upload PromptPay slips
+3. Receive status notifications via LINE
 
-The system supports a complete order lifecycle: browse → order → pay → approve → prepare → pickup.
+Complete lifecycle: browse → order → pay → approve → prepare → pickup.
 
 ## Actors
 
@@ -54,7 +81,7 @@ Browser → /staff/login → /staff (board)
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         NEXT.JS APP (Vercel)                                │
+│                         NEXT.JS APP                                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌─────────────────────────────────────────────────────────────────┐      │
@@ -130,7 +157,20 @@ Staff → /api/staff/orders/update-status → Update orders.status
 ## Key Technical Decisions
 
 1. **LIFF-only customer access**: No guest ordering; requires LINE login
-2. **Service-role DB access**: orders/order_items locked to service_role (RLS hardened)
+2. **Service-role DB access**: orders/order_items locked to service-role (RLS hardened)
 3. **Cookie-based auth**: Session cookies for admin/staff/LIFF (no JWT)
 4. **LINE notifications**: Flex messages for rich order cards
 5. **Supabase Storage**: Slip images stored with signed URLs
+
+---
+
+## Glossary
+
+| Term | Meaning |
+|------|---------|
+| **LIFF** | LINE Front-end Framework (customer web app inside LINE) |
+| **RLS** | Row Level Security (Postgres access control) |
+| **service-role** | Supabase admin client (bypasses RLS) |
+| **anon client** | Supabase public client (subject to RLS) |
+| **Slip** | PromptPay payment proof image |
+| **CSRF** | Cross-Site Request Forgery protection |

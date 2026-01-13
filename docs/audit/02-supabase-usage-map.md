@@ -1,5 +1,29 @@
 # Supabase Usage Map
 
+## TL;DR
+- **Anon client** (`@/lib/supabase`): Public reads + admin menu writes (subject to RLS where enabled)
+- **Service-role client** (`@/lib/supabase-server`): ALL order operations, auth, storage (bypasses RLS)
+- **Orders/order_items**: Service-role ONLY (RLS=DENY all for non-service-role)
+- **Menu tables**: Anon client for admin operations (NO RLS, relies on app auth)
+- **Client-side writes**: NONE detected (all mutations via API routes)
+- **Key risk**: Admin menu routes use anon client without RLS (see backlog API-002, DB-006)
+
+## When Confused → Do This
+1. **"Which client for route X?"** → Ctrl+F route name in this file
+2. **"Why can't I query orders?"** → orders/order_items require service-role (RLS locked)
+3. **"Is table Y protected by RLS?"** → See "Summary by Table" section
+4. **"Can client write to DB directly?"** → NO (see "Client-Side Direct DB Writes" = safe)
+5. **"Why does admin use anon client?"** → Menu tables have NO RLS (app-level auth only)
+6. **"Which routes touch table X?"** → Ctrl+F table name in sections below
+7. **"Is this file server or client?"** → Check for `'use client'` directive in "Client Components" section
+
+## Current Truth / Invariants
+- **orders + order_items**: RLS policy `USING(false) WITH CHECK(false)` (service_role ONLY)
+- **Menu/category/option tables**: NO RLS (public readable, app-auth for writes)
+- **service_role key**: NEVER exposed to client (server API routes only)
+- **Ownership verification**: Customer routes check `customer_line_user_id` in WHERE clause
+- **Anon client usage**: Safe where RLS exists; gap for menu tables (backlog items DB-006, API-002)
+
 ## Client Definitions
 
 ### Anon Client (`lib/supabase.ts`)
@@ -172,12 +196,23 @@
 ## Security Observations
 
 ### Good Practices
-- Orders/order_items locked to service_role (RLS hardened)
+- Orders/order_items locked to service-role (RLS hardened)
 - All writes go through API routes
-- No service_role key exposed to client
+- No service-role key exposed to client
 - Ownership verification on customer routes
 
 ### Areas for Review
 - Admin menu/category routes use anon client with RLS not enforced
 - `system_settings` readable by client components (public config)
 - Some admin routes lack CSRF protection (approve/adjust have it, others don't)
+
+---
+
+## Glossary
+
+| Term | Meaning |
+|------|---------|
+| **service-role** | Supabase admin client (bypasses all RLS) |
+| **anon client** | Supabase public client (enforces RLS where enabled) |
+| **RLS** | Row Level Security (Postgres table-level access control) |
+| **checkAdminAuth** | Middleware verifying `tenzai_admin` cookie |

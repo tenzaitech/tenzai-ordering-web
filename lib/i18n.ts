@@ -190,6 +190,9 @@ const translations = {
     liffInstructionsIOS: 'แตะ "เปิดใน LINE" ด้านล่าง หากมีการถาม ให้เลือก "เปิด"',
     liffInstructionsAndroid: 'แตะ "เปิดใน LINE" ด้านล่าง หากมีการถาม ให้อนุญาตเปิดใน LINE',
     liffInstructionsDesktop: 'กรุณาเปิดลิงก์นี้บนโทรศัพท์ในแอป LINE',
+    addFriendRequired: 'เพิ่มเพื่อนเพื่อดำเนินการต่อ',
+    addFriendDescription: 'กรุณาเพิ่ม Official Account เป็นเพื่อนเพื่อใช้บริการสั่งอาหาร',
+    addFriend: 'เพิ่มเพื่อน',
 
     // ============================================
     // CLOSED PAGE
@@ -577,6 +580,9 @@ const translations = {
     liffInstructionsIOS: 'Tap "Open in LINE" below. If prompted, choose "Open".',
     liffInstructionsAndroid: 'Tap "Open in LINE" below. If prompted, allow opening in LINE.',
     liffInstructionsDesktop: 'Please open this link on your phone in the LINE app.',
+    addFriendRequired: 'Please add us as a friend to continue',
+    addFriendDescription: 'Please add our Official Account to use the food ordering service',
+    addFriend: 'Add Friend',
 
     // ============================================
     // CLOSED PAGE

@@ -1,5 +1,30 @@
 # API Surface Map
 
+## TL;DR
+- **63 total API routes** across customer, admin, staff, LIFF, public
+- **Admin routes** (44): All use `checkAdminAuth`, mostly anon client (menu/settings), service-role for orders
+- **Customer routes** (8): LIFF session + ownership check, ALL service-role (RLS locked)
+- **Staff routes** (7): PIN/cookie auth, service-role for orders
+- **Public routes** (5): Login endpoints + PromptPay config (rate-limited)
+- **CSRF protection**: Only on approve/adjust order (others missing)
+
+## When Confused → Do This
+1. **"Which route handles X?"** → Ctrl+F in this file for feature name
+2. **"Why is auth failing?"** → Check auth column: `checkAdminAuth`, LIFF session, or Staff cookie
+3. **"Which Supabase client?"** → See "Supabase Client" column (anon vs service-role)
+4. **"Is this route public?"** → See "Routes Without Auth" section
+5. **"Does this route have CSRF?"** → Only approve-order and adjust-order (see "Routes With CSRF Protection")
+6. **"How is ownership enforced?"** → See "Ownership Enforcement" section at bottom
+7. **"What tables does route X touch?"** → Check [02-supabase-usage-map.md](02-supabase-usage-map.md)
+
+## Current Truth / Invariants
+- **Order mutations**: ALL via service-role client (orders/order_items RLS=DENY)
+- **Admin menu operations**: Use anon client (relies on app-level auth, no RLS on menu tables)
+- **Customer routes**: Enforce ownership via `.eq('customer_line_user_id', userId)` in queries
+- **Public endpoints**: 5 total (login × 2, liff session, cart validation, promptpay)
+- **CSRF gap**: Most admin mutations lack CSRF (see [04-cleanup-backlog.md](04-cleanup-backlog.md) API-001)
+- **Rate limiting gap**: Public endpoints lack rate limiting (see backlog API-004)
+
 ## Summary
 
 | Category | Count | Auth Type |

@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server'
 import { hasValidAdminCookie } from '@/lib/adminAuth'
 import { hasValidStaffCookie } from '@/lib/staffAuth'
 
+const FRIEND_CHECK_TTL_MS = 6 * 60 * 60 * 1000 // 6 hours
+
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
 
@@ -38,41 +40,62 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Guard all /order/* routes
-  if (pathname.startsWith('/order')) {
-    const liffUserCookie = request.cookies.get('tenzai_liff_user')
+  // Guard all /order and /order/* routes with LIFF Hard Gate (TTL 6h)
+  if (pathname === '/order' || pathname.startsWith('/order/')) {
+    const userCookie = request.cookies.get('tenzai_liff_user')
+    const friendCheckedAtCookie = request.cookies.get('tenzai_liff_friend_checked_at')
 
-    if (!liffUserCookie) {
-      // DEV-ONLY bypass: allow desktop testing with ?dev=1
-      const isDev = process.env.NODE_ENV === 'development'
-      const devBypass = searchParams.get('dev') === '1'
+    // DEV-ONLY bypass: allow desktop testing with ?dev=1
+    const isDev = process.env.NODE_ENV === 'development'
+    const devBypass = searchParams.get('dev') === '1'
 
-      if (isDev && devBypass) {
-        // Set dummy LIFF user cookie for dev testing
-        const url = request.nextUrl.clone()
-        url.searchParams.delete('dev')
-
-        const response = NextResponse.redirect(url)
-        response.cookies.set('tenzai_liff_user', 'DEV_DESKTOP', {
-          httpOnly: true,
-          secure: false,
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 60 * 60 * 2 // 2 hours
-        })
-        return response
-      }
-
-      // Production guard: redirect to LIFF if no session
+    if (isDev && devBypass && !userCookie) {
+      // Set dummy LIFF cookies for dev testing
       const url = request.nextUrl.clone()
-      url.pathname = '/liff'
+      url.searchParams.delete('dev')
+
+      const response = NextResponse.redirect(url)
+      response.cookies.set('tenzai_liff_user', 'DEV_DESKTOP', {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 2 // 2 hours
+      })
+      response.cookies.set('tenzai_liff_friend_checked_at', Date.now().toString(), {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 2 // 2 hours
+      })
+      return response
+    }
+
+    // No session or no friendship timestamp -> redirect to /liff with returnTo
+    if (!userCookie || !friendCheckedAtCookie) {
+      const returnTo = pathname + request.nextUrl.search
+      const url = new URL('/liff', request.url)
+      url.searchParams.set('returnTo', returnTo)
       return NextResponse.redirect(url)
     }
+
+    // Check timestamp freshness
+    const checkedAt = parseInt(friendCheckedAtCookie.value, 10)
+    if (isNaN(checkedAt) || Date.now() - checkedAt > FRIEND_CHECK_TTL_MS) {
+      // Expired -> redirect to /liff with returnTo
+      const returnTo = pathname + request.nextUrl.search
+      const url = new URL('/liff', request.url)
+      url.searchParams.set('returnTo', returnTo)
+      return NextResponse.redirect(url)
+    }
+
+    // Valid session and fresh friendship check -> allow through
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/order/:path*', '/admin/:path*', '/api/admin/:path*', '/staff/:path*']
+  matcher: ['/order', '/order/:path*', '/admin/:path*', '/api/admin/:path*', '/staff/:path*']
 }

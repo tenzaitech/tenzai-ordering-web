@@ -6,8 +6,9 @@ import { checkLiffGate } from '@/lib/liffGate'
 export const runtime = 'nodejs'
 
 /**
- * GET /api/order/list
- * Lists orders for the authenticated customer (server-side, uses service role)
+ * GET /api/customer/profile
+ * Returns customer profile (display_name, phone, email) for current LIFF user
+ * Server-side only, uses service role to query customers table
  */
 export async function GET(request: NextRequest) {
   // Check LIFF gate (friendship + freshness)
@@ -30,27 +31,37 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabaseServer()
 
-    // Fetch orders for this user (explicit select, slip_url excluded for privacy)
-    const { data: orders, error: queryError } = await supabase
-      .from('orders')
-      .select('id, order_number, status, pickup_type, pickup_time, total_amount_dec, customer_note, created_at, slip_notified_at')
-      .eq('customer_line_user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(10)
+    // Query customers by line_user_id (uses service role - bypasses RLS)
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('display_name, phone, email')
+      .eq('line_user_id', userId)
+      .maybeSingle()
 
-    if (queryError) {
-      console.error('[API:ORDER_LIST] Query error:', queryError)
+    if (customerError) {
+      console.error('[API:CUSTOMER_PROFILE] Query error:', customerError)
       return NextResponse.json(
-        { error: 'Failed to fetch orders', error_th: 'ไม่สามารถโหลดรายการออเดอร์ได้' },
+        { error: 'Failed to fetch profile', error_th: 'ไม่สามารถดึงข้อมูลได้' },
         { status: 500 }
       )
     }
 
+    // Customer not found - this is expected for first-time users
+    if (!customer) {
+      return NextResponse.json(
+        { error: 'Customer not found', error_th: 'ไม่พบข้อมูลลูกค้า' },
+        { status: 404 }
+      )
+    }
+
+    // Return profile data
     return NextResponse.json({
-      orders: orders || [],
+      display_name: customer.display_name,
+      phone: customer.phone,
+      email: customer.email,
     })
   } catch (error) {
-    console.error('[API:ORDER_LIST] Unexpected error:', error)
+    console.error('[API:CUSTOMER_PROFILE] Unexpected error:', error)
     return NextResponse.json(
       { error: 'Server error', error_th: 'เกิดข้อผิดพลาด กรุณาลองใหม่' },
       { status: 500 }

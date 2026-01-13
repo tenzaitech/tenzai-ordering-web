@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSupabaseServer } from '@/lib/supabase-server'
+import { checkLiffGate } from '@/lib/liffGate'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check LIFF gate (friendship + freshness)
+  const gateError = await checkLiffGate()
+  if (gateError) return gateError
+
   try {
     const { id: orderId } = await params
 

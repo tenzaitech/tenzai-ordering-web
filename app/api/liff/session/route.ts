@@ -48,6 +48,15 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 30 // 30 days
     })
 
+    // Set friendship check timestamp (6-hour TTL enforced by gate)
+    cookieStore.set('tenzai_liff_friend_checked_at', Date.now().toString(), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30 // 30 days (actual TTL checked by middleware/API)
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[LIFF_SESSION] Error:', error)

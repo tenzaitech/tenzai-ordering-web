@@ -89,6 +89,36 @@ export default function CheckoutPage() {
     }
   }, [items, router, processingState, isNavigatingToPayment])
 
+  // Prefill customer info from profile (on mount)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/customer/profile')
+        if (response.ok) {
+          const profile = await response.json()
+          // Only prefill if fields are currently empty
+          if (!customerName && profile.display_name) {
+            setCustomerName(profile.display_name)
+            updateDraft({ customerName: profile.display_name })
+          }
+          if (!customerPhone && profile.phone) {
+            setCustomerPhone(profile.phone)
+            updateDraft({ customerPhone: profile.phone })
+          }
+        }
+        // 404 or other errors are expected for first-time users - silently ignore
+      } catch (error) {
+        // Network errors - silently ignore, user can fill manually
+        console.debug('[CHECKOUT] Profile prefill failed (expected for new users):', error)
+      }
+    }
+
+    if (mounted) {
+      fetchProfile()
+    }
+  }, [mounted]) // Only run once on mount
+  // Note: customerName/customerPhone are intentionally NOT in deps to avoid infinite loop
+
   // Wrapper functions to update both local state and draft context
   const handlePickupTypeChange = (type: 'ASAP' | 'SCHEDULED') => {
     setPickupType(type)
@@ -129,8 +159,10 @@ export default function CheckoutPage() {
     e.preventDefault()
 
     // Validation
-    if (!customerName.trim() || !customerPhone.trim()) {
-      alert(language === 'th' ? 'กรุณากรอกข้อมูลให้ครบถ้วน' : 'Please fill in all required fields')
+    // Note: customer_name is optional (will fallback to profile display_name on server)
+    // customer_phone is required
+    if (!customerPhone.trim()) {
+      alert(language === 'th' ? 'กรุณากรอกเบอร์โทรศัพท์' : 'Please enter your phone number')
       return
     }
 
@@ -377,12 +409,15 @@ export default function CheckoutPage() {
           {/* Customer Info Section */}
           <div className="px-5 py-6 border-b border-border">
             <h2 className="text-text text-lg font-semibold mb-4">
-              {t('customerInfo')} <span className="text-primary text-sm">{t('required')}</span>
+              {t('customerInfo')}
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-muted mb-2">{t('name')}</label>
+                <label className="block text-sm text-muted mb-2">
+                  {t('name')}
+                  <span className="text-muted/60 ml-1">({language === 'th' ? 'ไม่บังคับ' : 'Optional'})</span>
+                </label>
                 <input
                   type="text"
                   value={customerName}
@@ -390,12 +425,13 @@ export default function CheckoutPage() {
                   placeholder={t('namePlaceholder')}
                   disabled={isProcessing}
                   className="w-full bg-card border border-border rounded-lg px-4 py-3 text-text placeholder-muted focus:outline-none focus:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  required
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-muted mb-2">{t('phone')}</label>
+                <label className="block text-sm text-muted mb-2">
+                  {t('phone')} <span className="text-primary">*</span>
+                </label>
                 <input
                   type="tel"
                   value={customerPhone}

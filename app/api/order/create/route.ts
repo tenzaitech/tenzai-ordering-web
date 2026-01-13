@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSupabaseServer } from '@/lib/supabase-server'
+import { checkLiffGate } from '@/lib/liffGate'
+import type { Database } from '@/types/supabase'
 
 export const runtime = 'nodejs'
 
@@ -39,6 +41,10 @@ type CreateOrderRequest = {
  * Creates a new order with items (server-side, uses service role)
  */
 export async function POST(request: NextRequest) {
+  // Check LIFF gate (friendship + freshness)
+  const gateError = await checkLiffGate()
+  if (gateError) return gateError
+
   try {
     // Get userId from LIFF session cookie
     const cookieStore = await cookies()
@@ -81,9 +87,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    if (!customer_name?.trim() || !customer_phone?.trim()) {
+    // customer_phone is required, customer_name is optional (will fallback to profile)
+    if (!customer_phone?.trim()) {
       return NextResponse.json(
-        { error: 'Missing customer info', error_th: 'กรุณากรอกข้อมูลลูกค้า' },
+        { error: 'Missing customer phone', error_th: 'กรุณากรอกเบอร์โทรศัพท์' },
         { status: 400 }
       )
     }
@@ -111,6 +118,43 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseServer()
+
+    // === STEP 1: UPSERT customer profile ===
+    // Upsert customer record (creates if not exists, updates only provided fields)
+    const customerUpsertData: Database['public']['Tables']['customers']['Insert'] = {
+      line_user_id: userId,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Only update fields that are provided (non-empty)
+    // DO NOT overwrite existing data with null/empty values
+    if (customer_name?.trim()) {
+      customerUpsertData.display_name = customer_name.trim()
+    }
+    if (customer_phone?.trim()) {
+      customerUpsertData.phone = customer_phone.trim()
+    }
+    // email not in current request body, skip for now
+
+    const { data: customerData, error: customerError } = await supabase
+      .from('customers')
+      .upsert(customerUpsertData, {
+        onConflict: 'line_user_id',
+        ignoreDuplicates: false, // Always update
+      })
+      .select('id, display_name')
+      .single()
+
+    if (customerError || !customerData) {
+      console.error('[API:ORDER_CREATE] Customer upsert error:', customerError)
+      return NextResponse.json(
+        { error: 'Failed to save customer', error_th: 'ไม่สามารถบันทึกข้อมูลลูกค้าได้' },
+        { status: 500 }
+      )
+    }
+
+    const customerId = customerData.id
+    const customerDisplayName = customerData.display_name
 
     // Server-side price verification
     const menuIds = Array.from(new Set(items.map(i => i.menuId)))
@@ -164,12 +208,21 @@ export async function POST(request: NextRequest) {
     const serverVat = serverSubtotal * VAT_RATE / 100
     const serverTotal = serverSubtotal + serverVat
 
+    // === STEP 2: Determine snapshot customer_name ===
+    // Business rule: Use provided name, else fallback to profile display_name, else "ลูกค้า"
+    let snapshotCustomerName = customer_name?.trim()
+    if (!snapshotCustomerName) {
+      // Fallback: use customers.display_name if available
+      snapshotCustomerName = customerDisplayName?.trim() || 'ลูกค้า'
+    }
+
     // Create order (using service role - bypasses RLS)
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         order_number,
-        customer_name: customer_name.trim(),
+        customer_id: customerId, // FK to customers table
+        customer_name: snapshotCustomerName, // Snapshot for historical record
         customer_phone: customer_phone.trim(),
         customer_line_user_id: userId,
         pickup_type,
@@ -186,7 +239,7 @@ export async function POST(request: NextRequest) {
         customer_note: customer_note?.trim() || null,
         slip_url: null,
         status: 'pending',
-      } as never)
+      })
       .select('id, order_number')
       .single()
 
@@ -206,7 +259,7 @@ export async function POST(request: NextRequest) {
 
     const { error: itemsError } = await supabase
       .from('order_items')
-      .insert(orderItems as never)
+      .insert(orderItems)
 
     if (itemsError) {
       console.error('[API:ORDER_CREATE] Items insert error:', itemsError)

@@ -1,9 +1,36 @@
 # Database Domain Map
 
+## TL;DR
+- **17 tables** across 5 domains: Orders, Menu, Options, Schedule, Settings/Security
+- **RLS locked**: orders, order_items (service_role ONLY)
+- **No RLS**: All menu/category/option tables (app-level auth)
+- **Key redundancies**: `menu_code` vs `menu_item_id`, `rejected_at` vs `rejected_at_ts`, `category_code` legacy column
+- **Schema state**: Stable post-redesign, changes allowed but controlled (migration required)
+- **Foreign key gap**: `fk_order_items_menu_code` is NOT VALID (orphans may exist)
+
+## When Confused → Do This
+1. **"What columns in table X?"** → Ctrl+F table name, see column list
+2. **"Is table Y protected by RLS?"** → See "RLS Policy Summary" section
+3. **"Which tables store money?"** → orders (`subtotal_amount_dec`, `vat_amount_dec`, `total_amount_dec`)
+4. **"Where is order status?"** → `orders.status` (TEXT, no constraint - see backlog DB-005)
+5. **"Where are menu options stored?"** → `options` table (belongs to `option_groups`)
+6. **"How to find order items?"** → `order_items.order_id` FK → `orders.id`
+7. **"Known schema issues?"** → See "Redundancies & Concerns" section + [04-cleanup-backlog.md](04-cleanup-backlog.md)
+
+## Current Truth / Invariants
+- **Order state**: `orders.status` is authoritative (pending/approved/rejected/ready/picked_up)
+- **Money columns**: DECIMAL(10,2) (use string or Decimal.js in TypeScript to avoid precision loss)
+- **Order ownership**: `orders.customer_line_user_id` (TEXT, nullable)
+- **Menu reference**: `order_items.menu_code` snapshots item at order time
+- **VAT rate**: `orders.vat_rate` (typically 7% = 0.07)
+- **Payment proof**: `orders.slip_url` (TEXT, Supabase Storage path)
+- **Foreign keys**: NOT VALID constraint on `order_items.menu_code` (needs validation - see backlog DB-001)
+- **Legacy columns**: `menu_items.category_code`, `orders.rejected_at` (TEXT) exist but superseded
+
 ## Overview
 
 **Total Tables**: 17
-**Domains**: Orders, Menu, Options, Schedule, Settings/Security, Misc
+**Domains**: Orders, Menu, Options, Schedule, Settings/Security
 
 ---
 

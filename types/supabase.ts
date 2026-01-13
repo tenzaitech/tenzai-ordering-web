@@ -382,6 +382,36 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          id: string
+          line_user_id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          line_user_id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          line_user_id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           adjusted_at: string | null
@@ -390,6 +420,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string | null
+          customer_id: string | null
           customer_line_display_name: string | null
           customer_line_user_id: string | null
           customer_name: string
@@ -421,6 +452,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
+          customer_id?: string | null
           customer_line_display_name?: string | null
           customer_line_user_id?: string | null
           customer_name: string
@@ -452,6 +484,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string | null
+          customer_id?: string | null
           customer_line_display_name?: string | null
           customer_line_user_id?: string | null
           customer_name?: string
@@ -476,7 +509,15 @@ export type Database = {
           vat_amount_dec?: number | null
           vat_rate?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_settings: {
         Row: {

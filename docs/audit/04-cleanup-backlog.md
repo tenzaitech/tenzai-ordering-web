@@ -1,5 +1,27 @@
 # Cleanup Backlog
 
+## TL;DR
+- **19 items** across DB (6), API (5), CODE (5), FOLDER (3)
+- **0 P0 (critical)**, 2 P1 (high), 7 P2 (medium), 10 P3 (low)
+- **Top priorities**: Validate FK constraint (DB-001), Add CSRF protection (API-001), Status enum (DB-005)
+- **No blockers**: All items are cleanup/hardening (system functional as-is)
+- **Execution order**: See "Recommended Execution Order" section
+
+## When Confused → Do This
+1. **"What should I work on next?"** → See "Recommended Execution Order" or filter by priority
+2. **"Why is this a priority?"** → Check "Why it matters" field for each item
+3. **"What's the risk?"** → See "Risk Level" (Critical/Medium/Low)
+4. **"How many files affected?"** → See "Blast Radius"
+5. **"Is this safe to skip?"** → P3 items are low-priority (nice-to-have)
+6. **"How do I fix item X?"** → See "Action" field for each item
+
+## Current Truth / Invariants
+- **System is functional**: All backlog items are improvements, not blockers
+- **DB schema**: Stable but has redundancies (legacy columns, NOT VALID FK)
+- **Security gaps**: Missing CSRF on admin mutations, no RLS on menu tables, no rate limiting on public endpoints
+- **Code quality**: Works but has inconsistencies (error formats, Supabase client patterns, magic strings)
+- **Priority focus**: Security (P1) → Data integrity (P2) → Consistency/maintainability (P3)
+
 Prioritized list of cleanup items grouped by category. Each item includes rationale, risk level, and blast radius.
 
 ---
@@ -23,6 +45,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - data inconsistency possible
 **Blast Radius**: `order_items` table, order detail views
 **Action**: Query for orphaned rows, clean up, then run `ALTER TABLE order_items VALIDATE CONSTRAINT fk_order_items_menu_code`
+**Acceptance**: (1) Query confirms no orphaned rows, (2) Constraint validated successfully, (3) Migration with rollback SQL committed
 
 ---
 
@@ -59,6 +82,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - data integrity
 **Blast Radius**: Order state machine
 **Action**: Create enum type or CHECK constraint for valid statuses
+**Acceptance**: (1) Constraint allows only: pending, approved, rejected, ready, picked_up, (2) Existing rows validated, (3) Migration with rollback committed
 
 ---
 
@@ -67,7 +91,8 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Why it matters**: Menu/category/option tables have no RLS, relying on app-level auth. Direct DB access could modify menu.
 **Risk Level**: Medium - admin-only concern
 **Blast Radius**: All menu management
-**Action**: Add `USING(true)` for SELECT, restrict INSERT/UPDATE/DELETE to service_role
+**Action**: Add `USING(true)` for SELECT, restrict INSERT/UPDATE/DELETE to service-role
+**Acceptance**: (1) RLS enabled on menu/category/option tables, (2) Public reads work, (3) Admin writes via anon client fail (trigger migration to service-role per API-002)
 
 ---
 
@@ -79,6 +104,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - CSRF vulnerability
 **Blast Radius**: All admin write operations
 **Action**: Add `validateCsrf(request)` to all admin POST/PATCH/DELETE routes
+**Acceptance**: (1) All admin POST/PATCH/DELETE routes include CSRF validation, (2) Routes return 403 on invalid CSRF token, (3) No false positives on valid requests
 
 ---
 
@@ -88,6 +114,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Low - auth gates exist
 **Blast Radius**: 25+ admin API routes
 **Action**: Switch imports from `@/lib/supabase` to `@/lib/supabase-server`
+**Acceptance**: (1) All admin menu/category/option routes use service-role client, (2) Admin dashboard functional, (3) Update 02-supabase-usage-map.md
 
 ---
 
@@ -106,6 +133,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - abuse potential
 **Blast Radius**: Public endpoints
 **Action**: Implement rate limiting middleware
+**Acceptance**: (1) Public endpoints enforce rate limit (e.g., 100 req/min per IP), (2) Limit returns 429 status, (3) Legit traffic unaffected
 
 ---
 
@@ -144,6 +172,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - rounding errors
 **Blast Radius**: Order totals, VAT calculations
 **Action**: Use string or Decimal.js for monetary calculations
+**Acceptance**: (1) Money types use string or Decimal.js, (2) No floating-point arithmetic on money, (3) VAT calculations remain accurate to 2 decimals
 
 ---
 
@@ -191,6 +220,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 **Risk Level**: Medium - regression risk
 **Blast Radius**: All API routes
 **Action**: Add integration tests for critical flows
+**Acceptance**: (1) Tests cover: order create, approve, reject, status update, (2) Tests verify auth/ownership checks, (3) CI runs tests on PR
 
 ---
 
@@ -201,7 +231,7 @@ Prioritized list of cleanup items grouped by category. Each item includes ration
 | P0 | 0 | - |
 | P1 | 2 | DB (FK validation), API (CSRF) |
 | P2 | 7 | DB (status enum, RLS), API (service-role, rate limit), CODE (decimals), FOLDER (tests) |
-| P3 | 9 | DB (redundant columns), API (errors), CODE (cleanup), FOLDER (organization) |
+| P3 | 10 | DB (redundant columns), API (errors), CODE (cleanup), FOLDER (organization) |
 
 ---
 
