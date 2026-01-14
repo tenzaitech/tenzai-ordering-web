@@ -51,6 +51,7 @@ export default function MenuListClient({ categories, menuItems, popularMenus: in
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 50
   const [popularMenus, setPopularMenus] = useState<string[]>(initialPopular)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
 
   const categoryMap = new Map(categories.map(cat => [cat.category_code, cat.name]))
 
@@ -343,9 +344,14 @@ export default function MenuListClient({ categories, menuItems, popularMenus: in
                       {/* Image */}
                       <td className="px-3 py-3">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name_th} className="w-10 h-10 object-cover rounded" />
+                          <button
+                            onClick={() => setPreviewImage(item.image_url)}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            <img src={item.image_url} alt={item.name_th} className="w-20 h-20 object-cover rounded" />
+                          </button>
                         ) : (
-                          <div className="w-10 h-10 bg-border rounded flex items-center justify-center text-muted text-xs">
+                          <div className="w-20 h-20 bg-border rounded flex items-center justify-center text-muted text-xs">
                             -
                           </div>
                         )}
@@ -518,6 +524,33 @@ export default function MenuListClient({ categories, menuItems, popularMenus: in
           </div>
         )}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh]">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+              aria-label="Close preview"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

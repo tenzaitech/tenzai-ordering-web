@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { getSupabaseServer } from '@/lib/supabase-server'
+import { isStaffAuthorized, unauthorized } from '@/lib/staffAuth'
 
 export const runtime = 'nodejs'
 
@@ -10,11 +10,8 @@ export const runtime = 'nodejs'
  */
 export async function GET(request: NextRequest) {
   // Require staff session
-  const cookieStore = await cookies()
-  const staffCookie = cookieStore.get('tenzai_staff')
-
-  if (!staffCookie || staffCookie.value !== 'true') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!await isStaffAuthorized(request)) {
+    return unauthorized()
   }
 
   const supabase = getSupabaseServer()

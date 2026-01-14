@@ -285,15 +285,16 @@ export default function ImageImportPage() {
     try {
       const filenames = files.map(f => f.name)
 
-      const res = await fetch('/api/admin/image-import/preview', {
+      const res = await adminFetch('/api/admin/image-import/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filenames })
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Preview failed')
+        const data = await res.json().catch(() => ({}))
+        const errorMsg = typeof data.error === 'string' ? data.error : (data.error?.message || res.statusText || 'การดูตัวอย่างล้มเหลว')
+        throw new Error(errorMsg)
       }
 
       const data = await res.json()

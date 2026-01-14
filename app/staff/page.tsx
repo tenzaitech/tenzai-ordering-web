@@ -69,7 +69,9 @@ export default function StaffBoardPage() {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/staff/auth/me')
+      const response = await fetch('/api/staff/auth/me', {
+        credentials: 'include'
+      })
       if (response.ok) {
         setAuthenticated(true)
       } else {
@@ -86,7 +88,10 @@ export default function StaffBoardPage() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/staff/auth/logout', { method: 'POST' })
+      await fetch('/api/staff/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
       router.replace('/staff/login')
     } catch (error) {
       console.error('[STAFF] Logout error:', error)
@@ -95,7 +100,15 @@ export default function StaffBoardPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/staff/orders')
+      const response = await fetch('/api/staff/orders', {
+        credentials: 'include'
+      })
+      if (response.status === 401) {
+        console.warn('[STAFF] Session expired, redirecting to login')
+        setAuthenticated(false)
+        router.replace('/staff/login')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setOrders(data.orders || [])
@@ -107,7 +120,15 @@ export default function StaffBoardPage() {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch('/api/staff/orders/history')
+      const response = await fetch('/api/staff/orders/history', {
+        credentials: 'include'
+      })
+      if (response.status === 401) {
+        console.warn('[STAFF] Session expired, redirecting to login')
+        setAuthenticated(false)
+        router.replace('/staff/login')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setHistoryOrders(data.orders || [])
@@ -137,8 +158,16 @@ export default function StaffBoardPage() {
       const response = await fetch('/api/staff/orders/update-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ orderId, newStatus })
       })
+
+      if (response.status === 401) {
+        console.warn('[STAFF] Session expired, redirecting to login')
+        setAuthenticated(false)
+        router.replace('/staff/login')
+        return
+      }
 
       if (response.ok) {
         showFeedback(`Order updated to ${newStatus}`, 'success')

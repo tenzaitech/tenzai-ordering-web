@@ -766,8 +766,8 @@ export async function sendCustomerSlipConfirmation(orderId: string): Promise<voi
 
   // Build Flex card for customer (NO button)
   const flexCard = buildFlexOrderCard({
-    titleTH: '🧾 ได้รับหลักฐานการชำระเงินแล้ว',
-    titleEN: 'กำลังตรวจสอบ จะแจ้งผลให้ทราบเร็วๆ นี้',
+    titleTH: 'ได้รับการชำระเงินแล้ว',
+    titleEN: 'ทางร้านกำลังตรวจสอบให้คุณ',
     fields: [
       { label: LINE_LABELS.order, value: `#${order.order_number}` },
       { label: LINE_LABELS.status, value: 'รอตรวจสอบการชำระเงิน' },
@@ -865,8 +865,8 @@ export async function sendCustomerApprovedNotification(orderId: string): Promise
 
   // Build Flex card for customer with items summary
   const flexCard = buildFlexOrderCard({
-    titleTH: '✅ ออเดอร์ได้รับการยืนยันแล้ว',
-    titleEN: 'กำลังเตรียมอาหารให้คุณ',
+    titleTH: 'ออเดอร์ได้รับการยืนยันแล้ว',
+    titleEN: 'ทางร้านกำลังเตรียมอาหารให้คุณ',
     fields,
     items: itemsList.length > 0 ? itemsList : undefined,
     showButton: false
@@ -932,8 +932,8 @@ export async function sendCustomerRejectedNotification(orderId: string): Promise
 
   // Build Flex card for customer
   const flexCard = buildFlexOrderCard({
-    titleTH: 'ขออภัย ออเดอร์ถูกปฏิเสธ',
-    titleEN: 'กรุณาติดต่อร้านค้า',
+    titleTH: 'ออเดอร์ถูกยกเลิกแล้ว',
+    titleEN: 'หากมีข้อสงสัยสามารถติดต่อทางร้านได้',
     fields,
     showButton: false
   })
@@ -1050,8 +1050,8 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
   if (status === 'ready') {
     // Build Flex card for "ready" status (NO button)
     const flexCard = buildFlexOrderCard({
-      titleTH: '🍱 ออเดอร์ของคุณพร้อมแล้ว!',
-      titleEN: 'มารับได้เลยค่ะ',
+      titleTH: 'ออเดอร์ของคุณพร้อมแล้ว',
+      titleEN: 'สามารถมารับได้ที่หน้าร้าน',
       fields: [
         { label: LINE_LABELS.order, value: `#${order.order_number}` },
         { label: LINE_LABELS.status, value: 'พร้อมรับ' }
@@ -1068,7 +1068,7 @@ export async function sendCustomerNotification(orderId: string, status: 'ready' 
     // Keep "picked_up" as text message (simple thank you)
     message = {
       type: 'text',
-      text: `✅ ขอบคุณที่มารับออเดอร์ค่ะ\n\n📋 ออเดอร์ #${order.order_number}\n\n🙏 ขอบคุณที่อุดหนุน TENZAI\nหวังว่าจะได้พบกันอีกนะคะ`
+      text: `ขอบคุณที่สั่งอาหารกับ TENZAI\nหวังว่าจะได้ดูแลคุณอีกครั้ง\n\nออเดอร์ #${order.order_number}`
     }
   }
 

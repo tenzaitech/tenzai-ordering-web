@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import { sendCustomerNotification } from '@/lib/line'
+import { isStaffAuthorized, unauthorized } from '@/lib/staffAuth'
 
 export const runtime = 'nodejs'
 
@@ -13,10 +14,8 @@ type OrderRow = {
 
 export async function POST(request: NextRequest) {
   // Verify staff session
-  const staffCookie = request.cookies.get('tenzai_staff')
-
-  if (!staffCookie || !staffCookie.value.startsWith('STAFF_VERIFIED')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!await isStaffAuthorized(request)) {
+    return unauthorized()
   }
 
   const supabase = getSupabaseServer()
